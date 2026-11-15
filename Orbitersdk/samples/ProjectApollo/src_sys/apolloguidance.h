@@ -33,6 +33,7 @@ class DSKY;
 class IMU;
 class CDU;
 class PanelSDK;
+class SoundLib;
 
 #include <bitset>
 #include "powersource.h"

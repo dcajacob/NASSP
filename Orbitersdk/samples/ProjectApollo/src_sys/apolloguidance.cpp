@@ -25,7 +25,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "inttypes.h"
 #include <stdio.h>
 #include <math.h>
@@ -46,6 +46,12 @@
 #include "papi.h"
 
 #include "tracer.h"
+
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeGraphics.h"
+#include "Production/ResourceResolver.h"
+#include <stdexcept>
+#endif
 
 ApolloGuidance::ApolloGuidance(SoundLib &s, DSKY &display, IMU &im, CDU &sc, CDU &tc, PanelSDK &p) : soundlib(s), dsky(display), imu(im), DCPower(0, p), scdu(sc), tcdu(tc), agcCycleMutex()
 
@@ -103,7 +109,17 @@ void ApolloGuidance::InitVirtualAGC(char *binfile)
 
 {
 
+#if defined(NASSP_NATIVE_LINUX)
+	const auto* files = orbiter::production::GetNativeRenderContext().programFiles;
+	if (!files) throw std::runtime_error("Apollo Guidance Computer asset resolver is unavailable");
+	const auto path = files->Resolve(binfile);
+	const int status = agc_load_binfile(&vagc, path.c_str());
+	if (status != 0)
+		throw std::runtime_error("Cannot load Apollo Guidance Computer ROM " + path.string() +
+			" (yaAGC status " + std::to_string(status) + ")");
+#else
 	(void) agc_load_binfile(&vagc, binfile);
+#endif
 
 	// Set channels only once, otherwise this code overwrites the channel values in the scenario
 	if (!PadLoaded) { 
@@ -178,7 +194,7 @@ bool ApolloGuidance::OutOfReset()
 bool ApolloGuidance::SingleTimestep() {
 
 	agc_engine(&vagc);
-	return TRUE;
+	return true;
 }
 
 void ApolloGuidance::VirtualAGCCoreDump(char *fileName) {

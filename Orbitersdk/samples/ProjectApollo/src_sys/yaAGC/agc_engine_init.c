@@ -191,7 +191,7 @@ agc_engine_init (agc_t * State, const char *RomImage, const char *CoreDump,
   int RetVal = 0, i, j, Bank;
   FILE *cd = NULL;
 
-#ifndef WIN32
+#if !defined(WIN32) && !defined(NASSP_NATIVE_LINUX)
   // The purpose of this is to make sure that getchar doesn't halt the program
   // when there's no keystroke immediately available.
   UnblockSocket (fileno (stdin));

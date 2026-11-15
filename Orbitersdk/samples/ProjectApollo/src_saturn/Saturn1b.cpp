@@ -89,6 +89,7 @@ Saturn1b::Saturn1b (OBJHANDLE hObj, int fmodel) : Saturn (hObj, fmodel),
 Saturn1b::~Saturn1b()
 
 {
+	agc.Kill();
 	if (iu)
 	{
 		delete iu;

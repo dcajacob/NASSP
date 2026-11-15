@@ -135,9 +135,11 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#include "papi.h"
 #include "stdio.h"
 #include "math.h"
+#include <algorithm>
 
 #include "soundlib.h"
 #include "nasspsound.h"
@@ -147,6 +149,12 @@
 #include "ioChannels.h"
 
 #include "nasspdefs.h"
+
+#if defined(NASSP_NATIVE_LINUX)
+static constexpr auto dskyBlitKey = SURF_NO_CK;
+#else
+static constexpr auto dskyBlitKey = SURF_PREDEF_CK;
+#endif
 
 static char TwoSpace[] = "  ";
 static char SixSpace[] = "      ";
@@ -199,17 +207,13 @@ void DSKY::Reset()
 	NounFlashing = false;
 	ELOff = false;
 
+	clientSocket.Close();
 	DSKYOutEnabled = false;
 	strcpy(DSKYOutIp, "127.0.0.1");
 	DSKYOutPort = 3002;
 }
 
-DSKY::~DSKY()
-
-{
-	closesocket(clientSock);
-	WSACleanup();
-}
+DSKY::~DSKY() = default;
 
 void DSKY::Init(
 	e_object *statuslightpower,
@@ -257,27 +261,26 @@ void DSKY::Timestep(double simt)
 			oapiReadItem_string(DSKYOutConfig, "IP", DSKYOutIp);
 			oapiReadItem_int(DSKYOutConfig, "DSKYPORT", DSKYOutPort);
 
-			//Set up network stuff
-			WSAStartup(0x0202, &wsaData);
+			oapiCloseFile(DSKYOutConfig, FILE_IN_ZEROONFAIL);
+		}
+
+		if (DSKYOutEnabled) {
 			serverAddr.sin_family = AF_INET;
 			serverAddr.sin_addr.s_addr = inet_addr(DSKYOutIp);
-			serverAddr.sin_port = htons((u_short)DSKYOutPort);
-			clientSock = socket(PF_INET, SOCK_DGRAM, 0);
-			
-			// Set socket as nonblocking
-			int iMode = 1; // 0 = BLOCKING, 1 = NONBLOCKING
-			if(ioctlsocket(clientSock, FIONBIO, (u_long FAR*) &iMode) != 0){
-				closesocket(clientSock);
-				WSACleanup();
+			if (DSKYOutPort < 1 || DSKYOutPort > 65535 ||
+				serverAddr.sin_addr.s_addr == INADDR_NONE ||
+				socketRuntime.Start() != 0 || clientSocket.Open(SOCK_DGRAM, 0) != 0) {
+				DSKYOutEnabled = false;
+			} else {
+				serverAddr.sin_port = htons(static_cast<unsigned short>(DSKYOutPort));
 			}
 		}
-		oapiCloseFile(DSKYOutConfig, FILE_IN_ZEROONFAIL);
 	}
 	if(DSKYOutEnabled){
 		char buffer[512];
-		int recvLen = recv(clientSock, buffer, sizeof(buffer) - 1, 0);
+		int recvLen = recv(clientSocket.Get(), buffer, sizeof(buffer) - 1, 0);
 
-		if (recvLen != SOCKET_ERROR) {
+		if (recvLen > 0) {
 			buffer[recvLen] = '\0';  // Null-terminate the received data
 			
 			if (strcmp(buffer, "v") == 0) {
@@ -839,20 +842,20 @@ void DSKY::RenderData(SURFHANDLE surf, SURFHANDLE digits, SURFHANDLE disp, int x
 	if (!IsSegmentPowered() || ELOff)
 		return;
 
-	oapiBlt(surf, disp, 66*TexMul + xOffset,   3*TexMul + yOffset, 35*TexMul,  0, 35*TexMul, 10*TexMul, SURF_PREDEF_CK);
-	oapiBlt(surf, disp, 66*TexMul + xOffset,  38*TexMul + yOffset, 35*TexMul, 10*TexMul, 35*TexMul, 10*TexMul, SURF_PREDEF_CK);
-	oapiBlt(surf, disp,  6*TexMul + xOffset,  38*TexMul + yOffset, 35*TexMul, 20*TexMul, 35*TexMul, 10*TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, disp, 66*TexMul + xOffset,   3*TexMul + yOffset, 35*TexMul,  0, 35*TexMul, 10*TexMul, dskyBlitKey);
+	oapiBlt(surf, disp, 66*TexMul + xOffset,  38*TexMul + yOffset, 35*TexMul, 10*TexMul, 35*TexMul, 10*TexMul, dskyBlitKey);
+	oapiBlt(surf, disp,  6*TexMul + xOffset,  38*TexMul + yOffset, 35*TexMul, 20*TexMul, 35*TexMul, 10*TexMul, dskyBlitKey);
 
-	oapiBlt(surf, disp,  8*TexMul + xOffset,  73*TexMul + yOffset,  0, 32*TexMul, 89*TexMul,  4*TexMul, SURF_PREDEF_CK);
-	oapiBlt(surf, disp,  8*TexMul + xOffset, 107*TexMul + yOffset,  0, 32*TexMul, 89*TexMul,  4*TexMul, SURF_PREDEF_CK);
-	oapiBlt(surf, disp,  8*TexMul + xOffset, 141*TexMul + yOffset,  0, 32*TexMul, 89*TexMul,  4*TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, disp,  8*TexMul + xOffset,  73*TexMul + yOffset,  0, 32*TexMul, 89*TexMul,  4*TexMul, dskyBlitKey);
+	oapiBlt(surf, disp,  8*TexMul + xOffset, 107*TexMul + yOffset,  0, 32*TexMul, 89*TexMul,  4*TexMul, dskyBlitKey);
+	oapiBlt(surf, disp,  8*TexMul + xOffset, 141*TexMul + yOffset,  0, 32*TexMul, 89*TexMul,  4*TexMul, dskyBlitKey);
 
 	if (CompActy) {
 		//
 		// Do stuff to update Comp Acty light.
 		//
 
-		oapiBlt(surf, disp,  6*TexMul + xOffset,   4*TexMul + yOffset,  0,  0, 35*TexMul, 31*TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, disp,  6*TexMul + xOffset,   4*TexMul + yOffset,  0,  0, 35*TexMul, 31*TexMul, dskyBlitKey);
 	}
 
 	RenderTwoDigitDisplay(surf, digits, 66 + xOffset, 16 + yOffset, Prog, false, ELOff, TexMul);
@@ -1000,6 +1003,18 @@ void DSKY::SaveState(FILEHANDLE scn, char *start_str, char *end_str)
 }
 
 
+namespace {
+template <std::size_t Size>
+void LoadDisplayField(char (&field)[Size], const char* line, std::size_t offset)
+{
+	const auto length = std::strlen(line);
+	std::fill_n(field, Size - 1, ' ');
+	if (length > offset)
+		std::copy_n(line + offset, (std::min)(Size - 1, length - offset), field);
+	field[Size - 1] = '\0';
+}
+}
+
 void DSKY::LoadState(FILEHANDLE scn, char *end_str)
 
 {
@@ -1010,32 +1025,26 @@ void DSKY::LoadState(FILEHANDLE scn, char *end_str)
 		if (!strnicmp(line, end_str, end_len))
 			return;
 		if (!strnicmp (line, "PROG", 4)) {
-			strncpy (Prog, line+5, 2);
-			if (strcmp(Prog, "") == 0) { strcpy(Prog, TwoSpace); }
+			LoadDisplayField(Prog, line, 5);
 		}
 		else if (!strnicmp (line, "VERB", 4)) {
-			strncpy (Verb, line+5, 2);
-			if (strcmp(Verb, "") == 0) { strcpy(Verb, TwoSpace); }
+			LoadDisplayField(Verb, line, 5);
 		}
 		else if (!strnicmp (line, "NOUN", 4)) {
-			strncpy (Noun, line+5, 2);
-			if (strcmp(Noun, "") == 0) { strcpy(Noun, TwoSpace); }
+			LoadDisplayField(Noun, line, 5);
 		}
 		else if (!strnicmp (line, "R1", 2)) {
-			strncpy (R1, line+3, 6);
-			if (strcmp(R1, "") == 0) { strcpy(R1, SixSpace); }
+			LoadDisplayField(R1, line, 3);
 		}
 		else if (!strnicmp (line, "R2", 2)) {
-			strncpy (R2, line+3, 6);
-			if (strcmp(R2, "") == 0) { strcpy(R2, SixSpace); }
+			LoadDisplayField(R2, line, 3);
 		}
 		else if (!strnicmp (line, "R3", 2)) {
-			strncpy (R3, line+3, 6);
-			if (strcmp(R3, "") == 0) { strcpy(R3, SixSpace); }
+			LoadDisplayField(R3, line, 3);
 		}
 		else if (!strnicmp (line, "STATE", 5)) {
-			DSKYState state;
-			sscanf (line+5, "%d", &state.word);
+			DSKYState state{};
+			if (sscanf(line + 5, "%d", &state.word) != 1) continue;
 
 			VerbFlashing = state.u.VerbFlashing;
 			NounFlashing = state.u.NounFlashing;
@@ -1564,7 +1573,8 @@ void DSKY::SendNetworkPacketDSKY()
 
 		std::string message = "{" + compLight + prog + verb + noun + flashing + r1 + r2 + r3 + alarms + powered + anun + numerics + integral + "}";
 
-		sendto(clientSock, message.c_str(), message.length(), 0, (LPSOCKADDR)&serverAddr, sizeof(struct sockaddr));
+		sendto(clientSocket.Get(), message.c_str(), static_cast<int>(message.size()), nassp::socketSendFlags,
+			reinterpret_cast<const sockaddr*>(&serverAddr), sizeof(serverAddr));
 		//strcpy(oapiDebugString(), message.c_str());
 	}
 }

@@ -24,11 +24,9 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
-#include <string.h>
-#include <time.h>
-#include <sys/timeb.h>
-#include <windows.h>
+#include "NasspOrbiterSdk.h"
+#include <chrono>
+#include <ctime>
 #include <stdio.h>
 #include <math.h>
 #include "soundlib.h"
@@ -40,8 +38,27 @@
 #include "ioChannels.h"
 #include "IMU.h"
 
-static FILE *logFile = NULL;
-static long lastTime = -1;
+#ifdef _DEBUG
+namespace {
+FILE* logFile = nullptr;
+
+unsigned GetLogTimestamp(char (&clock)[9])
+{
+	using namespace std::chrono;
+	const auto now = system_clock::now();
+	const auto seconds = floor<std::chrono::seconds>(now);
+	const auto time = system_clock::to_time_t(seconds);
+	std::tm local{};
+#if defined(_WIN32)
+	localtime_s(&local, &time);
+#else
+	localtime_r(&time, &local);
+#endif
+	std::strftime(clock, sizeof(clock), "%H:%M:%S", &local);
+	return static_cast<unsigned>(duration_cast<milliseconds>(now - seconds).count());
+}
+}
+#endif
 
 char *intToBinaryString(char *buffer, int i);
 
@@ -63,18 +80,14 @@ void IMU::LogState(int channel, char *device, int value)
 
 {
 #ifdef _DEBUG
-	struct _timeb tstruct;
-	char *timeline;
-	char buffer[100];	
+	if (!logFile) return;
+	char buffer[9];
+	const unsigned milliseconds = GetLogTimestamp(buffer);
 	char buffer1[100];
-	
-	_ftime(&tstruct);
-	timeline = ctime(&(tstruct.time));
-	strcpy(buffer, timeline + 11);
 	
 	intToBinaryString(buffer1, value);
 
-		fprintf(logFile, "%.8s.%03hu Ch %03o %s %s PIPA %o %o %o CDUCMD %o %o %o GYRO %o IMU %.2f %.2f %.2f\n", buffer, tstruct.millitm, channel, device, buffer1,
+		fprintf(logFile, "%.8s.%03u Ch %03o %s %s PIPA %o %o %o CDUCMD %o %o %o GYRO %o IMU %.2f %.2f %.2f\n", buffer, milliseconds, channel, device, buffer1,
 		    agc.GetErasable(0, RegPIPAX), 
 		    agc.GetErasable(0, RegPIPAY), 
 			agc.GetErasable(0, RegPIPAZ), 
@@ -97,15 +110,11 @@ void IMU::LogTimeStep(long simt)
 
 {
 #ifdef _DEBUG
-	struct _timeb tstruct;
-	char *timeline;
-	char buffer[100];	
-	
-	_ftime(&tstruct);
-	timeline = ctime(&(tstruct.time));
-	strcpy(buffer, timeline + 11);
+	if (!logFile) return;
+	char buffer[9];
+	const unsigned milliseconds = GetLogTimestamp(buffer);
 		
-	fprintf(logFile, "%.8s.%03hu TimeStep                   IMU %.2f %.2f %.2f\n", buffer, tstruct.millitm,
+	fprintf(logFile, "%.8s.%03u TimeStep                   IMU %.2f %.2f %.2f\n", buffer, milliseconds,
 			radToDeg(Gimbal.X),
 			radToDeg(Gimbal.Y),
 			radToDeg(Gimbal.Z));
@@ -119,15 +128,11 @@ void IMU::LogVector(char* message, VECTOR3 v)
 
 {
 #ifdef _DEBUG
-	struct _timeb tstruct;
-	char *timeline;
-	char buffer[100];
-	
-	_ftime(&tstruct);
-	timeline = ctime(&(tstruct.time));
-	strcpy(buffer, timeline + 11);
+	if (!logFile) return;
+	char buffer[9];
+	const unsigned milliseconds = GetLogTimestamp(buffer);
 		
-	fprintf(logFile, "%.8s.%03hu %s Vector %f %f %f\n", buffer, tstruct.millitm, 
+	fprintf(logFile, "%.8s.%03u %s Vector %f %f %f\n", buffer, milliseconds,
 			message, v.x, v.y, v.z);
 #endif
 }
@@ -136,15 +141,11 @@ void IMU::LogMessage(char* s)
 
 {
 #ifdef _DEBUG
-	struct _timeb tstruct;
-	char *timeline;
-	char buffer[100];	
-	
-	_ftime(&tstruct);
-	timeline = ctime(&(tstruct.time));
-	strcpy(buffer, timeline + 11);
+	if (!logFile) return;
+	char buffer[9];
+	const unsigned milliseconds = GetLogTimestamp(buffer);
 		
-	fprintf(logFile, "%.8s.%03hu Message %s\n", buffer, tstruct.millitm, 
+	fprintf(logFile, "%.8s.%03u Message %s\n", buffer, milliseconds,
 			s);	
 #endif
 }

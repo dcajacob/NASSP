@@ -26,7 +26,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -35,7 +35,15 @@
 #include "soundlib.h"
 #include "tracer.h"
 #include "nasspdefs.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "NasspNativeSound.h"
+#include "Production/NativeGraphics.h"
+#include "Production/NativeInterpreterSdk.h"
+#include "Production/ResourceResolver.h"
+#else
 #include "XRSound.h"
+#endif
+#include <cstdio>
 
 SoundData::SoundData()
 
@@ -173,8 +181,13 @@ SoundLib::~SoundLib()
 void SoundLib::InitSoundLib(VESSEL *v, char *soundclass)
 
 {
-	_snprintf(basepath, 255, "Sound/%s", soundclass);
+	std::snprintf(basepath, 255, "Sound/%s", soundclass);
 
+#if defined(NASSP_NATIVE_LINUX)
+	if (!Soundlib) Soundlib = new NasspNativeSound(v);
+	XRSoundActive = Soundlib->IsPresent();
+	UpdateSoundView();
+#else
 	Soundlib = XRSound::CreateInstance(v);
 	XRSoundActive = Soundlib->IsPresent();
 
@@ -183,7 +196,15 @@ void SoundLib::InitSoundLib(VESSEL *v, char *soundclass)
 	Soundlib->SetDefaultSoundEnabled(XRSound::SubsonicCallout, false);
 	Soundlib->SetDefaultSoundEnabled(XRSound::MachCalloutsGroup, false);
 	Soundlib->SetDefaultSoundEnabled(XRSound::OneHundredKnots, false);
+#endif
 }
+
+#if defined(NASSP_NATIVE_LINUX)
+void SoundLib::UpdateSoundView()
+{
+	if (Soundlib) Soundlib->UpdateView();
+}
+#endif
 
 void SoundLib::SetSoundLibMissionPath(char *mission)
 
@@ -196,12 +217,20 @@ void SoundLib::SetSoundLibMissionPath(char *mission)
 // manky thing instead, of opening and then closing.
 //
 
-static bool IsFile(char *path)
-
+static std::string SoundPathInSession(const char* path)
 {
-	FILE	*fp;
+#if defined(NASSP_NATIVE_LINUX)
+	const auto* files = orbiter::production::GetNativeRenderContext().programFiles;
+	return files && files->Contains(path) ? files->Resolve(path).string() : std::string{};
+#else
+	return path;
+#endif
+}
 
-	fp = fopen(path, "rb");
+static bool IsFile(char *path)
+{
+	const auto file = SoundPathInSession(path);
+	FILE* fp = file.empty() ? nullptr : std::fopen(file.c_str(), "rb");
 	if (!fp)
 		return false;
 
@@ -256,7 +285,9 @@ int SoundLib::FindSlot()
 SoundData *SoundLib::DoLoadSound(char *SoundPath, EXTENDEDPLAY extended)
 
 {
-	SoundData *s;
+#if defined(NASSP_NATIVE_LINUX)
+	const auto t = extended;
+#else
 	XRSound::PlaybackType t;
 
 	switch (extended) {
@@ -282,13 +313,15 @@ SoundData *SoundLib::DoLoadSound(char *SoundPath, EXTENDEDPLAY extended)
 	default:
 		t = XRSound::PlaybackType::Global;
 	}
+#endif
 
 	//
 	// If the sound already exists, return it.
 	//
 
-	s = CheckForMatch(SoundPath);
+	SoundData* s = CheckForMatch(SoundPath);
 	if (s) {
+		if (!s->isValid()) s->MakeValid();
 		s->AddRef();
 		return s;
 	}
@@ -299,16 +332,16 @@ SoundData *SoundLib::DoLoadSound(char *SoundPath, EXTENDEDPLAY extended)
 
 	s = sounds + id;
 
-	s->setFileName(SoundPath);
-
-	//
-	// So the file exists and we have a free slot. Try to load it.
-	//
-
-	if (Soundlib->LoadWav(id, s->GetFilename(), t) == 0)
+	const char* filename = SoundPath;
+#if defined(NASSP_NATIVE_LINUX)
+	const std::string relative(SoundPath);
+	const auto resolved = relative.rfind("Vessel/", 0) == 0 ? "Sound/" + relative : relative;
+	filename = resolved.c_str();
+#endif
+	if (!Soundlib->LoadWav(id, filename, t))
 		return 0;
 
-
+	s->setFileName(SoundPath);
 	s->setSoundlib(Soundlib);
 	s->setID(id);
 	s->MakeValid();
@@ -340,7 +373,7 @@ void SoundLib::LoadSound(Sound &s, char *soundname, EXTENDEDPLAY extended)
 	// First check for a language-specific sound.
 	//
 
-	_snprintf(SoundPath, 255, "%s/%s/%s", basepath, languagepath, soundname);
+	std::snprintf(SoundPath, 255, "%s/%s/%s", basepath, languagepath, soundname);
 	if (IsFile(SoundPath)) {
 		s.SetSoundData(DoLoadSound(SoundPath, extended));
 		return;
@@ -350,7 +383,7 @@ void SoundLib::LoadSound(Sound &s, char *soundname, EXTENDEDPLAY extended)
 	// Then check for the generic file.
 	//
 
-	_snprintf(SoundPath, 255, "%s/%s", basepath, soundname);
+	std::snprintf(SoundPath, 255, "%s/%s", basepath, soundname);
 	if (IsFile(SoundPath)) {
 		s.SetSoundData(DoLoadSound(SoundPath, extended));
 		return;
@@ -360,7 +393,7 @@ void SoundLib::LoadSound(Sound &s, char *soundname, EXTENDEDPLAY extended)
 	// Finally check the Vessel directory.
 	//
 
-	_snprintf(SoundPath, 255, "Sound/Vessel/%s", soundname);
+	std::snprintf(SoundPath, 255, "Sound/Vessel/%s", soundname);
 	if (IsFile(SoundPath)) {
 		s.SetSoundData(DoLoadSound(SoundPath, extended));
 		return;
@@ -391,7 +424,7 @@ void SoundLib::LoadMissionSound(Sound &s, char *soundname, char *genericname, EX
 	// First check for a language-specific sound.
 	//
 
-	_snprintf(SoundPath, 255, "%s/%s/%s/%s", basepath, languagepath, missionpath, soundname);
+	std::snprintf(SoundPath, 255, "%s/%s/%s/%s", basepath, languagepath, missionpath, soundname);
 	if (IsFile(SoundPath)) {
 		s.SetSoundData(DoLoadSound(SoundPath, extended));
 		return;
@@ -401,7 +434,7 @@ void SoundLib::LoadMissionSound(Sound &s, char *soundname, char *genericname, EX
 	// Then check for the generic file.
 	//
 
-	_snprintf(SoundPath, 255, "%s/%s/%s", basepath, missionpath, soundname);
+	std::snprintf(SoundPath, 255, "%s/%s/%s", basepath, missionpath, soundname);
 	if (IsFile(SoundPath)) {
 		s.SetSoundData(DoLoadSound(SoundPath, extended));
 		return;
@@ -439,7 +472,7 @@ void SoundLib::LoadVesselSound(Sound &s, char *soundname, EXTENDEDPLAY extended)
 
 	s.SetSoundLib(this);
 
-	_snprintf(SoundPath, 255, "Vessel/%s", soundname);
+	std::snprintf(SoundPath, 255, "Vessel/%s", soundname);
 	s.SetSoundData(DoLoadSound(SoundPath, extended));
 }
 
@@ -455,7 +488,7 @@ void SoundLib::LoadDefaultSound(Sound &s, char *soundname, EXTENDEDPLAY extended
 
 	s.SetSoundLib(this);
 
-	_snprintf(SoundPath, 255, "XRSound/Default/%s", soundname);
+	std::snprintf(SoundPath, 255, "XRSound/Default/%s", soundname);
 	s.SetSoundData(DoLoadSound(SoundPath, extended));
 }
 
@@ -935,10 +968,11 @@ void TimedSoundManager::LoadFromFile(char *dataFile, double MissionTime)
 {
 	char filePath[256];
 
-	_snprintf(filePath, 255, "%s/%s/%s", soundlib.basepath,
+	std::snprintf(filePath, 255, "%s/%s/%s", soundlib.basepath,
 		                                    soundlib.missionpath, dataFile);
 
-	FILE *fp = fopen(filePath, "rt");
+	const auto path = SoundPathInSession(filePath);
+	FILE* fp = path.empty() ? nullptr : std::fopen(path.c_str(), "rt");
 
 	if (!fp)
 	{

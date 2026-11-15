@@ -26,6 +26,7 @@
 #include "RF_calc.h"
 #include "paCBGmessageID.h"
 #include "timingequipment.h"
+#include "NasspSocket.h"
 
 /* PCM DOWN-TELEMETRY
 
@@ -341,11 +342,6 @@ public:
 	void TimeStep(double simt);     // TimeStep
 	void SystemTimestep(double simdt); // System Timestep (consume power)
 
-	// Winsock2
-	WSADATA wsaData;				// Winsock subsystem data
-	SOCKET m_socket;				// TCP socket
-	sockaddr_in service;			// SOCKADDR_IN
-	SOCKET AcceptSocket;			// Accept Socket
 	int conn_state;                 // Connection State
 	int uplink_state;               // Uplink State
 	void perform_io(double simt);   // Get data from here to there
@@ -374,13 +370,19 @@ public:
 	unsigned char rx_data[1024];    // Characters recieved
 	unsigned char mcc_data[2048];	// MCC-provided incoming data
 
-	bool registerSocket(SOCKET sock);
 	bool LowBitrateLogic();
 
 	Saturn *sat;					// Ship we're installed in
 	friend class MCC;				// Allow MCC to write directly to buffer
-protected:
 
+private:
+	void ConsumeMccByte();
+	void DisconnectTelemetryClient();
+	void ReportSocketError(const char* operation, int error);
+
+	nassp::SocketRuntime telemetryRuntime;
+	nassp::Socket telemetryListener;
+	nassp::Socket telemetryClient;
 };
 
 // Premodulation Processor

@@ -492,6 +492,7 @@ LEM::LEM(OBJHANDLE hObj, int fmodel) : Payload (hObj, fmodel),
 
 LEM::~LEM()
 {
+	agc.Kill();
 	ReleaseSurfaces();
 	ReleaseSurfacesVC();
 

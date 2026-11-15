@@ -612,6 +612,7 @@ Saturn::Saturn(OBJHANDLE hObj, int fmodel) : ProjectApolloConnectorVessel (hObj,
 Saturn::~Saturn()
 
 {
+	agc.Kill();
 	TRACESETUP("~Saturn");
 
 	ReleaseSurfaces();
@@ -1661,6 +1662,9 @@ void Saturn::clbkPreStep(double simt, double simdt, double mjd)
 void Saturn::clbkPostStep(double simt, double simdt, double mjd)
 
 {
+#if defined(NASSP_NATIVE_LINUX)
+	soundlib.UpdateSoundView();
+#endif
 	char buffer[100];
 	TRACESETUP("Saturn::clbkPostStep");
 	sprintf(buffer, "MissionTime %f, simt %f, simdt %f, time(0) %lld", MissionTime, simt, simdt, time(0));

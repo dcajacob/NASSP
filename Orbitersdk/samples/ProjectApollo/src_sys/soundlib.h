@@ -27,7 +27,13 @@
 
 #include <cstdint>
 
+#if defined(NASSP_NATIVE_LINUX)
+class NasspNativeSound;
+using SoundBackend = NasspNativeSound;
+#else
 class XRSound;
+using SoundBackend = XRSound;
+#endif
 
 // This is the structure used by Set3dWaveParameters
 typedef struct OS3DCONE {
@@ -70,7 +76,7 @@ public:
 	void stop();
 	void done();
 	void setID(int num) { id = num; };
-	void setSoundlib(XRSound *s) { Soundlib = s; };
+	void setSoundlib(SoundBackend *s) { Soundlib = s; };
 	void setFileName(char *s);
 	void AddRef() { refcount++; };
 	void MakeValid() { valid = true; refcount = 0; };
@@ -92,7 +98,7 @@ protected:
 	int PlayFlags;
 	int LibFlags;
 	double BaseVolume;
-	XRSound *Soundlib;
+	SoundBackend *Soundlib;
 };
 
 class SoundLib;
@@ -175,6 +181,9 @@ public:
 	/// appended to the sound path to find the right files.
 	///
 	void InitSoundLib(VESSEL *v, char *soundclass);
+#if defined(NASSP_NATIVE_LINUX)
+	void UpdateSoundView();
+#endif
 	void LoadSound(Sound &s, char *soundname, EXTENDEDPLAY extended = DEFAULT);
 	void LoadMissionSound(Sound &s, char *soundname, char *genericname = NULL, EXTENDEDPLAY extended = DEFAULT);
 	void LoadVesselSound(Sound &s, char *soundname, EXTENDEDPLAY extended = DEFAULT);
@@ -236,7 +245,7 @@ protected:
 	///
 	/// \brief Handle for XRSound from CreateInstance
 	///
-	XRSound *Soundlib;
+	SoundBackend *Soundlib;
 	int NextSlot;
 
 	friend class TimedSound;

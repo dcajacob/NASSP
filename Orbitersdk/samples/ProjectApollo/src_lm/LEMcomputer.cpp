@@ -61,6 +61,7 @@ LEMcomputer::LEMcomputer(SoundLib &s, DSKY &display, IMU &im, CDU &sc, CDU &tc, 
 LEMcomputer::~LEMcomputer()
 
 {
+	Kill();
 	//
 	// Nothing for now.
 	//
@@ -92,7 +93,7 @@ void LEMcomputer::agcTimestep(double simt, double simdt)
 	long cycles = (long)((simt - LastCycled) / 0.00001171875);	// Get number of CPU cycles to do
 	LastCycled += (0.00001171875 * cycles);						// Preserve the remainder
 	long x = 0;
-	while (x < cycles) {
+	while (x < cycles && !m_stop.load()) {
 		SingleTimestep();
 		ThisTime += 0.00001171875;								// Add time
 		if ((ThisTime - lem->PCM.last_update) > 0.00015625) {	// If a step is needed
@@ -102,18 +103,17 @@ void LEMcomputer::agcTimestep(double simt, double simdt)
 	}
 }
 
-void LEMcomputer::Run ()
+void LEMcomputer::Run()
 {
-	while(true)
+	while (true)
 	{
 		timeStepEvent.Wait();
-		{
-			std::lock_guard<std::mutex> guard(agcCycleMutex);
-			agcTimestep(thread_simt,thread_simdt);
-		}
+		if (m_stop.load()) return;
+		const std::lock_guard<std::mutex> guard(agcCycleMutex);
+		if (m_stop.load()) return;
+		agcTimestep(thread_simt, thread_simdt);
 	}
-};
-
+}
 
 void LEMcomputer::Timestep(double simt, double simdt)
 {

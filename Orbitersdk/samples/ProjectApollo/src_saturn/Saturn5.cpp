@@ -195,6 +195,7 @@ void SaturnV::initSaturnV()
 SaturnV::~SaturnV()
 
 {
+	agc.Kill();
 	TRACESETUP("~SaturnV");
 
 	if (iu)

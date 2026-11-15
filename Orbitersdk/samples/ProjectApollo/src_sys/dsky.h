@@ -35,6 +35,7 @@
 
 #include "toggleswitch.h"
 #include "apolloguidance.h"
+#include "NasspSocket.h"
 
 class DSKY : public e_object
 
@@ -303,9 +304,9 @@ protected:
 	bool DSKYOutEnabled;
 	char DSKYOutIp[256];
 	int DSKYOutPort;
-	WSADATA wsaData;
-	struct sockaddr_in serverAddr;
-	int clientSock;
+	nassp::SocketRuntime socketRuntime;
+	sockaddr_in serverAddr{};
+	nassp::Socket clientSocket;
 	
 	//
 	// Local helper functions.

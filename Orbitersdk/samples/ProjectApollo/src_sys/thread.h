@@ -84,16 +84,17 @@ class Runnable
 {
 public:
     Runnable() { m_stop.store(false); }
-    virtual ~Runnable() {}
+    virtual ~Runnable() = default;
     void Kill() {
+        if (!m_thread.joinable()) return;
         m_stop.store(true);
         timeStepEvent.Raise();
+        m_thread.join();
     }
 protected:
     virtual void Run() = 0;
     void Start() {
         m_thread = std::thread(&Runnable::Run, this);
-        m_thread.detach();
     }
     std::thread m_thread;
     std::atomic<bool> m_stop;

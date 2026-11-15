@@ -1896,12 +1896,14 @@ protected:
 class RotVariableVoltageTransformer : public VariableVoltageTransformer
 {
 public:
-	RotVariableVoltageTransformer(char* i_name, double MinVolt, double MaxVolt, bool DCAC = false);
-	virtual void Init(ContinuousSwitch* rot);
+	RotVariableVoltageTransformer(char* name, double minVoltage, double maxVoltage, bool dcToAc = false)
+		: VariableVoltageTransformer(name, minVoltage, maxVoltage, dcToAc) {}
 
-	double GetValue();
+	virtual void Init(ContinuousSwitch* control) { rotary = control; }
+	double GetValue() override { return rotary ? rotary->GetOutput() : 0.0; }
+
 protected:
-	ContinuousSwitch* rotary;
+	ContinuousSwitch* rotary = nullptr;
 };
 
 // Variable voltage transformer using a rotational switch as control and a toggle switch as override

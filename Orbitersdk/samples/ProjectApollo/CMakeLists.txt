@@ -77,6 +77,31 @@ if(NASSP_BUILD_NATIVE_LINUX)
     target_link_libraries(NasspSIVB PRIVATE NasspVesselSystems NasspOrbMech)
     target_link_options(NasspSIVB PRIVATE "-Wl,--no-undefined")
 
+    find_package(Threads REQUIRED)
+    add_library(NasspAudio STATIC src_sys/soundlib.cpp src_sys/NasspNativeSound.cpp)
+    set_target_properties(NasspAudio PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden)
+    target_include_directories(NasspAudio PRIVATE src_aux src_csm)
+    target_include_directories(NasspAudio SYSTEM PRIVATE "${ORBITER_NATIVE_SOURCE_DIR}/Sound/XRSound/src")
+    target_link_libraries(NasspAudio PUBLIC NasspNativeOrbiterSdk PRIVATE Threads::Threads ${CMAKE_DL_LIBS} m)
+
+    add_library(NasspGuidance STATIC
+        src_sys/apolloguidance.cpp
+        src_sys/cdu.cpp
+        src_sys/dsky.cpp
+        src_sys/dskyinterface.cpp
+        src_sys/imu.cpp
+        src_sys/imumath.cpp
+        src_sys/imulog.cpp
+        src_sys/yaAGC/agc_engine.c
+        src_sys/yaAGC/agc_engine_init.c
+        src_sys/yaAGC/agc_utilities.c
+        src_sys/yaAGC/Backtrace.c
+        src_sys/yaAGC/rfopen.c
+    )
+    set_target_properties(NasspGuidance PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_include_directories(NasspGuidance PRIVATE src_aux src_csm src_sys/PanelSDK/Internals)
+    target_link_libraries(NasspGuidance PUBLIC NasspAudio NasspVesselSystems PRIVATE Threads::Threads)
+
     find_package(OpenGL REQUIRED)
     if(NOT TARGET OpenGL::GLU)
         message(FATAL_ERROR "The native NASSP FDAI requires the OpenGL Utility Library (GLU).")
