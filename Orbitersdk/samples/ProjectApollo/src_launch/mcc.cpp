@@ -620,7 +620,10 @@ void MCC::setSubState(int newState){
 MCC::~MCC()
 {
 	if (subThreadWorker.joinable()) subThreadWorker.join();
-	freePad();
+	free(padForm);
+	oapiDelAnnotation(NHpad);
+	oapiDelAnnotation(NHmessages);
+	oapiDelAnnotation(NHmenu);
 }
 
 void MCC::TimeStep(double simdt){
