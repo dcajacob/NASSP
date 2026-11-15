@@ -124,6 +124,7 @@ protected:
 
 	double ThrustTimer;
 	double ThrustLevel;
+	bool restoreThrustLevel;
 	double BoiloffTime;
 	double O2H2BurnerTime;
 	double GH2_Mass;

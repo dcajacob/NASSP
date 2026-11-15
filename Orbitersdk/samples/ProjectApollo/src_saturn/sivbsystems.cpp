@@ -222,6 +222,7 @@ BaseSIVBSystems::BaseSIVBSystems() :
 	J2DefaultThrust = 0.0;
 	ThrustTimer = 0.0;
 	ThrustLevel = 0.0;
+	restoreThrustLevel = false;
 	BoiloffTime = 0.0;
 	O2H2BurnerTime = 0.0;
 	GH2_Mass = -1;
@@ -346,6 +347,7 @@ void SIVBSystems::SaveState(FILEHANDLE scn) {
 	papiWriteScenario_double(scn, "BOILOFFTIME", BoiloffTime);
 	papiWriteScenario_double(scn, "THRUSTTIMER", ThrustTimer);
 	papiWriteScenario_double(scn, "THRUSTLEVEL", ThrustLevel);
+	papiWriteScenario_bool(scn, "THRUSTOKRELAY", ThrustOKRelay);
 	papiWriteScenario_double(scn, "J2DEFAULTTHRUST", J2DefaultThrust);
 	papiWriteScenario_double(scn, "OXIDMASS", oxidMass);
 	papiWriteScenario_double(scn, "GH2_MASS", GH2_Mass);
@@ -386,10 +388,12 @@ void SIVBSystems::SaveState(FILEHANDLE scn) {
 void SIVBSystems::LoadState(FILEHANDLE scn) {
 	char *line;
 	bool arr[64];
+	bool savedThrustOKRelay = false;
+	restoreThrustLevel = false;
 
 	while (oapiReadScenario_nextline(scn, line)) {
 		if (!strnicmp(line, SIVBSYSTEMS_END_STRING, sizeof(SIVBSYSTEMS_END_STRING)))
-			return;
+			break;
 
 		papiReadScenario_bool(line, "LVDCENGINESTOPRELAY", LVDCEngineStopRelay);
 		papiReadScenario_bool(line, "EDSENGINESTOP", EDSEngineStop);
@@ -410,7 +414,8 @@ void SIVBSystems::LoadState(FILEHANDLE scn) {
 		papiReadScenario_int(line, "EngineState", EngineState);
 		papiReadScenario_double(line, "BOILOFFTIME", BoiloffTime);
 		papiReadScenario_double(line, "THRUSTTIMER", ThrustTimer);
-		papiReadScenario_double(line, "THRUSTLEVEL", ThrustLevel);
+		if (papiReadScenario_double(line, "THRUSTLEVEL", ThrustLevel)) restoreThrustLevel = true;
+		if (papiReadScenario_bool(line, "THRUSTOKRELAY", ThrustOKRelay)) savedThrustOKRelay = true;
 		papiReadScenario_double(line, "J2DEFAULTTHRUST", J2DefaultThrust);
 		papiReadScenario_double(line, "OXIDMASS", oxidMass);
 		papiReadScenario_double(line, "GH2_MASS", GH2_Mass);
@@ -502,6 +507,11 @@ void SIVBSystems::LoadState(FILEHANDLE scn) {
 			SparksDeenergizedTimer.LoadState(scn, "TD_END");
 		}
 	}
+
+	// Older saves contain the engine level but omit its indication to the IU.
+	if (!savedThrustOKRelay && restoreThrustLevel) {
+		ThrustOKRelay = ThrustLevel > 0.65 && !EngineFailed && !EDSEngineStop && !RSSEngineStop;
+	}
 }
 
 void SIVBSystems::CreateParticleEffects(double TRANZ)
@@ -547,6 +557,12 @@ bool SIVBSystems::RepressRelaysReset()
 void SIVBSystems::Timestep(double simdt)
 {
 	if (j2engine == NULL) return;
+
+	// The thruster handle is created after the saved system state is parsed.
+	if (restoreThrustLevel) {
+		vessel->SetThrusterLevel(j2engine, ThrustLevel);
+		restoreThrustLevel = false;
+	}
 
 	HeliumControlDeenergizedTimer.Timestep(simdt);
 	StartTankDischargeDelayTimer.Timestep(simdt);
