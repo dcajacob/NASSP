@@ -25,6 +25,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 #pragma once
 
 #include "CueCard.h"
+#include <vector>
 
 class CueCardManager;
 

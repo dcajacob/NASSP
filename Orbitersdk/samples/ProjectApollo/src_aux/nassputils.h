@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
 #define NUM_ELEMENTS(x) (sizeof((x))/sizeof((x)[0]))
 
@@ -63,37 +63,37 @@ namespace nassp
 			switch (name)
 			{
 			case SaturnIB:
-				if (!_stricmp(classname, "ProjectApollo\\Saturn1b") || !_stricmp(classname, "ProjectApollo/Saturn1b")) return true;
+				if (!stricmp(classname, "ProjectApollo\\Saturn1b") || !stricmp(classname, "ProjectApollo/Saturn1b")) return true;
 				return false;
 			case SaturnV:
-				if (!_stricmp(classname, "ProjectApollo\\Saturn5") || !_stricmp(classname, "ProjectApollo/Saturn5")) return true;
+				if (!stricmp(classname, "ProjectApollo\\Saturn5") || !stricmp(classname, "ProjectApollo/Saturn5")) return true;
 				return false;
 			case LEM:
-				if (!_stricmp(classname, "ProjectApollo\\LEM") || !_stricmp(classname, "ProjectApollo/LEM")) return true;
+				if (!stricmp(classname, "ProjectApollo\\LEM") || !stricmp(classname, "ProjectApollo/LEM")) return true;
 				return false;
 			case MCC:
-				if (!_stricmp(classname, "ProjectApollo\\MCC") || !_stricmp(classname, "ProjectApollo/MCC")) return true;
+				if (!stricmp(classname, "ProjectApollo\\MCC") || !stricmp(classname, "ProjectApollo/MCC")) return true;
 				return false;
 			case Skylab:
-				if (!_stricmp(classname, "ProjectApollo\\Skylab") || !_stricmp(classname, "ProjectApollo/Skylab")) return true;
+				if (!stricmp(classname, "ProjectApollo\\Skylab") || !stricmp(classname, "ProjectApollo/Skylab")) return true;
 				return false;
 			case SaturnIB_SIVB:
-				if (!_stricmp(classname, "ProjectApollo\\nsat1stg2") || !_stricmp(classname, "ProjectApollo/nsat1stg2")) return true;
+				if (!stricmp(classname, "ProjectApollo\\nsat1stg2") || !stricmp(classname, "ProjectApollo/nsat1stg2")) return true;
 				return false;
 			case SaturnV_SIVB:
-				if (!_stricmp(classname, "ProjectApollo\\sat5stg3") || !_stricmp(classname, "ProjectApollo/sat5stg3")) return true;
+				if (!stricmp(classname, "ProjectApollo\\sat5stg3") || !stricmp(classname, "ProjectApollo/sat5stg3")) return true;
 				return false;
 			case ML:
-				if (!_stricmp(classname, "ProjectApollo\\ML") || !_stricmp(classname, "ProjectApollo/ML")) return true;
+				if (!stricmp(classname, "ProjectApollo\\ML") || !stricmp(classname, "ProjectApollo/ML")) return true;
 				return false;
 			case Crawler:
-				if (!_stricmp(classname, "ProjectApollo\\Crawler") || !_stricmp(classname, "ProjectApollo/Crawler")) return true;
+				if (!stricmp(classname, "ProjectApollo\\Crawler") || !stricmp(classname, "ProjectApollo/Crawler")) return true;
 				return false;
 			case MainChute:
-				if (!_stricmp(classname, "ProjectApollo\\MainChute") || !_stricmp(classname, "ProjectApollo/MainChute")) return true;
+				if (!stricmp(classname, "ProjectApollo\\MainChute") || !stricmp(classname, "ProjectApollo/MainChute")) return true;
 				return false;
 			case DrogueChute:
-				if (!_stricmp(classname, "ProjectApollo\\DrogueChute") || !_stricmp(classname, "ProjectApollo/DrogueChute")) return true;
+				if (!stricmp(classname, "ProjectApollo\\DrogueChute") || !stricmp(classname, "ProjectApollo/DrogueChute")) return true;
 				return false;
 			case Saturn:
 				return (IsVessel(v, SaturnIB) || IsVessel(v, SaturnV));

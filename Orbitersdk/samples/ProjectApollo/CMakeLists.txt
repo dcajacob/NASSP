@@ -102,6 +102,16 @@ if(NASSP_BUILD_NATIVE_LINUX)
     target_include_directories(NasspGuidance PRIVATE src_aux src_csm src_sys/PanelSDK/Internals)
     target_link_libraries(NasspGuidance PUBLIC NasspAudio NasspVesselSystems PRIVATE Threads::Threads)
 
+    add_library(NasspCockpitSupport STATIC
+        src_aux/CueCard.cpp
+        src_aux/CueCardLocation.cpp
+        src_aux/CueCardManager.cpp
+        src_sys/Malfunction.cpp
+        src_sys/MalfunctionSimulation.cpp
+    )
+    set_target_properties(NasspCockpitSupport PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_link_libraries(NasspCockpitSupport PUBLIC NasspNativeOrbiterSdk)
+
     add_library(NasspChecklist STATIC
         src_aux/BasicExcelVC6.cpp
         src_mfd/MFDconnector.cpp

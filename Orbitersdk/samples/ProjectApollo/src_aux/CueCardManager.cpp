@@ -23,6 +23,9 @@ See http://nassp.sourceforge.net/license/ for more details.
 **************************************************************************/
 
 #include "CueCardManager.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeInterpreterSdk.h"
+#endif
 
 CueCardManager::CueCardManager(UINT &vcidx, VESSEL *v, unsigned num) : vc(vcidx)
 {
@@ -95,7 +98,7 @@ void CueCardManager::SaveState(FILEHANDLE scn)
 				save = true;
 			}
 
-			sprintf(Buffer, "%d %d", i, CueCardLocations[i].GetState());
+			snprintf(Buffer, sizeof(Buffer), "%u %u", i, CueCardLocations[i].GetState());
 			oapiWriteScenario_string(scn, "CUECARDS", Buffer);
 		}
 	}
@@ -108,16 +111,14 @@ void CueCardManager::LoadState(FILEHANDLE scn)
 	unsigned loctemp, statetemp;
 
 	char *line;
-	double flt = 0;
 
 	while (oapiReadScenario_nextline(scn, line)) {
-		if (!_strnicmp(line, CUECARDS_END_STRING, sizeof(CUECARDS_END_STRING)))
+		if (!strnicmp(line, CUECARDS_END_STRING, sizeof(CUECARDS_END_STRING)))
 			break;
 
-		if (!_strnicmp(line, "CUECARDS", 8))
+		if (!strnicmp(line, "CUECARDS", 8))
 		{
-			sscanf(line + 8, "%d %d", &loctemp, &statetemp);
-			if (CueCardLocations.size() > loctemp)
+			if (sscanf(line + 8, "%u %u", &loctemp, &statetemp) == 2 && loctemp < CueCardLocations.size())
 			{
 				CueCardLocations[loctemp].SetState(statetemp);
 			}

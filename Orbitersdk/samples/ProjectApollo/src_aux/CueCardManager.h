@@ -24,7 +24,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #pragma once
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "CueCardLocation.h"
 
 class CueCardManager

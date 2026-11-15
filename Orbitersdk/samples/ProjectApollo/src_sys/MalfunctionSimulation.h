@@ -25,7 +25,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 #pragma once
 
 #include <vector>
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
 class Malfunction;
 class SwitchMalfunction;

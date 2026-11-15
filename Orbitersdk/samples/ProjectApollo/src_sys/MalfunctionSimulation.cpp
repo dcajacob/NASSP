@@ -24,6 +24,9 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #include "Malfunction.h"
 #include "MalfunctionSimulation.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeInterpreterSdk.h"
+#endif
 
 MalfunctionSimulation::MalfunctionSimulation()
 {
@@ -121,11 +124,11 @@ void MalfunctionSimulation::LoadState(FILEHANDLE scn)
 
 	while (oapiReadScenario_nextline(scn, line))
 	{
-		if (!_strnicmp(line, FAILURES_END_STRING, sizeof(FAILURES_END_STRING))) {
+		if (!strnicmp(line, FAILURES_END_STRING, sizeof(FAILURES_END_STRING))) {
 			break;
 		}
 
-		if (!_strnicmp(line, "MALFUNCTION", 11))
+		if (!strnicmp(line, "MALFUNCTION", 11))
 		{
 			sscanf(line + 11, "%d %d %d %lf", &num, &itemp[0], &itemp[1], &val);
 
@@ -135,7 +138,7 @@ void MalfunctionSimulation::LoadState(FILEHANDLE scn)
 				malfunctions[num]->SetCondition(itemp[1], val);
 			}
 		}
-		else if (!_strnicmp(line, "SWITCHMALFUNCTION", 17))
+		else if (!strnicmp(line, "SWITCHMALFUNCTION", 17))
 		{
 			char name[128];
 
