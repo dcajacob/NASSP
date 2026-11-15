@@ -3731,6 +3731,11 @@ int Saturn::clbkConsumeDirectKey(char *kstate)
 		RESETKEY(kstate, OAPI_KEY_NUMPAD6);
 		RESETKEY(kstate, OAPI_KEY_NUMPAD1);
 		RESETKEY(kstate, OAPI_KEY_NUMPAD3);
+	} else {
+		// Release the keyboard RHC when the keypad is routed to other controls.
+		for (double& deflection : rhc_keyboard_deflection) {
+			deflection = 0.0;
+		}
 	}
 
 	return 0;
