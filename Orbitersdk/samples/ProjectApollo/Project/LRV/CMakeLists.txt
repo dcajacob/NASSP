@@ -14,7 +14,7 @@ set(SOURCES
     ${NASSP_SOURCE_ROOT}/src_aux/CDK.cpp
     ${NASSP_SOURCE_ROOT}/src_aux/OrbiterMath.cpp
     ${NASSP_SOURCE_ROOT}/src_aux/tracer.cpp
-    ${NASSP_SOURCE_ROOT}/src_moon/lrv.cpp
+    ${NASSP_SOURCE_ROOT}/src_moon/LRV.cpp
     ${NASSP_SOURCE_ROOT}/src_sys/soundlib.cpp
 )
 

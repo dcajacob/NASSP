@@ -8,15 +8,15 @@ set(INCLUDE_DIRS
 )
 set(SOURCES
     ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/PanelSDK.cpp
-    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/BUILD.cpp
+    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/BUILD.CPP
     ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Matrix.cpp
     ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Vectors.cpp
-    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/VSMGMT.cpp
+    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/VSMGMT.CPP
     ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Internals/esysparse.cpp
-    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Internals/esystems.cpp
-    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Internals/hsysparse.cpp
-    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Internals/hsystems.cpp
-    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Internals/thermal.cpp
+    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Internals/Esystems.cpp
+    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Internals/Hsysparse.cpp
+    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Internals/Hsystems.cpp
+    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Internals/Thermal.cpp
 )
 
 link_directories(${ORBITERSDK_DIR}/lib)

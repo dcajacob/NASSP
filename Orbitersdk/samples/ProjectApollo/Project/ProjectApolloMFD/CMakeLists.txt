@@ -12,7 +12,7 @@ set(INCLUDE_DIRS
     ${ORBITERSDK_DIR}/include
 )
 set(SOURCES
-    ${NASSP_SOURCE_ROOT}/src_mfd/MFDConnector.cpp
+    ${NASSP_SOURCE_ROOT}/src_mfd/MFDconnector.cpp
     ${NASSP_SOURCE_ROOT}/src_mfd/ProjectApolloChecklistMFD.cpp
     ${NASSP_SOURCE_ROOT}/src_mfd/ProjectApolloMFD.cpp
     ${NASSP_SOURCE_ROOT}/src_mfd/ProjectApolloMFDButtons.cpp

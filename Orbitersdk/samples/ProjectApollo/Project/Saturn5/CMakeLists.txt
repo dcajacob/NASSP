@@ -50,7 +50,7 @@ set(SOURCES
     ${NASSP_SOURCE_ROOT}/src_csm/sps.cpp
     ${NASSP_SOURCE_ROOT}/src_mfd/MFDconnector.cpp
     ${NASSP_SOURCE_ROOT}/src_rtccmfd/OrbMech.cpp
-    ${NASSP_SOURCE_ROOT}/src_saturn/saturn5.cpp
+    ${NASSP_SOURCE_ROOT}/src_saturn/Saturn5.cpp
     ${NASSP_SOURCE_ROOT}/src_saturn/canard.cpp
     ${NASSP_SOURCE_ROOT}/src_saturn/dcs.cpp
     ${NASSP_SOURCE_ROOT}/src_saturn/eds.cpp
@@ -84,9 +84,9 @@ set(SOURCES
     ${NASSP_SOURCE_ROOT}/src_sys/inertial.cpp
     ${NASSP_SOURCE_ROOT}/src_sys/Malfunction.cpp
     ${NASSP_SOURCE_ROOT}/src_sys/MalfunctionSimulation.cpp
-    ${NASSP_SOURCE_ROOT}/src_sys/mechanicalaccelerometer.cpp
+    ${NASSP_SOURCE_ROOT}/src_sys/MechanicalAccelerometer.cpp
     ${NASSP_SOURCE_ROOT}/src_sys/missiontimer.cpp
-    ${NASSP_SOURCE_ROOT}/src_sys/ordeal.cpp
+    ${NASSP_SOURCE_ROOT}/src_sys/ORDEAL.cpp
     ${NASSP_SOURCE_ROOT}/src_sys/soundevents.cpp
     ${NASSP_SOURCE_ROOT}/src_sys/soundlib.cpp
     ${NASSP_SOURCE_ROOT}/src_sys/payload.cpp

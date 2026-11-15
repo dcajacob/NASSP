@@ -6,7 +6,7 @@ set(INCLUDE_DIRS
     ${ORBITERSDK_DIR}/include
 )
 set(SOURCES
-    ${NASSP_SOURCE_ROOT}/src_saturn/ASTP.cpp
+    ${NASSP_SOURCE_ROOT}/src_saturn/Astp.cpp
     ${NASSP_SOURCE_ROOT}/src_sys/connector.cpp
     ${NASSP_SOURCE_ROOT}/src_sys/payload.cpp
 )
