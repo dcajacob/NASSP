@@ -1622,6 +1622,48 @@ bool RTCC::CalculationMTP_C(int fcn, void*&pad, char *upString, char *upDesc, ch
 
 		GeneralManeuverProcessor(&orbopt, dV_imp, TIG_imp);
 
+		// The nominal longitude can place a flown CSM near a node, where the
+		// requested node shift is much more expensive. Preserve the target
+		// apsides and node shift, and search this revolution for a cheaper point.
+		const Saturn *csm = static_cast<const Saturn *>(calcParams.src);
+		constexpr double recoveryReserve = 700.0; // kg for SPS-6, SPS-7, deorbit and margin
+		const double propellantBudget = csm->GetSPSPropellantMass() - recoveryReserve;
+		const auto requiredPropellant = [&](const VECTOR3 &deltaV) {
+			return -WeightsTable.ConfigWeight * std::expm1(-length(deltaV) / SPS_ISP);
+		};
+		const double nominalLongitude = orbopt.long_D;
+		const double nominalGET = TIG_imp;
+		if (PZGPMDIS.Err != 0 || !std::isfinite(requiredPropellant(dV_imp))
+			|| requiredPropellant(dV_imp) > propellantBudget)
+		{
+			double bestFuel = propellantBudget;
+			bool found = false;
+			for (int shift = -36; shift <= 36; shift += 6)
+			{
+				if (shift == 0) continue;
+				GMPOpt candidate = orbopt;
+				candidate.long_D = nominalLongitude + shift * RAD;
+				VECTOR3 candidateDV;
+				double candidateGET;
+				GeneralManeuverProcessor(&candidate, candidateDV, candidateGET);
+				const double fuel = requiredPropellant(candidateDV);
+				if (PZGPMDIS.Err == 0 && std::abs(candidateGET - nominalGET) <= 600.0
+					&& fuel > 0.0 && fuel < bestFuel)
+				{
+					orbopt.long_D = candidate.long_D;
+					bestFuel = fuel;
+					found = true;
+				}
+			}
+			if (!found)
+			{
+				if (upString) upString[0] = '\0';
+				if (upMessage) sprintf(upMessage, "SPS-5 scrubbed: no target leaves SPS propellant for recovery.");
+				return true;
+			}
+			GeneralManeuverProcessor(&orbopt, dV_imp, TIG_imp);
+		}
+
 		in.CONFIG = 1; //CSM
 		in.CSMWeight = WeightsTable.ConfigWeight;
 		in.sv_before = PZGPMELM.SV_before;
@@ -1684,6 +1726,13 @@ bool RTCC::CalculationMTP_C(int fcn, void*&pad, char *upString, char *upDesc, ch
 		form->Vc += 100.0;
 
 		sprintf(form->remarks, "Ullage: 2 jet (B/D), 20 seconds, Out of plane south, Heads up  MTVC takeover at TIG+%.0f seconds  Manual cutoff at DV counter equal 100 ft/s  %s", form->burntime - 30.0, alignstars);
+
+		if (orbopt.long_D != nominalLongitude)
+		{
+			const size_t used = strlen(form->remarks);
+			snprintf(form->remarks + used, sizeof(form->remarks) - used,
+				"  Alternate TIG longitude %.1f W", -orbopt.long_D * DEG);
+		}
 
 		AGCStateVectorUpdate(buffer1, 1, RTCC_MPT_CSM, sv_1.sv);
 		AGCStateVectorUpdate(buffer2, 1, RTCC_MPT_LM, sv_1.sv);

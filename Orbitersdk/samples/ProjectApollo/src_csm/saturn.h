@@ -1299,6 +1299,7 @@ public:
 	//System Access
 	InertialData *GetInertialData() { return &inertialData; };
 	SPSPropellantSource *GetSPSPropellant() { return &SPSPropellant; };
+	double GetSPSPropellantMass() const { return ph_sps ? GetPropellantMass(ph_sps) : 0.0; }
 	::SPSEngine *GetSPSEngine() { return &SPSEngine; };
 	SCE *GetSCE() { return &sce; }
 	EDA *GetEDA() { return &eda; }
