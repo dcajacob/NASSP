@@ -5462,6 +5462,9 @@ void EMS::LoadState(FILEHANDLE scn) {
 	}
 }
 
+static PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp);
+static bool CreateBMPFile(LPTSTR pszFile, PBITMAPINFO pbi, HBITMAP hBMP, HDC hDC);
+
 bool EMS::WriteScrollToFile() {
 	char sdate[9];
 	char stime[9];
@@ -5550,7 +5553,7 @@ void EMS::DrawSwitchVC(int id, int event, SURFHANDLE surf)
 }
 
 // The following code was found and supplied by computerex at orbiter-forum.  The code is from the MSDN sample code library.
-PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp)
+static PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp)
 { 
 	BITMAP      bmp; 
 	PBITMAPINFO pbmi; 
@@ -5596,7 +5599,7 @@ PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp)
 	return pbmi; 
 }
 
-bool CreateBMPFile(LPTSTR pszFile, PBITMAPINFO pbi, HBITMAP hBMP, HDC hDC) { 
+static bool CreateBMPFile(LPTSTR pszFile, PBITMAPINFO pbi, HBITMAP hBMP, HDC hDC) {
 
 	HANDLE hf;                 // file handle 
 	BITMAPFILEHEADER hdr;       // bitmap file-header 

@@ -22,16 +22,13 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#include "nasspdefs.h"
 
-#include "soundlib.h"
 
-#include "apolloguidance.h"
-#include "CSMcomputer.h"
 #include "LVIMU.h"
 #include "LVDC.h"
 #include "iu.h"
-#include "saturn.h"
 #include "papi.h"
 
 #include "LVDA.h"

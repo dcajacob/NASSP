@@ -46,6 +46,7 @@ if(NASSP_BUILD_NATIVE_LINUX)
         src_sys/connector.cpp
         src_sys/DelayTimer.cpp
         src_sys/inertial.cpp
+        src_sys/payload.cpp
         src_sys/powersource.cpp
         src_sys/pyro.cpp
     )
@@ -53,9 +54,49 @@ if(NASSP_BUILD_NATIVE_LINUX)
     target_include_directories(NasspVesselSystems PRIVATE src_launch)
     target_link_libraries(NasspVesselSystems PUBLIC PanelSDK NasspNativeOrbiterSdk)
 
-    add_library(NasspMCCVessel OBJECT src_launch/mccvessel.cpp src_launch/mccvc.cpp)
+    add_library(NasspSIVB MODULE
+        src_saturn/sivb.cpp
+        src_saturn/dcs.cpp
+        src_saturn/eds.cpp
+        src_saturn/FCC.cpp
+        src_saturn/iu.cpp
+        src_saturn/IUAuxiliaryPowerDistributor.cpp
+        src_saturn/IUControlDistributor.cpp
+        src_saturn/IUControlSignalProcessor.cpp
+        src_saturn/LVDA.cpp
+        src_saturn/LVDC.cpp
+        src_saturn/lvimu.cpp
+        src_launch/IUUmbilical.cpp
+    )
+    set_target_properties(NasspSIVB PROPERTIES
+        PREFIX "" OUTPUT_NAME SIVB
+        CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+    )
+    target_include_directories(NasspSIVB PRIVATE src_aux src_launch src_saturn)
+    target_link_libraries(NasspSIVB PRIVATE NasspVesselSystems NasspOrbMech)
+    target_link_options(NasspSIVB PRIVATE "-Wl,--no-undefined")
+
+    find_package(OpenGL REQUIRED)
+    if(NOT TARGET OpenGL::GLU)
+        message(FATAL_ERROR "The native NASSP FDAI requires the OpenGL Utility Library (GLU).")
+    endif()
+    add_library(NasspFDAI STATIC src_sys/FDAI.cpp)
+    set_target_properties(NasspFDAI PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_link_libraries(NasspFDAI PUBLIC PanelSDK NasspNativeOrbiterSdk PRIVATE OpenGL::GL OpenGL::GLU)
+
+    add_library(NasspMCCVessel OBJECT
+        src_launch/mccvessel.cpp
+        src_launch/mccvc.cpp
+        src_rtccmfd/AnalyticEphemerisGenerator.cpp
+        src_rtccmfd/AscentRendezvousMonitor.cpp
+        src_rtccmfd/GeneralizedIterator.cpp
+        src_rtccmfd/RTCCDisplayFormatting.cpp
+        src_rtccmfd/RTCCModule.cpp
+        src_rtccmfd/TwoImpulseProcessor.cpp
+    )
     set_target_properties(NasspMCCVessel PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    target_include_directories(NasspMCCVessel PRIVATE src_aux src_rtccmfd)
+    target_include_directories(NasspMCCVessel PRIVATE src_aux src_launch src_rtccmfd)
     target_link_libraries(NasspMCCVessel PRIVATE NasspNativeOrbiterSdk)
     return()
 endif()

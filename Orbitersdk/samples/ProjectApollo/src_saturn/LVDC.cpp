@@ -27,7 +27,7 @@
 #include <iostream>
 #include <fstream>
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
 #include "nasspdefs.h"
 
@@ -35,6 +35,24 @@
 #include "../src_rtccmfd/OrbMech.h"
 #include "LVDC.h"
 #include "LVDA.h"
+
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeGraphics.h"
+#include "Production/ResourceResolver.h"
+#endif
+
+namespace {
+std::ifstream OpenFlightSequenceProgram(const char* name)
+{
+#if defined(NASSP_NATIVE_LINUX)
+	const auto* files = orbiter::production::GetNativeRenderContext().programFiles;
+	if (!files || !*name || !files->Contains(name)) return {};
+	return std::ifstream(files->Resolve(name));
+#else
+	return std::ifstream(name);
+#endif
+}
+}
 
 //#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES 1
 
@@ -227,11 +245,8 @@ LVDC1B::LVDC1B(LVDA &lvd) : LVDC(lvd)
 	{
 		MFK[x] = 0;
 	}
-	for (x = 0;x < 8;x++)
-	{
-		MFSArr[x] = 0;
-		MF[x] = 0;
-	}
+	for (auto& value : MFSArr) value = 0.0;
+	for (auto& value : MF) value = 0.0;
 	MF0 = 0;
 	MSK16 = 0;
 	MSK5 = 0;
@@ -2375,12 +2390,14 @@ void LVDC1B::ReadFlightSequenceProgram(char *fspfile)
 	int tb, tbtemp;
 
 	string line;
-	ifstream file(fspfile);
+	auto file = OpenFlightSequenceProgram(fspfile);
 	if (file.is_open())
 	{
 		while (getline(file, line))
 		{
-			if (sscanf(line.c_str(), "TB%d", &tbtemp) == 1 || line.compare("END") == 0)
+			if (!line.empty() && line.back() == '\r') line.pop_back();
+			const bool end = line == "END";
+			if (end || sscanf(line.c_str(), "TB%d", &tbtemp) == 1)
 			{
 				if (first == false)
 				{
@@ -2394,6 +2411,7 @@ void LVDC1B::ReadFlightSequenceProgram(char *fspfile)
 					}
 				}
 
+				if (end) break;
 				v.clear();
 				tb = tbtemp;
 				first = false;
@@ -5919,7 +5937,7 @@ void LVDCSV::ReadFlightSequenceProgram(char *fspfile)
 
 	SwitchSelectorSet ssset;
 	string line;
-	ifstream file(fspfile);
+	auto file = OpenFlightSequenceProgram(fspfile);
 
 	SSTABLE.clear();
 
@@ -5927,7 +5945,8 @@ void LVDCSV::ReadFlightSequenceProgram(char *fspfile)
 	{
 		while (getline(file, line))
 		{
-			if (line.compare("END") == 0)
+			if (!line.empty() && line.back() == '\r') line.pop_back();
+			if (line == "END")
 			{
 				break;
 			}

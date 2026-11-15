@@ -59,6 +59,7 @@ PMMAEG::PMMAEG()
 
 void PMMAEG::CALL(AEGHeader &header, AEGDataBlock &in, AEGDataBlock &out)
 {
+	bool firstpass = true;
 	AEGDataBlock tempblock;
 
 	header.ErrorInd = 0;
@@ -126,7 +127,6 @@ void PMMAEG::CALL(AEGHeader &header, AEGDataBlock &in, AEGDataBlock &out)
 	CurrentBlock = in;
 
 	double dt, theta_R;
-	bool firstpass = true;
 
 	if (in.TIMA == 0 || in.TIMA >= 4)
 	{
@@ -343,6 +343,7 @@ PMMLAEG::PMMLAEG(RTCC *r) : RTCCModule(r)
 
 void PMMLAEG::CALL(AEGHeader &header, AEGDataBlock &in, AEGDataBlock &out)
 {
+	bool firstpass = true;
 	AEGDataBlock tempblock;
 	CELEMENTS coe_osc0, coe_osc1, coe_mean1;
 	MATRIX3 Rot;
@@ -433,7 +434,6 @@ void PMMLAEG::CALL(AEGHeader &header, AEGDataBlock &in, AEGDataBlock &out)
 	coe_mean1 = in.coe_mean;
 
 	double dt, theta_R;
-	bool firstpass = true;
 
 	if (in.TIMA == 0 || in.TIMA >= 4)
 	{

@@ -24,11 +24,16 @@
 
 #pragma once
 
-#include <OrbiterAPI.h>
+#include "NasspOrbiterSdk.h"
+#include "nasspdefs.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeInterpreterSdk.h"
+#endif
 #include <chrono>
 #include <cstdio>
 #include <cstring>
-#include <direct.h>
+#include <filesystem>
+#include <string>
 
 // Reads config from Saturn5.launchpad.cfg. Call Update() from clbkPreStep.
 class NASSPAutosave {
@@ -89,15 +94,15 @@ private:
 
 		char *line;
 		while (oapiReadScenario_nextline(hFile, line)) {
-			if (!_strnicmp(line, "AUTOSAVE_ENABLED", 16)) {
+			if (!strnicmp(line, "AUTOSAVE_ENABLED", 16)) {
 				int val = 0;
 				sscanf(line + 16, "%d", &val);
 				s.enabled = (val != 0);
 			}
-			else if (!_strnicmp(line, "AUTOSAVE_INTERVAL", 17)) {
+			else if (!strnicmp(line, "AUTOSAVE_INTERVAL", 17)) {
 				sscanf(line + 17, "%d", &s.intervalMinutes);
 			}
-			else if (!_strnicmp(line, "AUTOSAVE_NOTIFICATION", 21)) {
+			else if (!strnicmp(line, "AUTOSAVE_NOTIFICATION", 21)) {
 				int val = 1;
 				sscanf(line + 21, "%d", &val);
 				s.showNotification = (val != 0);
@@ -118,24 +123,22 @@ private:
 		char getStr[64];
 		sprintf(getStr, "GET-%03d.%02d.%02d", hours, minutes, seconds);
 
-		// oapiSaveScenario won't create directories
-		char scenarioDir[512];
-		sprintf(scenarioDir, "Scenarios\\Autosave");
-		_mkdir(scenarioDir);
-		sprintf(scenarioDir, "Scenarios\\Autosave\\%s", folderName);
-		_mkdir(scenarioDir);
-
-		char fullPath[512];
-		sprintf(fullPath, "Autosave/%s/%s", folderName, getStr);
+		const auto directory = std::filesystem::path("Autosave") / folderName;
+#if !defined(NASSP_NATIVE_LINUX)
+		std::error_code error;
+		std::filesystem::create_directories(std::filesystem::path("Scenarios") / directory, error);
+		if (error) return;
+#endif
+		const auto fullPath = (directory / getStr).generic_string();
 
 		char description[256];
 		if (missionName && missionName[0] != '\0') {
-			sprintf(description, "NASSP Autosave - %s", missionName);
+			std::snprintf(description, sizeof(description), "NASSP Autosave - %s", missionName);
 		} else {
 			sprintf(description, "NASSP Autosave");
 		}
 
-		oapiSaveScenario(fullPath, description);
+		if (!oapiSaveScenario(fullPath.c_str(), description)) return;
 
 		if (s.showNotification) {
 			if (!s.hNote) {
@@ -143,7 +146,7 @@ private:
 				oapiAnnotationSetPos(s.hNote, 0.02, 0.15, 0.4, 0.2);
 			}
 			char msg[256];
-			sprintf(msg, "Autosaved: %s/%s", folderName, getStr);
+			std::snprintf(msg, sizeof(msg), "Autosaved: %s/%s", folderName, getStr);
 			oapiAnnotationSetText(s.hNote, msg);
 			s.notificationEndTime = oapiGetSimTime() + 3.0;
 		}

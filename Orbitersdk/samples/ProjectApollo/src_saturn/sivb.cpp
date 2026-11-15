@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
 #include "nasspdefs.h"
 #include "soundlib.h"
@@ -38,16 +38,21 @@
 #include "iu.h"
 #include "sivbsystems.h"
 
-#include "toggleswitch.h"
-#include "apolloguidance.h"
-#include "LEMcomputer.h"
-
 #include "payload.h"
 #include "sivb.h"
-#include "ASTP.h"
+#if !defined(NASSP_NATIVE_LINUX)
 #include "LEM.h"
+#endif
 #include "LVDC.h"
+#include "papi.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#define SIVB_CALLBACK static
+#else
+#define SIVB_CALLBACK DLLCLBK
+#endif
 
+#include <algorithm>
 #include <stdio.h>
 #include <string.h>
 
@@ -345,11 +350,11 @@ void SIVB::InitS4b()
 	MainBattery = static_cast<Battery *> (Panelsdk.GetPointerByString("ELECTRIC:POWER_BATTERY"));
 }
 
-bool SIVB::GetDockingPortFromHandle(OBJHANDLE port, UINT &num)
+bool SIVB::GetDockingPortFromHandle(OBJHANDLE port, unsigned int &num)
 {
 	if (port == NULL) return false;
 
-	for (UINT i = 0;i < DockCount();i++)
+	for (unsigned int i = 0;i < DockCount();i++)
 	{
 		if (port == GetDockHandle(i))
 		{
@@ -659,7 +664,7 @@ void SIVB::clbkPreStep(double simt, double simdt, double mjd)
 					if (thg_sep)
 						SetThrusterGroupLevel(thg_sep, 1);
 
-					panelProc = min(RotationLimit, panelProc + simdt / 40.0);
+					panelProc = (std::min)(RotationLimit, panelProc + simdt / 40.0);
 					SetAnimation(panelAnim, panelProc);
 				}
 				// Special handling Apollo 7
@@ -669,17 +674,17 @@ void SIVB::clbkPreStep(double simt, double simdt, double mjd)
 					// hinged completely, so we do that at MET 15h (see Mission Report 11.7)
 					if (MissionTime < 15. * 3600.) {
 						if (panelProcPlusX < 0.1388) {
-							panelProcPlusX = min(0.1388, panelProcPlusX + simdt / 40.0);
+							panelProcPlusX = (std::min)(0.1388, panelProcPlusX + simdt / 40.0);
 							SetAnimation(panelAnimPlusX, panelProcPlusX);
 						}
 					}
 					else if (panelProcPlusX < RotationLimit) {
-						panelProcPlusX = min(RotationLimit, panelProcPlusX + simdt / 40.0);
+						panelProcPlusX = (std::min)(RotationLimit, panelProcPlusX + simdt / 40.0);
 						SetAnimation(panelAnimPlusX, panelProcPlusX);
 					}
 				}
 				else if (panelProcPlusX < RotationLimit) {
-					panelProcPlusX = min(RotationLimit, panelProcPlusX + simdt / 40.0);
+					panelProcPlusX = (std::min)(RotationLimit, panelProcPlusX + simdt / 40.0);
 					SetAnimation(panelAnimPlusX, panelProcPlusX);
 				}
 				MoveStrobes();
@@ -690,7 +695,7 @@ void SIVB::clbkPreStep(double simt, double simdt, double mjd)
 					if (thg_sep)
 						SetThrusterGroupLevel(thg_sep, 1);
 
-					panelProc = min(RotationLimit, panelProc + simdt / 40.0);
+					panelProc = (std::min)(RotationLimit, panelProc + simdt / 40.0);
 					SetAnimation(panelAnim, panelProc);
 				}
 				else {
@@ -1633,8 +1638,8 @@ void SIVB::SetState(SIVBSettings &state)
 		//
 		// Limit rotation angle to 0-150 degrees.
 		//
-		double RotationAngle = min(150.0, state.SLARotationLimit);
-		RotationLimit = max(0.0, (RotationAngle / 180.0));
+		double RotationAngle = (std::min)(150.0, state.SLARotationLimit);
+		RotationLimit = (std::max)(0.0, (RotationAngle / 180.0));
 
 		//
 		// \todo For now, only allow 45 degrees if it's not hinged. The panel release code needs to be updated for other angles.
@@ -1864,7 +1869,11 @@ void SIVB::CreatePayload() {
 		// PAD load.
 		//
 
-		LEM *lmvessel = static_cast<LEM *> (payloadvessel);
+#if defined(NASSP_NATIVE_LINUX)
+		auto* lmvessel = payloadvessel;
+#else
+		auto* lmvessel = static_cast<LEM*>(payloadvessel);
+#endif
 
 		if (LMPad.size() > 0)
 		{
@@ -1902,7 +1911,7 @@ void SIVB::StartSeparationPyros()
 
 	if (PayloadCreated) {
 		LMSLASeparationInitiators.SetBlown(true);
-		UINT i;
+		unsigned int i;
 		if (GetDockingPortFromHandle(hDock, i))
 		{
 			Undock(i);
@@ -1929,7 +1938,7 @@ void SIVB::SeparateCSM()
 {
 	if (hDockCSM) {
 		CSMLVSeparationInitiator.SetBlown(true);
-		UINT i;
+		unsigned int i;
 		if (GetDockingPortFromHandle(hDockCSM, i))
 		{
 			OBJHANDLE target;
@@ -2072,7 +2081,7 @@ void SIVB::HideAllMeshes()
 
 static int refcount = 0;
 
-DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
+SIVB_CALLBACK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 
 {
 	VESSEL *v;
@@ -2087,7 +2096,7 @@ DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 }
 
 
-DLLCLBK void ovcExit (VESSEL *vessel)
+SIVB_CALLBACK void ovcExit (VESSEL *vessel)
 
 {
 	--refcount;
@@ -2104,6 +2113,25 @@ DLLCLBK void ovcExit (VESSEL *vessel)
 	if (vessel) 
 		delete static_cast<SIVB *> (vessel);
 }
+
+#undef SIVB_CALLBACK
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+using SIVBFactory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor sivbModule = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP S-IVB",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI,
+	SIVBFactory::initialize, SIVBFactory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &sivbModule : nullptr;
+}
+#endif
 
 SIVbConnector::SIVbConnector()
 

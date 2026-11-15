@@ -432,6 +432,10 @@ static inline void CSMToOrbiterCoordinates(VECTOR3 &vec)
 
 const int TexMul = TEXTURES_4K;
 
+// Toggle switch positions used by the panel and launch vehicle connectors.
+#define TOGGLESWITCH_DOWN		0			///< Toggle switch is down.
+#define TOGGLESWITCH_UP			1			///< Toggle switch is up.
+
 // First-stage systems markers shared by the launch vehicle and separated stages.
 #define SISYSTEMS_START_STRING		"SISYSTEMS_BEGIN"
 #define SISYSTEMS_END_STRING		"SISYSTEMS_END"

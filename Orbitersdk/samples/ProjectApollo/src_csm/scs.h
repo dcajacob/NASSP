@@ -920,6 +920,3 @@ protected:
 	friend class SaturnEMSDvDisplay;
 	friend class SaturnEMSScrollDisplay;
 };
-
-PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp);
-bool CreateBMPFile(LPTSTR pszFile, PBITMAPINFO pbi, HBITMAP hBMP, HDC hDC);

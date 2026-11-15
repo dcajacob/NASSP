@@ -58,7 +58,7 @@ class FloodLights
 public:
 	FloodLights();
 	virtual ~FloodLights();
-	void FloodLights::Init(Saturn *s, e_object *flood_rty_src, e_object *fixed, ToggleSwitch *dim, ContinuousRotationalSwitch *rty);
+	void Init(Saturn *s, e_object *flood_rty_src, e_object *fixed, ToggleSwitch *dim, ContinuousRotationalSwitch *rty);
 	double GetPrimVoltage();
 	double GetSecVoltage();
 	double GetPrimOutput();
@@ -80,7 +80,7 @@ class TunnelLights
 public:
 	TunnelLights();
 	virtual ~TunnelLights();
-	void TunnelLights::Init(Saturn *s, e_object *cb, ToggleSwitch *lt_sw);
+	void Init(Saturn *s, e_object *cb, ToggleSwitch *lt_sw);
 	double GetOutput();
 	void SystemTimestep(double simdt);
 
@@ -96,7 +96,7 @@ class IntegralLights
 public:
 	IntegralLights(PanelSDK& p, double watts);
 	virtual ~IntegralLights();
-	void IntegralLights::Init(Saturn *s, e_object *cb, ContinuousRotationalSwitch *rty);
+	void Init(Saturn *s, e_object *cb, ContinuousRotationalSwitch *rty);
 	double GetOutput();
 	void SystemTimestep(double simdt);
 
@@ -116,7 +116,7 @@ class NumericLights
 public:
 	NumericLights(PanelSDK& p);
 	virtual ~NumericLights();
-	void NumericLights::Init(Saturn *s, e_object *cb, ContinuousRotationalSwitch *rty);
+	void Init(Saturn *s, e_object *cb, ContinuousRotationalSwitch *rty);
 	double GetOutput();
 	void SystemTimestep(double simdt);
 

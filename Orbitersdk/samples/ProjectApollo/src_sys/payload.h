@@ -26,6 +26,9 @@
 #define _PA_PAYLOAD_H
 
 #include "connector.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include <stdexcept>
+#endif
 
 struct PayloadSettings {
 
@@ -62,6 +65,10 @@ public:
 	/// \param p Payload settings.
 	///
 	virtual bool SetupPayload(PayloadSettings &p);
+#if defined(NASSP_NATIVE_LINUX)
+	virtual void PadLoad(unsigned int, unsigned int) { throw std::logic_error("Payload does not support LGC PAD loads"); }
+	virtual void AEAPadLoad(unsigned int, unsigned int) { throw std::logic_error("Payload does not support AEA PAD loads"); }
+#endif
 };
 
 #endif // _PA_PAYLOAD_H

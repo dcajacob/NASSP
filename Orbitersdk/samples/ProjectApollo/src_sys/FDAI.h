@@ -25,8 +25,20 @@
 /// \bug Avoids bug in VC++
 #pragma once
 
-#include < GL\gl.h >                                
-#include < GL\glu.h >
+#include "NasspOrbiterSdk.h"
+
+#if defined(NASSP_NATIVE_LINUX)
+#include <memory>
+namespace orbiter::production {
+class NativeInstrumentTarget;
+}
+struct GLUquadric;
+#else
+#include <GL/gl.h>
+#include <GL/glu.h>
+#endif
+
+class e_object;
 
 class FDAI {
 
@@ -39,7 +51,7 @@ public:
 	void SystemTimestep(double simdt);
 	void PaintMe(VECTOR3 rates, VECTOR3 errors, SURFHANDLE surf, SURFHANDLE hFDAI,
 		SURFHANDLE hFDAIRoll, SURFHANDLE hFDAIOff, SURFHANDLE hFDAINeedles, int smooth);
-	void AnimateFDAI(VECTOR3 rates, VECTOR3 errors, UINT animR, UINT animP, UINT animY, UINT errorR, UINT errorP, UINT errorY, UINT rateR, UINT rateP, UINT rateY);
+	void AnimateFDAI(VECTOR3 rates, VECTOR3 errors, unsigned int animR, unsigned int animP, unsigned int animY, unsigned int errorR, unsigned int errorP, unsigned int errorY, unsigned int rateR, unsigned int rateP, unsigned int rateY);
 	void SetAttitude(VECTOR3 attitude);
 
 	void SaveState(FILEHANDLE scn, char *start_str, char *end_str);
@@ -61,11 +73,15 @@ protected:
 	double lastPaintTime;
 
 	//some stuff for OpenGL
+#if defined(NASSP_NATIVE_LINUX)
+	std::unique_ptr<orbiter::production::NativeInstrumentTarget> instrumentTarget;
+#else
 	HDC hDC2;
 	HGLRC hRC;
 	HBITMAP hBMP;
 	HBITMAP hBMP_old;
-	GLUquadricObj *quadObj;
+#endif
+	GLUquadric *quadObj = nullptr;
 	SURFHANDLE hBallSurf;
 	oapi::Pen* penBlack;
 	oapi::Pen* penWhite;
@@ -78,7 +94,11 @@ protected:
 	void InitGL();
 	void RotateBall(double simdt);
 	void MoveBall2D();
+#if defined(NASSP_NATIVE_LINUX)
+	void LoadBallTexture();
+#else
 	int LoadOGLBitmap(char *filename);
+#endif
 
 	VESSEL *vessel;
 };

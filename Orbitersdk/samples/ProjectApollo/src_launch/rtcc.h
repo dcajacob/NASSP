@@ -50,6 +50,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 #include "MCCPADForms.h"
 
 class Saturn;
+class MCC;
 
 #define RTCC_START_STRING	"RTCC_BEGIN"
 #define RTCC_END_STRING	    "RTCC_END"

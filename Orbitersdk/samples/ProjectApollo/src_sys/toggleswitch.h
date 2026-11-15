@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <stdio.h>
 #include <math.h>
 #include "soundlib.h"
@@ -35,14 +35,10 @@
 #include <vector>
 #include "cautionwarning.h"
 #include "powersource.h"
-#include "nasspdefs.h"
 
 //
 // Switch states. Only use positive numbers.
 //
-
-#define TOGGLESWITCH_DOWN		0			///< Toggle switch is down.
-#define TOGGLESWITCH_UP			1			///< Toggle switch is up.
 
 #define PUSHBUTTON_UNPUSHED		0			///< Push button is un-pushed (off).
 #define PUSHBUTTON_PUSHED		1			///< Push button is pushed (on).
@@ -1653,7 +1649,7 @@ public:
 	void OnPostCreation();
 	void AddSwitch(PanelSwitchItem *s, int area = -1);
 	void ClearSwitches();
-	PanelSwitchItem* PanelSwitchesVC::GetFlashingItem();
+	PanelSwitchItem* GetFlashingItem();
 
 protected:
 	std::vector<PanelSwitchItem*>SwitchList;

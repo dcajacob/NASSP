@@ -209,6 +209,7 @@ BaseSIVBSystems::BaseSIVBSystems() :
 	AuxHydPumpFlightMode = true;
 	//Switched on at T-TBD minutes
 	EngineControlBusMotorSwitch = true;
+	EDSCutoffDisabled = false;
 	EDSCutoffNo2DisableInhibit = false;
 
 	for (int i = 0; i < 2; i++)

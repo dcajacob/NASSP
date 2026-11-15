@@ -23,6 +23,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #include "RTCCDisplayFormatting.h"
 #include "OrbMech.h"
+#include <cstdio>
 
 namespace rtcc
 {
@@ -187,7 +188,7 @@ namespace rtcc
 	void RTCCDynamicDisplayData::DFLDouble(RTCCDisplay &disp, unsigned num, double val, const char* format, int x, int y, oapi::Sketchpad::TAlign_horizontal align) const
 	{
 		char Buff[64];
-		sprintf_s(Buff, format, val);
+		std::snprintf(Buff, sizeof(Buff), format, val);
 
 		DisplayFormatting(disp, num, Buff, x, y, align);
 	}
@@ -195,7 +196,7 @@ namespace rtcc
 	void RTCCDynamicDisplayData::DFLInteger(RTCCDisplay &disp, unsigned num, int val, const char* format, int x, int y, oapi::Sketchpad::TAlign_horizontal align) const
 	{
 		char Buff[64];
-		sprintf_s(Buff, format, val);
+		std::snprintf(Buff, sizeof(Buff), format, val);
 
 		DisplayFormatting(disp, num, Buff, x, y, align);
 	}

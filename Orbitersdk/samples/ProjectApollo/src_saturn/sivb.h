@@ -399,7 +399,7 @@ protected:
 	void AddRCS_S4B();				///< Add RCS for SIVb control.
 
 	void CreateSISIVBInterface();
-	bool GetDockingPortFromHandle(OBJHANDLE port, UINT &num);
+	bool GetDockingPortFromHandle(OBJHANDLE port, unsigned int &num);
 	void CreateAirfoils();
 
 	bool PayloadIsDetachable();		///< Is the payload detachable?
@@ -497,8 +497,8 @@ protected:
 	THGROUP_HANDLE thg_main, thg_sep, thg_sepPanel, thg_ver;
 	PROPELLANT_HANDLE ph_aps1, ph_aps2, ph_main;
 
-	UINT panelAnim;
-	UINT panelAnimPlusX;
+	unsigned int panelAnim;
+	unsigned int panelAnimPlusX;
 	double panelProc;
 	double panelProcPlusX;
 	int panelTimestepCount;

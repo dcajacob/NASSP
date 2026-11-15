@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 #include "resource.h"
@@ -49,18 +49,25 @@
 
 #include "tracer.h"
 
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#define SATURN1B_CALLBACK static
+#else
+#define SATURN1B_CALLBACK DLLCLBK
+#endif
+
 //
 // Random functions from Yaagc.
 //
 
+#if !defined(NASSP_NATIVE_LINUX)
 extern "C" {
 	void srandom(unsigned int x);
 	long int random();
 }
+#endif
 
 char trace_file[] = "ProjectApollo Saturn1b.log";
-
-#define LOADBMP(id) (LoadBitmap (g_Param.hDLL, MAKEINTRESOURCE (id)))
 
 // ==============================================================
 // Global parameters
@@ -98,8 +105,9 @@ Saturn1b::~Saturn1b()
 void Saturn1b::initSaturn1b()
 
 {
-	// Save DLL instance handle for later abuse
+#if !defined(NASSP_NATIVE_LINUX)
 	dllhandle = g_Param.hDLL;
+#endif
 	
 	//
 	// Do the basic initialisation from the
@@ -173,7 +181,7 @@ void Saturn1b::initSaturn1b()
 // API interface
 // ==============================================================
 
-DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
+SATURN1B_CALLBACK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 {
 	if (!refcount++) {
 		Saturn1bLoadMeshes();
@@ -184,11 +192,30 @@ DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 	return new Saturn1b (hvessel, flightmodel);
 }
 
-DLLCLBK void ovcExit (VESSEL *vessel)
+SATURN1B_CALLBACK void ovcExit (VESSEL *vessel)
 {
 	--refcount;
 	if (vessel) delete (Saturn1b *) vessel;
 }
+
+#undef SATURN1B_CALLBACK
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+using Saturn1bFactory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor saturn1bModule = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Saturn IB and CSM",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI,
+	Saturn1bFactory::initialize, Saturn1bFactory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &saturn1bModule : nullptr;
+}
+#endif
 
 void Saturn1b::DoFirstTimestep(double simt)
 

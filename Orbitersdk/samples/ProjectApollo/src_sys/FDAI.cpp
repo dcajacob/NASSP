@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <stdio.h>
 
 #include "nasspdefs.h"
@@ -33,6 +33,27 @@
 #include "PanelSDK/Internals/Esystems.h"
 
 #include "FDAI.h"
+
+#if defined(NASSP_NATIVE_LINUX)
+#include "DrawAPI.h"
+#include "Production/NativeGraphics.h"
+#include "Production/NativeInterpreterSdk.h"
+#include "Production/ResourceResolver.h"
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <algorithm>
+#include <array>
+#include <fstream>
+#include <stdexcept>
+#endif
+
+namespace {
+#if defined(NASSP_NATIVE_LINUX)
+constexpr auto panelBlitKey = SURF_NO_CK;
+#else
+constexpr auto panelBlitKey = SURF_PREDEF_CK;
+#endif
+}
 
 FDAI::FDAI() {
 
@@ -66,7 +87,14 @@ void FDAI::Init(VESSEL *v)
 }
 
 void FDAI::InitGL() {
-
+#if defined(NASSP_NATIVE_LINUX)
+	auto& renderer = *orbiter::production::GetNativeRenderContext().graphics;
+	auto restore = renderer.SaveGraphicsContext();
+	auto target = renderer.CreateInstrumentTarget(180, 180);
+	target->Activate();
+	LoadBallTexture();
+	glEnable(GL_TEXTURE_2D);
+#else
 	GLuint      PixelFormat;
 	BITMAPINFOHEADER BIH;
 	int iSize = sizeof(BITMAPINFOHEADER);
@@ -125,6 +153,7 @@ void FDAI::InitGL() {
 		texture_index = LoadOGLBitmap("Textures\\ProjectApollo\\FDAI_Ball.dds");
 	}
 	if (texture_index > 0) glEnable(GL_TEXTURE_2D);
+#endif
 
 	glShadeModel(GL_SMOOTH);                        // Enable Smooth Shading
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);           // Panel Background color
@@ -162,6 +191,9 @@ void FDAI::InitGL() {
 	gluSphere(quadObj, 12, 24, 24);
 	glEndList();
 
+#if defined(NASSP_NATIVE_LINUX)
+	instrumentTarget = std::move(target);
+#endif
 	init = 1;		//that's it. If we made it so far, we can use OpenGL
 }
 
@@ -169,6 +201,9 @@ FDAI::~FDAI() {
 
 	if (init) {
 		gluDeleteQuadric(quadObj);
+#if defined(NASSP_NATIVE_LINUX)
+		instrumentTarget.reset();
+#else
 		wglMakeCurrent(NULL, NULL);	//standard OpenGL release
 		BOOL ret = wglDeleteContext(hRC);
 		hRC = NULL;
@@ -176,6 +211,7 @@ FDAI::~FDAI() {
 		DeleteObject(hBMP);
 		DeleteDC(hDC2);
 		hDC2 = 0;
+#endif
 	}
 	oapiDestroySurface(hBallSurf);
 	oapiReleasePen(penBlack);
@@ -293,20 +329,40 @@ void FDAI::PaintMe(VECTOR3 rates, VECTOR3 errors, SURFHANDLE surf, SURFHANDLE hF
 
 	// Don't do the OpenGL calculations every timestep
 	if (smooth || lastPaintTime == -1 || ((length(lastPaintAtt - target) > 0.005 || oapiGetSysTime() > lastPaintTime + 2.0) && oapiGetSysTime() > lastPaintTime + 0.1)) {
-		int ret = wglMakeCurrent(hDC2, hRC);
+#if defined(NASSP_NATIVE_LINUX)
+		auto& renderer = *orbiter::production::GetNativeRenderContext().graphics;
+		std::vector<std::uint8_t> pixels;
+		{
+			auto restore = renderer.SaveGraphicsContext();
+			instrumentTarget->Activate();
+			MoveBall2D();
+			glCallList(list_name);
+			instrumentTarget->Readback(pixels);
+		}
+		constexpr int rowBytes = 180 * 4;
+		for (int y = 0; y < 90; ++y)
+			std::swap_ranges(pixels.begin() + y * rowBytes, pixels.begin() + (y + 1) * rowBytes,
+				pixels.begin() + (179 - y) * rowBytes);
+		{
+			auto restore = renderer.ActivateMainGraphicsContext();
+			if (!renderer.UploadSurfacePixels(hBallSurf, 180, 180, pixels))
+				throw std::runtime_error("Could not upload NASSP FDAI attitude ball");
+		}
+#else
+		wglMakeCurrent(hDC2, hRC);
 		MoveBall2D();
 		glCallList(list_name);	//render
 		glFlush();
 		glFinish();
 
-		lastPaintTime = oapiGetSysTime();
-
 		HDC hDC = oapiGetDC(hBallSurf);
 		BitBlt(hDC, 0, 0, 180, 180, hDC2, 0, 0, SRCCOPY);
 		oapiReleaseDC(hBallSurf, hDC);
+#endif
+		lastPaintTime = oapiGetSysTime();
 	}
 
-	oapiBlt(surf, hBallSurf, 43, 43, 10, 10, 150, 150, SURF_PREDEF_CK);//then we bitblt onto the panel.
+	oapiBlt(surf, hBallSurf, 43, 43, 10, 10, 150, 150, panelBlitKey);//then we bitblt onto the panel.
 
 	// roll indicator
 	double angle = -target.y;
@@ -319,29 +375,29 @@ void FDAI::PaintMe(VECTOR3 rates, VECTOR3 errors, SURFHANDLE surf, SURFHANDLE hF
 	const double radius = 70;
 
 	// Compute roll indicator vertices
-	long xtip = 123 - (long)(radius * sin(angle));
-	long ytip = 123 - (long)(radius * cos(angle));
+	int xtip = 123 - (int)(radius * sin(angle));
+	int ytip = 123 - (int)(radius * cos(angle));
 
-	long xbl = 123 - (long)((radius - trisize) * sin(angle - baseangle));
-	long ybl = 123 - (long)((radius - trisize) * cos(angle - baseangle));
+	int xbl = 123 - (int)((radius - trisize) * sin(angle - baseangle));
+	int ybl = 123 - (int)((radius - trisize) * cos(angle - baseangle));
 
-	long xbr = 123 - (long)((radius - trisize) * sin(angle + baseangle));
-	long ybr = 123 - (long)((radius - trisize) * cos(angle + baseangle));
+	int xbr = 123 - (int)((radius - trisize) * sin(angle + baseangle));
+	int ybr = 123 - (int)((radius - trisize) * cos(angle + baseangle));
 
 	// Split it in 3
 	oapi::IVECTOR2 tri1[3] = {
 		{xtip, ytip},
 		{xbl, ybl},
-		{(long)(xbr * 0.3 + xbl * 0.7), (long)(ybr * 0.3 + ybl * 0.7)},
+		{(int)(xbr * 0.3 + xbl * 0.7), (int)(ybr * 0.3 + ybl * 0.7)},
 	};
 	oapi::IVECTOR2 tri2[3] = {
 		{xtip, ytip},
-		{(long)(xbr * 0.3 + xbl * 0.7), (long)(ybr * 0.3 + ybl * 0.7)},
-		{(long)(xbr * 0.7 + xbl * 0.3), (long)(ybr * 0.7 + ybl * 0.3)},
+		{(int)(xbr * 0.3 + xbl * 0.7), (int)(ybr * 0.3 + ybl * 0.7)},
+		{(int)(xbr * 0.7 + xbl * 0.3), (int)(ybr * 0.7 + ybl * 0.3)},
 	};
 	oapi::IVECTOR2 tri3[3] = {
 		{xtip, ytip},
-		{(long)(xbr * 0.7 + xbl * 0.3), (long)(ybr * 0.7 + ybl * 0.3)},
+		{(int)(xbr * 0.7 + xbl * 0.3), (int)(ybr * 0.7 + ybl * 0.3)},
 		{xbr, ybr},
 	};
 
@@ -360,9 +416,9 @@ void FDAI::PaintMe(VECTOR3 rates, VECTOR3 errors, SURFHANDLE surf, SURFHANDLE hF
 
 	// frame-bitmaps
 	// Was 13,13
-	oapiBlt(surf, hFDAIRoll, 43, 43, 0, 0, 160, 160, SURF_PREDEF_CK);
+	oapiBlt(surf, hFDAIRoll, 43, 43, 0, 0, 160, 160, panelBlitKey);
 	// Was 0,0
-	oapiBlt(surf, hFDAI, 30, 30, 0, 0, 185, 183, SURF_PREDEF_CK);
+	oapiBlt(surf, hFDAI, 30, 30, 0, 0, 185, 183, panelBlitKey);
 
 	// Roll/Yaw X range is 54 - 180, 117 is center, 63 px per side. (the window is 245 pixels wide)
 	// Full-Scale is 63. The max rates for roll are 1, 5, and 50 degrees per second.
@@ -421,20 +477,20 @@ void FDAI::PaintMe(VECTOR3 rates, VECTOR3 errors, SURFHANDLE surf, SURFHANDLE hF
 	if (LM_FDAI)
 	{
 		// Draw Roll-Rate Needle
-		oapiBlt(surf, hFDAINeedles, targetX, 14, 10, 3, 7, 14, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, targetX, 14, 10, 3, 7, 14, panelBlitKey);
 		// Draw Pitch-Rate Needle
-		oapiBlt(surf, hFDAINeedles, 218, targetY, 17, 3, 14, 7, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, 218, targetY, 17, 3, 14, 7, panelBlitKey);
 		// Draw Yaw-Rate Needle
-		oapiBlt(surf, hFDAINeedles, targetZ, 218, 3, 3, 7, 14, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, targetZ, 218, 3, 3, 7, 14, panelBlitKey);
 	}
 	else
 	{
 		// Draw Roll-Rate Needle
-		oapiBlt(surf, hFDAINeedles, targetX, 4, 16, 3, 12, 11, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, targetX, 4, 16, 3, 12, 11, panelBlitKey);
 		// Draw Pitch-Rate Needle
-		oapiBlt(surf, hFDAINeedles, 225, targetY, 28, 3, 10, 12, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, 225, targetY, 28, 3, 10, 12, panelBlitKey);
 		// Draw Yaw-Rate Needle
-		oapiBlt(surf, hFDAINeedles, targetZ, 224, 4, 3, 12, 11, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, targetZ, 224, 4, 3, 12, 11, panelBlitKey);
 	}
 
 
@@ -449,31 +505,31 @@ void FDAI::PaintMe(VECTOR3 rates, VECTOR3 errors, SURFHANDLE surf, SURFHANDLE hF
 	if (!LM_FDAI)
 	{
 		targetY = (int)(fabs(errors.x) * 0.268292);
-		oapiBlt(surf, hFDAINeedles, 122 + (int)errors.x, 42 + targetY, 0, 0, 2, 72 - targetY, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, 122 + (int)errors.x, 42 + targetY, 0, 0, 2, 72 - targetY, panelBlitKey);
 		// Draw Pitch-Error Needle
 		targetY = (int)(fabs(errors.y) * 0.268292);
-		oapiBlt(surf, hFDAINeedles, 135, 122 + (int)errors.y, 4, 0, 69 - targetY, 2, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, 135, 122 + (int)errors.y, 4, 0, 69 - targetY, 2, panelBlitKey);
 		// Draw Yaw-Error Needle
 		targetY = (int)(fabs(errors.z) * 0.268292);
-		oapiBlt(surf, hFDAINeedles, 122 + (int)errors.z, 135, 0, 0, 2, 69 - targetY, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, 122 + (int)errors.z, 135, 0, 0, 2, 69 - targetY, panelBlitKey);
 	}
 	else
 	{
 		targetY = (int)(fabs(errors.x) * 0.268292);
-		oapiBlt(surf, hFDAINeedles, 122 + (int)errors.x, 54 + targetY, 0, 0, 2, 31 - targetY, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, 122 + (int)errors.x, 54 + targetY, 0, 0, 2, 31 - targetY, panelBlitKey);
 		// Draw Pitch-Error Needle
 		targetY = (int)(fabs(errors.y) * 0.268292);
-		oapiBlt(surf, hFDAINeedles, 161, 122 + (int)errors.y, 3, 0, 31 - targetY, 2, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, 161, 122 + (int)errors.y, 3, 0, 31 - targetY, 2, panelBlitKey);
 		// Draw Yaw-Error Needle
 		targetY = (int)(fabs(errors.z) * 0.268292);
-		oapiBlt(surf, hFDAINeedles, 122 + (int)errors.z, 161, 0, 0, 2, 31 - targetY, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAINeedles, 122 + (int)errors.z, 161, 0, 0, 2, 31 - targetY, panelBlitKey);
 	}
 
 
 	// sprintf(oapiDebugString(),"FDAI: Rates %f %f %f, TGX %d",rates.x,rates.y,rates.z,targetX);
 	// Off-flag (CSM FDAI doesn't have one... I think)
 	if (LM_FDAI && !IsPowered())
-		oapiBlt(surf, hFDAIOff, 31, 100, 0, 0, 13, 30, SURF_PREDEF_CK);
+		oapiBlt(surf, hFDAIOff, 31, 100, 0, 0, 13, 30, panelBlitKey);
 }
 
 void FDAI::Timestep(double simt, double simdt)
@@ -492,6 +548,60 @@ void FDAI::SystemTimestep(double simdt) {
 	}
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+void FDAI::LoadBallTexture()
+{
+	const auto* textures = orbiter::production::GetNativeRenderContext().textures;
+	if (!textures)
+		throw std::runtime_error("Missing NASSP FDAI texture resolver");
+	// The original FDAI maps use 24-bit Windows bitmap encoding despite the .dds names.
+	const auto path = textures->Resolve(LM_FDAI ? "ProjectApollo/FDAI_Ball_LM.dds" : "ProjectApollo/FDAI_Ball.dds");
+	std::ifstream input(path, std::ios::binary);
+	std::array<std::uint8_t, 54> header{};
+	auto word = [&](std::size_t offset) {
+		return std::uint32_t(header[offset]) | (std::uint32_t(header[offset + 1]) << 8);
+	};
+	auto doubleWord = [&](std::size_t offset) {
+		return word(offset) | (word(offset + 2) << 16);
+	};
+	input.read(reinterpret_cast<char*>(header.data()), header.size());
+	const auto offset = doubleWord(10);
+	const auto width = doubleWord(18);
+	const auto height = doubleWord(22);
+	if (!input || header[0] != 'B' || header[1] != 'M' || doubleWord(14) != 40 ||
+	    offset < header.size() || word(26) != 1 || word(28) != 24 || doubleWord(30) != 0 ||
+	    width == 0 || height == 0 || width > 8192 || height > 8192)
+		throw std::runtime_error("Invalid NASSP FDAI bitmap: " + path.string());
+
+	const std::size_t rowBytes = (3 * width + 3) & ~std::size_t{3};
+	std::vector<std::uint8_t> row(rowBytes);
+	std::vector<std::uint8_t> pixels(std::size_t(width) * height * 3);
+	input.seekg(offset);
+	for (std::size_t y = 0; y < height; ++y) {
+		if (!input.read(reinterpret_cast<char*>(row.data()), row.size()))
+			throw std::runtime_error("Truncated NASSP FDAI bitmap: " + path.string());
+		auto out = pixels.begin() + y * width * 3;
+		for (std::size_t x = 0; x < width; ++x) {
+			*out++ = row[x * 3 + 2];
+			*out++ = row[x * 3 + 1];
+			*out++ = row[x * 3];
+		}
+	}
+
+	GLuint texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+	if (glGetError() != GL_NO_ERROR)
+		throw std::runtime_error("Could not load NASSP FDAI texture into the instrument context");
+}
+#else
 int FDAI::LoadOGLBitmap(char *filename) {
 
 	unsigned char *l_texture;
@@ -646,6 +756,8 @@ pBGR MyGetDibBits(HDC hdcSrc, HBITMAP hBmpSrc, int nx, int ny)
 	return buf;
 }
 
+#endif
+
 bool FDAI::IsPowered()
 
 {
@@ -667,7 +779,7 @@ void FDAI::SetLMmode()
 	LM_FDAI = true;
 }
 
-void FDAI::AnimateFDAI(VECTOR3 rates, VECTOR3 errors, UINT animR, UINT animP, UINT animY, UINT errorR, UINT errorP, UINT errorY, UINT rateR, UINT rateP, UINT rateY)
+void FDAI::AnimateFDAI(VECTOR3 rates, VECTOR3 errors, unsigned int animR, unsigned int animP, unsigned int animY, unsigned int errorR, unsigned int errorP, unsigned int errorY, unsigned int rateR, unsigned int rateP, unsigned int rateY)
 {
 	double fdai_proc[3];
 	double rate_proc[3];

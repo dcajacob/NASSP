@@ -23,6 +23,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #include "TwoImpulseProcessor.h"
 #include "rtcc.h"
+#include <cstdio>
 
 TwoImpulseOpt::TwoImpulseOpt()
 {
@@ -1022,7 +1023,7 @@ void TwoImpulseProcessor::PMDTIMP()
 		temp = "DARKNESS";
 	}
 	char Buffer[128];
-	sprintf_s(Buffer, "%.0lf MIN UNTIL %s", abs(intab->DT_Light) / 60.0, temp.c_str());
+	std::snprintf(Buffer, sizeof(Buffer), "%.0lf MIN UNTIL %s", abs(intab->DT_Light) / 60.0, temp.c_str());
 	outtab->MinutesUntil.assign(Buffer);
 	outtab->WT = pRTCC->GZGENCSN.TITravelAngle*DEG;
 	outtab->PHASE = pRTCC->PZTIPREG.PhaseAngle*DEG;

@@ -7,6 +7,10 @@
 #include "Production/NativeRenderApi.h"
 #include <strings.h>
 
+// Scalar identities used by the original SDK declarations.
+using UINT = oapi::UInt;
+using DWORD = oapi::UInt32;
+
 inline int strnicmp(const char* left, const char* right, std::size_t count)
 {
 	return strncasecmp(left, right, count);
