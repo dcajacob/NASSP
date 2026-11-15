@@ -170,6 +170,7 @@ if(NASSP_BUILD_NATIVE_LINUX)
         src_csm/secs.cpp
         src_csm/smjc.cpp
         src_csm/sps.cpp
+        src_mfd/ProjectApolloChecklistMFD.cpp
         src_saturn/canard.cpp
         src_saturn/j2engine.cpp
         src_saturn/qball.cpp

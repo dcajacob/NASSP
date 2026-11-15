@@ -51,6 +51,8 @@
 
 #if defined(NASSP_NATIVE_LINUX)
 #include "NasspCsmBitmap.h"
+#include "MFDAPI.h"
+#include "ProjectApolloChecklistMFD.h"
 #include "Production/NativeVesselFactory.h"
 #include "Production/NativeInterpreterSdk.h"
 #define SATURN1B_CALLBACK static
@@ -635,6 +637,9 @@ void Saturn1b::clbkSetClassCaps (FILEHANDLE cfg)
 		ProcessConfigFileLine(hFile, line);
 	}
 	oapiCloseFile(hFile, FILE_IN);
+#if defined(NASSP_NATIVE_LINUX)
+	nassp::RegisterSaturnChecklistMfd(*this);
+#endif
 }
 
 void Saturn1b::SetVehicleStats()

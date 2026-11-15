@@ -25,7 +25,16 @@
 #include "connector.h"
 #include "MFDconnector.h"
 
+class Crawler;
+class LEM;
 class MCC;
+class Saturn;
+
+#if defined(NASSP_NATIVE_LINUX)
+namespace nassp {
+void RegisterSaturnChecklistMfd(VESSEL4 &vessel);
+}
+#endif
 
 #ifndef OAPI_MSGTYPE
 typedef int OAPI_MSGTYPE;
@@ -46,7 +55,12 @@ public:
 	void RecallStatus (void);
 	void substituteVariables(char *buffer,int buflen);
 
+#if defined(NASSP_NATIVE_LINUX)
+	static oapi::CockpitMessageResult MsgProc(oapi::UInt msg, oapi::UInt mfd,
+		oapi::CockpitUnsignedParam wparam, oapi::CockpitSignedParam lparam);
+#else
 	static OAPI_MSGTYPE MsgProc (UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam);
+#endif
 
 	MFDConnector conn;
 	vector<ChecklistGroup> groups;

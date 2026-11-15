@@ -25,9 +25,15 @@ foreach(_resource IN LISTS _saturn_rc_bitmaps)
         message(FATAL_ERROR "Missing Saturn panel bitmap source: ${_resource}")
     endif()
     get_filename_component(_name "${_bitmap}" NAME)
-    string(APPEND _saturn_bitmap_code "    {${_id}, \"Textures/ProjectApollo/CSMPanel/${_name}\"},\n")
+    string(APPEND _saturn_bitmap_code "    {${_id}, \"ProjectApollo/CSMPanel/${_name}\"},\n")
     list(APPEND _saturn_bitmap_files "${_bitmap}")
 endforeach()
 list(REMOVE_DUPLICATES _saturn_bitmap_files)
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/nassp-csm-bitmaps.inc" CONTENT "${_saturn_bitmap_code}")
-install(FILES ${_saturn_bitmap_files} DESTINATION "Textures/ProjectApollo/CSMPanel" COMPONENT SaturnPanelAssets)
+install(FILES ${_saturn_bitmap_files} "${NASSP_SOURCE_ROOT}/Bitmaps/Logo.bmp"
+    DESTINATION "Textures/ProjectApollo/CSMPanel" COMPONENT SaturnPanelAssets)
+set(_saturn_checklist_root "${NASSP_SOURCE_ROOT}/../../../Doc/Project Apollo - NASSP/Checklists")
+install(FILES
+    "${_saturn_checklist_root}/Apollo 7 Checklists.xls"
+    "${_saturn_checklist_root}/CSM Default Checklists.xls"
+    DESTINATION "Doc/Project Apollo - NASSP/Checklists" COMPONENT SaturnPanelAssets)

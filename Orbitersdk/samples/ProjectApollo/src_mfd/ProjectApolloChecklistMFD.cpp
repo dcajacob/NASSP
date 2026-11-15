@@ -24,10 +24,16 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+
+#if defined(NASSP_NATIVE_LINUX)
+#include "MFDAPI.h"
+#include "Production/NativeGraphics.h"
+#else
+#include "windows.h"
+#endif
 
 #include "math.h"
-#include "windows.h"
 #include "nasspsound.h"
 #include "soundlib.h"
 #include "tracer.h"
@@ -39,6 +45,9 @@
 #include "LEMcomputer.h"
 #include "saturn.h"
 #include "LEM.h"
+#if defined(NASSP_NATIVE_LINUX)
+using WORD = oapi::UInt16;
+#endif
 #include "Crawler.h"
 #include "mccvessel.h"
 #include "mcc.h"
@@ -79,6 +88,25 @@ using namespace nassp;
 #define NLINES  20
 #define HLINE   .04
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+constexpr oapi::UInt32 RGB(oapi::UInt32 red, oapi::UInt32 green, oapi::UInt32 blue)
+{
+	return red | (green << 8) | (blue << 16);
+}
+}
+
+void nassp::RegisterSaturnChecklistMfd(VESSEL4 &vessel)
+{
+	if (!orbiter::production::GetNativeRenderContext().cockpitPane) return;
+	char name[] = "Project Apollo Checklist";
+	MFDMODESPECEX spec{};
+	spec.name = name;
+	spec.key = OAPI_KEY_K;
+	spec.msgproc = ProjectApolloChecklistMFD::MsgProc;
+	vessel.RegisterMFDMode(spec);
+}
+#else
 static int hMFD;
 static HINSTANCE g_hDLL;
 
@@ -100,6 +128,7 @@ void ProjectApolloChecklistMFDopcDLLExit (HINSTANCE hDLL)
 void ProjectApolloChecklistMFDopcTimestep (double simt, double simdt, double mjd)
 {
 }
+#endif
 ProjectApolloChecklistMFD::ProjectApolloChecklistMFD (DWORD w, DWORD h, VESSEL *vessel) : MFD2 (w,h,vessel)
 {
 	saturn = NULL;
@@ -145,8 +174,12 @@ ProjectApolloChecklistMFD::ProjectApolloChecklistMFD (DWORD w, DWORD h, VESSEL *
 		}
 	}
 
+#if defined(NASSP_NATIVE_LINUX)
+	hLogo = oapiLoadSurfaceEx("ProjectApollo/CSMPanel/Logo.bmp", OAPISURFACE_NOMIPMAPS);
+#else
 	HBITMAP hBmpLogo = LoadBitmap(g_hDLL, MAKEINTRESOURCE (IDB_LOGO));
 	hLogo = oapiCreateSurface(hBmpLogo);
+#endif
 }
 
 ProjectApolloChecklistMFD::~ProjectApolloChecklistMFD ()
@@ -167,7 +200,7 @@ ProjectApolloChecklistMFD::~ProjectApolloChecklistMFD ()
 		item.index = i;
 	}
 	*/
-	oapiDestroySurface(hLogo);
+	if (hLogo) oapiDestroySurface(hLogo);
 }
 char *ProjectApolloChecklistMFD::ButtonLabel (int bt)
 {
@@ -840,10 +873,18 @@ bool ProjectApolloChecklistMFD::Update (oapi::Sketchpad* skp)
 	ChecklistItem *item;
 	oapi::Brush *hBr;
 
-	SURFHANDLE s = skp->GetSurface();
-	RECT src{ 0, 0, 255, 255 };
-	RECT dst{ 1, 1, (LONG)width - 2, (LONG)height - 2 };
-	oapiBlt(s, hLogo, &dst, &src);
+	if (hLogo) {
+		SURFHANDLE surface = skp->GetSurface();
+#if defined(NASSP_NATIVE_LINUX)
+		auto *graphics = orbiter::production::GetNativeRenderContext().graphics;
+		if (graphics && width > 3 && height > 3)
+			graphics->clbkScaleBlt(surface, 1, 1, width - 3, height - 3, hLogo, 0, 0, 255, 255);
+#else
+		RECT src{ 0, 0, 255, 255 };
+		RECT dst{ 1, 1, (LONG)width - 2, (LONG)height - 2 };
+		oapiBlt(surface, hLogo, &dst, &src);
+#endif
+	}
 
 	// Retrieve Checklists
 	vector<ChecklistGroup> *temp = conn.GetChecklistList();
@@ -1515,6 +1556,16 @@ void ProjectApolloChecklistMFD::RecallStatus (void)
 {
 }
 	
+#if defined(NASSP_NATIVE_LINUX)
+oapi::CockpitMessageResult ProjectApolloChecklistMFD::MsgProc(oapi::UInt msg, oapi::UInt,
+	oapi::CockpitUnsignedParam wparam, oapi::CockpitSignedParam lparam)
+{
+	if (msg != OAPI_MSG_MFD_OPENED) return 0;
+	return reinterpret_cast<oapi::CockpitMessageResult>(new ProjectApolloChecklistMFD(
+		static_cast<DWORD>(wparam & 0xffff), static_cast<DWORD>((wparam >> 16) & 0xffff),
+		reinterpret_cast<VESSEL *>(lparam)));
+}
+#else
 OAPI_MSGTYPE ProjectApolloChecklistMFD::MsgProc (UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam)
 {
 	switch (msg) {
@@ -1525,6 +1576,7 @@ OAPI_MSGTYPE ProjectApolloChecklistMFD::MsgProc (UINT msg, UINT mfd, WPARAM wpar
 	}
 	return 0;
 }
+#endif
 // Display MET depending if saturn, crawler or Lem
 std::string ProjectApolloChecklistMFD::DisplayMissionElapsedTime (void)
 {
