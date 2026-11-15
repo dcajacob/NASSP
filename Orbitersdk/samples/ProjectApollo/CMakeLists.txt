@@ -102,6 +102,15 @@ if(NASSP_BUILD_NATIVE_LINUX)
     target_include_directories(NasspGuidance PRIVATE src_aux src_csm src_sys/PanelSDK/Internals)
     target_link_libraries(NasspGuidance PUBLIC NasspAudio NasspVesselSystems PRIVATE Threads::Threads)
 
+    add_library(NasspChecklist STATIC
+        src_aux/BasicExcelVC6.cpp
+        src_mfd/MFDconnector.cpp
+        src_sys/checklistControllerHelpers.cpp
+    )
+    set_target_properties(NasspChecklist PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_include_directories(NasspChecklist PRIVATE src_aux src_mfd)
+    target_link_libraries(NasspChecklist PUBLIC NasspNativeOrbiterSdk PRIVATE NasspAudio NasspVesselSystems)
+
     find_package(OpenGL REQUIRED)
     if(NOT TARGET OpenGL::GLU)
         message(FATAL_ERROR "The native NASSP FDAI requires the OpenGL Utility Library (GLU).")

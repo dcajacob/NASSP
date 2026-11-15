@@ -39,6 +39,8 @@
 #pragma warning ( disable:4715 )
 
 #include "BasicExcelVC6.hpp"
+#include <cstdint>
+#include <cstring>
 
 namespace YCompoundFiles
 {
@@ -881,7 +883,7 @@ int CompoundFile::ReadFile(const wchar_t* path, vector<char>& data)
 	if (ret != SUCCESS) return ret;
 
 	data.resize(dataSize);
-	return ReadFile(path, &*(data.begin()));
+	return data.empty() ? SUCCESS : ReadFile(path, data.data());
 }
 
 int CompoundFile::WriteFile(const wchar_t* path, const char* data, size_t size)
@@ -3694,10 +3696,10 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Number::Read(const char* data)
 	LittleEndian::Read(data_, rowIndex_, 0, 2);
 	LittleEndian::Read(data_, colIndex_, 2, 2);
 	LittleEndian::Read(data_, XFRecordIndex_, 4, 2);
-	__int64 value;
-	LittleEndian::Read(data_, value, 6, 8);
-	intdouble_.intvalue_ = value;
-	value_ = intdouble_.doublevalue_;
+	std::uint64_t bits;
+	LittleEndian::Read(data_, bits, 6, 8);
+	static_assert(sizeof(bits) == sizeof(value_));
+	std::memcpy(&value_, &bits, sizeof(bits));
 	return RecordSize();
 }	
 size_t Worksheet::CellTable::RowBlock::CellBlock::Number::Write(char* data)
@@ -3706,9 +3708,9 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Number::Write(char* data)
 	LittleEndian::Write(data_, rowIndex_, 0, 2);
 	LittleEndian::Write(data_, colIndex_, 2, 2);
 	LittleEndian::Write(data_, XFRecordIndex_, 4, 2);
-	intdouble_.doublevalue_ = value_;
-	__int64 value = intdouble_.intvalue_;
-	LittleEndian::Write(data_, value, 6, 8);
+	std::uint64_t bits;
+	std::memcpy(&bits, &value_, sizeof(bits));
+	LittleEndian::Write(data_, bits, 6, 8);
 	return Record::Write(data);
 }
 
@@ -4444,18 +4446,12 @@ bool IsRKValueADouble(int rkValue)
 // Convert a rk value to a double.
 double GetDoubleFromRKValue(int rkValue)
 {
-	union 
-	{
-		__int64 intvalue_;
-		double doublevalue_;
-	} intdouble;
-
-	bool isMultiplied = rkValue & 1;
-	rkValue >>= 2;
-	intdouble.intvalue_ = rkValue;
-	intdouble.intvalue_ <<= 34;
-	if (isMultiplied) intdouble.doublevalue_ *= 0.01;
-	return intdouble.doublevalue_;
+	const bool isMultiplied = rkValue & 1;
+	const auto upperWord = static_cast<std::uint32_t>(rkValue) & ~std::uint32_t{3};
+	const auto bits = static_cast<std::uint64_t>(upperWord) << 32;
+	double value;
+	std::memcpy(&value, &bits, sizeof(bits));
+	return isMultiplied ? value * 0.01 : value;
 }
 
 // Convert a rk value to an integer.
@@ -4470,12 +4466,6 @@ int GetIntegerFromRKValue(int rkValue)
 // Convert a double to a rk value.
 int GetRKValueFromDouble(double value)
 {
-	union 
-	{
-		__int64 intvalue_;
-		double doublevalue_;
-	} intdouble;
-
 	bool isMultiplied = false;
 	int testVal1 = value;
 	testVal1 *= 100;
@@ -4486,21 +4476,16 @@ int GetRKValueFromDouble(double value)
 		value *= 100;
 	}
 
-	intdouble.doublevalue_ = value;
-	intdouble.intvalue_ >>= 34;
-
-	int rkValue = intdouble.intvalue_;
-	rkValue <<= 2;
-	rkValue |= (isMultiplied ? 1 : 0);
-	return rkValue;
+	std::uint64_t bits;
+	std::memcpy(&bits, &value, sizeof(bits));
+	const auto upperWord = static_cast<std::uint32_t>(bits >> 32) & ~std::uint32_t{3};
+	return static_cast<int>(upperWord | (isMultiplied ? 1 : 0));
 }
 
 // Convert an integer to a rk value.
 int GetRKValueFromInteger(int value)
 {
-	value <<= 2;
-	value |= 2;
-	return value;
+	return static_cast<int>((static_cast<std::uint32_t>(value) << 2) | 2);
 }
 
 // Returns true if the supplied double can be stored as a rk value.
@@ -4553,8 +4538,13 @@ bool BasicExcel::Load(const char* filename)
 		worksheets_.clear();
 
 		vector<char> data;
-		file_.ReadFile("Workbook", data);
-		Read(&*(data.begin()), data.size());
+		if (file_.ReadFile("Workbook", data) != YCompoundFiles::CompoundFile::SUCCESS || data.size() < 4)
+		{
+			file_.Close();
+			yesheets_.clear();
+			return false;
+		}
+		Read(data.data(), data.size());
 		UpdateYExcelWorksheet();
 		return true;
 	}
@@ -4652,7 +4642,7 @@ BasicExcelWorksheet* BasicExcel::AddWorksheet(int sheetIndex)
 	do
 	{
 		char sname[50];
-		sprintf(sname, "Sheet%d", sheetNo++);
+		sprintf(sname, "Sheet%zu", sheetNo++);
 		yesheet = AddWorksheet(sname, sheetIndex);
 	} while (!yesheet);
 	return yesheet;

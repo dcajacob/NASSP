@@ -25,7 +25,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <stdio.h>
 #include <math.h>
 #include "nasspdefs.h"
@@ -33,6 +33,10 @@
 #include "checklistController.h"
 #include "saturn.h"
 #include "LEM.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeRenderApi.h"
+#include "Production/ResourceResolver.h"
+#endif
 
 //Code to make the compiler shut up.
 #pragma warning ( push )
@@ -351,23 +355,24 @@ bool ChecklistController::autoComplete()
 // Todo: Verify
 bool inline ChecklistController::init()
 {
-	return init(DefaultChecklistFile);
+	return init(static_cast<const char*>(nullptr));
 }
 // Todo: Verify
-bool ChecklistController::init(char *checkFile)
+bool ChecklistController::init(const char *checkFile)
 {
 	if (!init(true))
 		return false;
 
-	if (*checkFile == '\0') {
-		if (!file.Load(DefaultChecklistFile)) {
-			return false;
-		}
-	} else if (!file.Load(checkFile)) {
-		if (!file.Load(DefaultChecklistFile)) {
-			return false;
-		}
-	}
+	const auto loadWorkbook = [this](const char* name) {
+#if defined(NASSP_NATIVE_LINUX)
+		const auto* files = orbiter::production::GetNativeRenderContext().programFiles;
+		return files && files->Contains(name) && file.Load(files->Resolve(name).c_str());
+#else
+		return file.Load(name);
+#endif
+	};
+	if ((!checkFile || !*checkFile || !loadWorkbook(checkFile)) && !loadWorkbook(DefaultChecklistFile))
+		return false;
 
 	BasicExcelWorksheet* sheet;
 	vector<BasicExcelCell> cells;

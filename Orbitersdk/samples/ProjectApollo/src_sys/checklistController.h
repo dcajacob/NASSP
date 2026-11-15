@@ -44,7 +44,7 @@
 #include <string>
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "nasspdefs.h"
 #include "connector.h"
 #include "BasicExcelVC6.hpp"
@@ -63,7 +63,11 @@ using namespace YExcel;
 #define ChecklistContainerStartString "<container>"
 #define ChecklistContainerEndString "</container>"
 
+#if defined(NASSP_NATIVE_LINUX)
+#define DefaultChecklistFile "Doc\\Project Apollo - NASSP\\Checklists\\CSM Default Checklists.xls"
+#else
 #define DefaultChecklistFile "Doc\\Project Apollo - NASSP\\Check List\\Mission checklist\\Default Checklist.xls"
+#endif
 
 struct SaturnEvents;
 /// -------------------------------------------------------------
@@ -554,7 +558,7 @@ public:
 /// WARNING:  once this is called, you cannot call any other init
 /// function!
 /// -------------------------------------------------------------
-	bool init(char *checkFile);
+	bool init(const char *checkFile);
 /// -------------------------------------------------------------
 /// This method initializes any vessel for any mission.  Uses a
 /// custom checklist file where the checkFile parameter is the

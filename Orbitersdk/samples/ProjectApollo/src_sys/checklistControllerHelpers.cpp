@@ -26,6 +26,7 @@
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
 #include "checklistController.h"
+#include <cstdio>
 
 // Code to make the compiler shut up.
 #pragma warning ( push )
@@ -135,7 +136,7 @@ void ChecklistItem::init(vector<BasicExcelCell> &cells, const vector<ChecklistGr
 	if (cells[3].GetString())
 		strncpy(panel, cells[3].GetString(),100);
 	else if (cells[3].GetInteger() != 0) 
-		_snprintf(panel, 100, "%d", cells[3].GetInteger()); 
+		std::snprintf(panel, sizeof(panel), "%d", cells[3].GetInteger());
 	
 	if (cells[4].GetString())
 		strncpy(heading1, cells[4].GetString(),100);

@@ -73,11 +73,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
 #include <map>
+#include <type_traits>
 #include <vector>
 using namespace std;
 
@@ -133,12 +135,13 @@ struct LittleEndian
 	#define READWRITE(Type) \
 	static void Read(const char* buffer, Type& retVal, int pos=0, int bytes=0)	\
 	{	\
-		retVal = Type(0);	\
+		std::make_unsigned_t<Type> bits = 0;	\
 		if (bytes == 0) bytes = sizeof(Type);	\
 		for (size_t i=0; i<bytes; ++i)	\
 		{	\
-			retVal |= ((Type)((unsigned char)buffer[pos+i])) << 8*i;	\
+			bits |= static_cast<std::make_unsigned_t<Type>>(static_cast<unsigned char>(buffer[pos+i])) << 8*i;	\
 		}	\
+		retVal = static_cast<Type>(bits);	\
 	}	\
 	static void ReadString(const char* buffer, Type* str, int pos=0, int bytes=0)	\
 	{	\
@@ -159,12 +162,7 @@ struct LittleEndian
 	}	\
 	static void Read(const vector<char>& buffer, Type& retVal, int pos=0, int bytes=0)	\
 	{	\
-		retVal = Type(0);	\
-		if (bytes == 0) bytes = sizeof(Type);	\
-		for (size_t i=0; i<bytes; ++i)	\
-		{	\
-			retVal |= ((Type)((unsigned char)buffer[pos+i])) << 8*i;	\
-		}	\
+		Read(buffer.data(), retVal, pos, bytes);	\
 	}	\
 	static void ReadString(const vector<char>& buffer, Type* str, int pos=0, int bytes=0)	\
 	{	\
@@ -191,8 +189,8 @@ struct LittleEndian
 	READWRITE(unsigned int)
 	READWRITE(long)
 	READWRITE(unsigned long)
-	READWRITE(__int64)
-	READWRITE(unsigned __int64)
+	READWRITE(long long)
+	READWRITE(unsigned long long)
 
 	#undef READWRITE
 
@@ -333,7 +331,7 @@ protected:
 		void Write(char* block);
 		void Read(char* block);
 
-		__int64 fileType_;		// Magic number identifying this as a compound file system (0x0000)
+		std::uint64_t fileType_;		// Magic number identifying this as a compound file system (0x0000)
 		int uk1_;					// Unknown constant (0x0008)
 		int uk2_;					// Unknown constant (0x000C)
 		int uk3_;					// Unknown constant (0x0010)
@@ -918,13 +916,6 @@ public:
 					size_t colIndex_;
 					size_t XFRecordIndex_;
 					double value_;
-
-				private:
-					union 
-					{
-						__int64 intvalue_;
-						double doublevalue_;
-					} intdouble_;
 				};
 				struct RK : public Record
 				{
