@@ -310,6 +310,20 @@ if(NASSP_BUILD_NATIVE_LINUX)
         target_link_options(${target} PRIVATE "-Wl,--no-undefined")
     endforeach()
     target_link_libraries(NasspLC34 PRIVATE NasspInstrumentUnit)
+
+    add_library(NasspFloatBag MODULE src_landing/FloatBag.cpp)
+    add_library(NasspLES MODULE src_saturn/LES.cpp)
+    set_target_properties(NasspFloatBag PROPERTIES OUTPUT_NAME FloatBag)
+    set_target_properties(NasspLES PROPERTIES OUTPUT_NAME LES)
+    set_target_properties(NasspFloatBag NasspLES PROPERTIES
+        PREFIX ""
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+    )
+    foreach(target IN ITEMS NasspFloatBag NasspLES)
+        target_include_directories(${target} PRIVATE src_aux)
+        target_link_libraries(${target} PRIVATE NasspNativeOrbiterSdk)
+        target_link_options(${target} PRIVATE "-Wl,--no-undefined")
+    endforeach()
     return()
 endif()
 

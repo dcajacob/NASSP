@@ -24,7 +24,10 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
 
 #include "nasspdefs.h"
 #include "LES.h"
@@ -436,7 +439,13 @@ void LES::SetState(LESSettings &state)
 
 static int refcount = 0;
 
-DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
+#if defined(NASSP_NATIVE_LINUX)
+#define APOLLO_VESSEL_CALLBACK static
+#else
+#define APOLLO_VESSEL_CALLBACK DLLCLBK
+#endif
+
+APOLLO_VESSEL_CALLBACK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 
 {
 	VESSEL *v;
@@ -450,7 +459,7 @@ DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 }
 
 
-DLLCLBK void ovcExit (VESSEL *vessel)
+APOLLO_VESSEL_CALLBACK void ovcExit (VESSEL *vessel)
 
 {
 	--refcount;
@@ -466,3 +475,23 @@ DLLCLBK void ovcExit (VESSEL *vessel)
 	if (vessel) 
 		delete (LES *)vessel;
 }
+
+#undef APOLLO_VESSEL_CALLBACK
+
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+using LESFactory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor nativeModule = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Launch Escape System",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI,
+	LESFactory::initialize, LESFactory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &nativeModule : nullptr;
+}
+#endif
