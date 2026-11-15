@@ -152,7 +152,7 @@ agc_load_binfile(agc_t *State, const char *RomImage)
 	  Parity = RawValue & 1;
 
 	  State->Fixed[Bank][j] = RawValue >> 1;
-	  State->Parities[(Bank * 02000 + j) / 32] |= Parity << (j % 32);
+	  State->Parities[(Bank * 02000 + j) / 32] |= (uint32_t) Parity << (j % 32);
 	  j++;
 
 	  // If any of the parity bits are actually set, this must be a ROM built with
@@ -176,6 +176,7 @@ agc_load_binfile(agc_t *State, const char *RomImage)
 	    Bank++;
 	}
     }
+  RetVal = 0;
 
 Done:
   if (fp != NULL)
@@ -197,7 +198,11 @@ agc_engine_init (agc_t * State, const char *RomImage, const char *CoreDump,
 #endif
 
   if (RomImage)
-	  RetVal = agc_load_binfile(State, RomImage);
+    {
+      RetVal = agc_load_binfile(State, RomImage);
+      if (RetVal != 0)
+        return RetVal;
+    }
  
   // Clear i/o channels.
   for (i = 0; i < NUM_CHANNELS; i++)
@@ -362,7 +367,7 @@ MakeCoreDump (agc_t * State, const char *CoreDump)
       fprintf (cd, "%06o\n", State->Erasable[Bank][j]);
 
   // Write out CPU state variables that aren't part of normal memory.
-  fprintf (cd, "%llo\n", State->CycleCounter);
+  fprintf (cd, "%llo\n", (unsigned long long) State->CycleCounter);
   fprintf (cd, "%o\n", State->ExtraCode);
   fprintf (cd, "%o\n", State->AllowInterrupt);
   //fprintf (cd, "%o\n", State->RegA16);

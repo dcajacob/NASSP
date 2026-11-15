@@ -1429,7 +1429,7 @@ PushCduFifo (agc_t *State, int Counter, int IncType)
       return;
     }
   if (CduLog != NULL)
-    fprintf (CduLog, "< %lld %o %02o\n", State->CycleCounter, Counter, IncType);
+    fprintf (CduLog, "< %llu %o %02o\n", (unsigned long long) State->CycleCounter, Counter, IncType);
   CduFifo = &CduFifos[Counter - FIRST_CDU];
   // It's a little easier if the FIFO is completely empty.
   if (CduFifo->Size == 0)
@@ -1495,13 +1495,13 @@ ServiceCduFifo (agc_t *State)
         {
           CounterMCDU (Ch);
 	  if (CduLog != NULL)
-	    fprintf (CduLog, ">\t\t%lld %o 03\n", State->CycleCounter, CduChecker + FIRST_CDU);
+	    fprintf (CduLog, ">\t\t%llu %o 03\n", (unsigned long long) State->CycleCounter, CduChecker + FIRST_CDU);
 	}
       else
         {
           CounterPCDU (Ch);
 	  if (CduLog != NULL)
-	    fprintf (CduLog, ">\t\t%lld %o 01\n", State->CycleCounter, CduChecker + FIRST_CDU);
+	    fprintf (CduLog, ">\t\t%llu %o 01\n", (unsigned long long) State->CycleCounter, CduChecker + FIRST_CDU);
 	}
       Count--;
       // Update the FIFO.
