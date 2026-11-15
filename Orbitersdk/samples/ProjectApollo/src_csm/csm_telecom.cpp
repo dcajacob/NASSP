@@ -4912,12 +4912,30 @@ void PCM::generate_stream_hbr(){
 	}
 }
 
-void PCM::ConsumeMccByte()
+void PCM::ConsumeMccByte(double simt)
 {
 	if (mcc_size <= 0) return;
-	rx_data[rx_offset] = mcc_data[mcc_offset++];
-	if (sat->UPTLMSwitch1.GetState() != TOGGLESWITCH_DOWN)
-		handle_uplink();
+	if (uplink_state == 0 && mcc_data[mcc_offset] == MCC_WAIT_FOR_P27) {
+		// Wait for the CMC to install the previous load and exit P27.
+		constexpr int modeRegisterBank = 2;
+		constexpr int modeRegisterAddress = 011;
+		if (sat->agc.GetErasable(modeRegisterBank, modeRegisterAddress) == 27) {
+			mccNextLoadTime = -1.0;
+			return;
+		}
+		// The program number changes before Pinball is ready for another load.
+		constexpr double betweenLoadSeconds = 12.0;
+		if (mccNextLoadTime < 0.0)
+			mccNextLoadTime = simt + betweenLoadSeconds;
+		if (simt < mccNextLoadTime)
+			return;
+		mccNextLoadTime = -1.0;
+		++mcc_offset;
+	} else {
+		rx_data[rx_offset] = mcc_data[mcc_offset++];
+		if (sat->UPTLMSwitch1.GetState() != TOGGLESWITCH_DOWN)
+			handle_uplink();
+	}
 	if (mcc_offset >= mcc_size)
 		mcc_offset = mcc_size = 0;
 }
@@ -4937,7 +4955,7 @@ void PCM::perform_io(double simt)
 		if (mcc_size > 0) {
 			if (fabs(simt - last_rx) >= 0.1 && !sat->agc.InterruptPending(ApolloGuidance::Interrupt::UPRUPT)) {
 				last_rx = simt;
-				ConsumeMccByte();
+				ConsumeMccByte(simt);
 			}
 		} else if (telemetryListener && telemetryClient.Accept(telemetryListener) == 0) {
 			conn_state = 2;
@@ -4973,7 +4991,7 @@ void PCM::perform_io(double simt)
 			DisconnectTelemetryClient();
 		}
 	}
-	ConsumeMccByte();
+	ConsumeMccByte(simt);
 }
 
 // Handle data moved to buffer from either the socket or mcc buffer

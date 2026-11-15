@@ -376,7 +376,10 @@ public:
 	friend class MCC;				// Allow MCC to write directly to buffer
 
 private:
-	void ConsumeMccByte();
+	// Marker between complete P27 loads in the internal MCC queue.
+	static constexpr unsigned char MCC_WAIT_FOR_P27 = 0xff;
+	double mccNextLoadTime = -1.0;
+	void ConsumeMccByte(double simt);
 	void DisconnectTelemetryClient();
 	void ReportSocketError(const char* operation, int error);
 

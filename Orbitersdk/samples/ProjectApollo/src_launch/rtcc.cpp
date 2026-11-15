@@ -23,6 +23,8 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 //#pragma include_alias( <fstream.h>, <fstream> )
+#include <cstring>
+
 #include "NasspOrbiterSdk.h"
 #include "soundlib.h"
 #include "ioChannels.h"
@@ -6069,7 +6071,7 @@ void RTCC::AGCStateVectorUpdate(char *str, int comp, int ves, EphemerisData sv, 
 	V7XUpdate(71, str, buf->Octals, 17);
 	if (v66)
 	{
-		sprintf(str, "%sV66ER", str);
+		std::strcat(str, "V66ER");
 	}
 }
 
@@ -6148,7 +6150,7 @@ void RTCC::AGCStateVectorUpdate(char *str, SV sv, bool csm, bool v66)
 	V7XUpdate(71, str, emem, 17);
 	if (v66)
 	{
-		sprintf(str, "%sV66ER", str);
+		std::strcat(str, "V66ER");
 	}
 }
 
@@ -6200,12 +6202,12 @@ void RTCC::IncrementAGCLiftoffTime(char *list, int veh, double dt)
 
 void RTCC::V7XUpdate(int verb, char *list, int* emem, int n)
 {
-	sprintf(list, "V%dE%dE", verb, emem[0]);
-	for (int i = 1;i < n;i++)
+	char *end = list + sprintf(list, "V%dE%dE", verb, emem[0]);
+	for (int i = 1; i < n; i++)
 	{
-		sprintf(list, "%s%dE", list, emem[i]);
+		end += sprintf(end, "%dE", emem[i]);
 	}
-	sprintf(list, "%sV33E", list);
+	sprintf(end, "V33E");
 }
 
 void RTCC::TLANDUpdate(char *list, double t_land)

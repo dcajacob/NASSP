@@ -49,6 +49,7 @@
 #include "nassputils.h"
 #include "Mission.h"
 #include <chrono>
+#include <cstring>
 #include <thread>
 
 using namespace nassp;
@@ -1245,6 +1246,8 @@ void MCC::pushCMCUplinkString(const char *str) {
 	while (x < len) {
 		if (str[x] == '\n' || str[x] == '\r') { x++; continue; } // Ignore CR and LF if they are present (they should not be)
 		this->pushAGCUplinkKey(str[x], true);
+		if (x >= 3 && str[x + 1] == 'V' && std::strncmp(str + x - 3, "V33E", 4) == 0)
+			pushUplinkData(PCM::MCC_WAIT_FOR_P27);
 		x++;
 	}
 }
@@ -2922,13 +2925,13 @@ void MCC::drawPad(bool writetofile){
 		{
 			P27PAD * form = (P27PAD *)padForm;
 			OrbMech::format_time_HHHMMSS(tmpbuf, form->GET[0]);
-			sprintf(buffer, "P27 UPDATE\nPURP V%d\nGET %s\n304 01 INDEX %d\n", form->Verb[0], tmpbuf, form->Index[0]);
-			for (int i = 0;i < 16;i++)
+			char *end = buffer + sprintf(buffer, "P27 UPDATE\nPURP V%d\nGET %s\n304 01 INDEX %d\n", form->Verb[0], tmpbuf, form->Index[0]);
+			for (int i = 0; i < 16; i++)
 			{
-				sprintf(buffer, "%s %02o %05d\n", buffer,i+2, form->Data[0][i]);
+				end += sprintf(end, " %02o %05d\n", i + 2, form->Data[0][i]);
 			}
 			OrbMech::format_time_prec(tmpbuf, form->NavChk);
-			sprintf(buffer, "%sNAV CHECK (N34)\n%s\nLAT %+07.2f\nLONG %+07.2f\nALT %+07.1f\n", buffer, tmpbuf, form->lat, form->lng, form->alt);
+			snprintf(end, sizeof(buffer) - (end - buffer), "NAV CHECK (N34)\n%s\nLAT %+07.2f\nLONG %+07.2f\nALT %+07.1f\n", tmpbuf, form->lat, form->lng, form->alt);
 			oapiAnnotationSetText(NHpad, buffer);
 		}
 		break;
@@ -3012,33 +3015,15 @@ void MCC::drawPad(bool writetofile){
 		{
 			AP7TPI * form = (AP7TPI *)padForm;
 			OrbMech::format_time_prec(tmpbuf, form->GETI);
-			sprintf(buffer, "TERMINAL PHASE INITIATE\nGETI\n%s\n%+07.1f Vgx\n%+07.1f Vgy\n%+07.1f Vgz\n", tmpbuf, form->Vg.x, form->Vg.y, form->Vg.z);
-			if (form->Backup_dV.x > 0)
-			{
-				sprintf(buffer, "%sF%04.1f/%02.0f DVX LOS/BT\n", buffer, abs(form->Backup_dV.x), form->Backup_bT.x);
-			}
-			else
-			{
-				sprintf(buffer, "%sA%04.1f/%02.0f DVX LOS/BT\n", buffer, abs(form->Backup_dV.x), form->Backup_bT.x);
-			}
-			if (form->Backup_dV.y > 0)
-			{
-				sprintf(buffer, "%sR%04.1f/%02.0f DVY LOS/BT\n", buffer, abs(form->Backup_dV.y), form->Backup_bT.y);
-			}
-			else
-			{
-				sprintf(buffer, "%sL%04.1f/%02.0f DVY LOS/BT\n", buffer, abs(form->Backup_dV.y), form->Backup_bT.y);
-			}
-			if (form->Backup_dV.z > 0)
-			{
-				sprintf(buffer, "%sD%04.1f/%02.0f DVZ LOS/BT\n", buffer, abs(form->Backup_dV.z), form->Backup_bT.z);
-			}
-			else
-			{
-				sprintf(buffer, "%sU%04.1f/%02.0f DVZ LOS/BT\n", buffer, abs(form->Backup_dV.z), form->Backup_bT.z);
-			}
-			sprintf(buffer, "%sX%04.1f/%3.1f\nX%06.2f R\n%+06.1f RDOT AT TPI\n%06.2f EL MINUS 5 MIN\n%06.2f AZ", buffer, form->dH_TPI, form->dH_Max, form->R, form->Rdot, form->EL, form->AZ);
-
+			snprintf(buffer, sizeof(buffer),
+				"TERMINAL PHASE INITIATE\nGETI\n%s\n%+07.1f Vgx\n%+07.1f Vgy\n%+07.1f Vgz\n"
+				"%c%04.1f/%02.0f DVX LOS/BT\n%c%04.1f/%02.0f DVY LOS/BT\n%c%04.1f/%02.0f DVZ LOS/BT\n"
+				"X%04.1f/%3.1f\nX%06.2f R\n%+06.1f RDOT AT TPI\n%06.2f EL MINUS 5 MIN\n%06.2f AZ",
+				tmpbuf, form->Vg.x, form->Vg.y, form->Vg.z,
+				form->Backup_dV.x > 0 ? 'F' : 'A', abs(form->Backup_dV.x), form->Backup_bT.x,
+				form->Backup_dV.y > 0 ? 'R' : 'L', abs(form->Backup_dV.y), form->Backup_bT.y,
+				form->Backup_dV.z > 0 ? 'D' : 'U', abs(form->Backup_dV.z), form->Backup_bT.z,
+				form->dH_TPI, form->dH_Max, form->R, form->Rdot, form->EL, form->AZ);
 			oapiAnnotationSetText(NHpad, buffer);
 		}
 	break;
@@ -4280,7 +4265,11 @@ void MCC::keyDown(std::uint32_t key){
 				// Build buf
 				buf[0] = 0;
 				if (PCOption_Enabled == true) { sprintf(buf, "2: %s\n", PCOption_Text); }
-				if (NCOption_Enabled == true) { sprintf(buf, "%s3: %s\n", buf, NCOption_Text); }
+				if (NCOption_Enabled)
+				{
+					size_t length = std::strlen(buf);
+					snprintf(buf + length, sizeof(buf) - length, "3: %s\n", NCOption_Text);
+				}
 				sprintf(menubuf, "CAPCOM MENU\n1: Voice Check\n%s4: Toggle Auto PAD\n5: Hide/Show PAD\n6: Redisplay Messages\n8: Request Abort\n9: Debug Options", buf);
 				oapiAnnotationSetText(NHmenu,menubuf); // Present menu
 				// 2: Toggle Ground Trk\n3: Toggle Mission Trk\n
