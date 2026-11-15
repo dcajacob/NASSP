@@ -46,6 +46,26 @@ See http://nassp.sourceforge.net/license/ for more details.
 #include "mcc.h"
 #include "rtcc.h"
 #include "nassputils.h"
+#include <fstream>
+
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeGraphics.h"
+#include "Production/ResourceResolver.h"
+#endif
+
+namespace {
+std::ifstream OpenRTCCInput(const std::string& filename)
+{
+#if defined(NASSP_NATIVE_LINUX)
+	const auto* files = orbiter::production::GetNativeRenderContext().configurationFiles;
+	const std::string path = "ProjectApollo/RTCC/" + filename;
+	if (!files || !files->Contains(path)) return {};
+	return std::ifstream(files->Resolve(path));
+#else
+	return std::ifstream(".\\Config\\ProjectApollo\\RTCC\\" + filename);
+#endif
+}
+}
 
 using namespace nassp;
 
@@ -2038,12 +2058,11 @@ int RTCC::QMSEARCH(std::string file)
 	//Card 7: GMT of TLI pericynthion (hrs), GMT of LOI pericynthion (hrs), GMT of node (hrs), spare
 	//Card 8: Latitude of node (deg), Longitude of node (deg), height of node (NM), spare
 
-	char Buff[128];
+
 	int card, day, azimuth, opportunity, err;
 
-	sprintf_s(Buff, ".\\Config\\ProjectApollo\\RTCC\\%s.txt", file.c_str());
 
-	ifstream sfptable(Buff);
+	auto sfptable = OpenRTCCInput(file + ".txt");
 
 	if (sfptable.is_open() == false) return 1;
 
@@ -2246,13 +2265,12 @@ int RTCC::QMMBLD(std::string file)
 {
 	//This function loads the TLI targeting parameters for the launch day
 	//Loaded file has to have the punch card format from MSC memo 69-FM-171 (NTRS ID 19740072570). One punch card = one line
-	char Buff[128];
-	sprintf_s(Buff, ".\\Config\\ProjectApollo\\RTCC\\%s.txt", file.c_str());
+
 
 	const double R_Earth = 6378165.0;
 	const double ER2HR2ToM2SEC2 = pow(R_Earth / 3600.0, 2);
 
-	ifstream startable(Buff);
+	auto startable = OpenRTCCInput(file + ".txt");
 
 	if (startable.is_open() == false) return 1;
 
@@ -2514,9 +2532,9 @@ void RTCC::LoadMissionInitParameters(int year, int month, int day)
 {
 	//This function loads launch day specific parameters that might be updated and might be saved/loaded
 	char Buff[128];
-	sprintf_s(Buff, ".\\Config\\ProjectApollo\\RTCC\\%d-%02d-%02d Init.txt", year, month, day);
+	sprintf_s(Buff, "%d-%02d-%02d Init.txt", year, month, day);
 
-	ifstream startable(Buff);
+	auto startable = OpenRTCCInput(Buff);
 	if (startable.is_open())
 	{
 		std::string line, strtemp;
@@ -2525,7 +2543,7 @@ void RTCC::LoadMissionInitParameters(int year, int month, int day)
 
 		while (getline(startable, line))
 		{
-			sprintf_s(Buff, line.c_str());
+			sprintf_s(Buff, "%s", line.c_str());
 
 			papiReadScenario_int(Buff, "LDPPDwellOrbits", GZGENCSN.LDPPDwellOrbits);
 			papiReadScenario_double(Buff, "PZLOIPLN_HP_LLS", PZLOIPLN.HP_LLS);
@@ -2643,9 +2661,8 @@ bool RTCC::LoadMissionConstantsFile(std::string file)
 {
 	//This function loads mission specific constants that will rarely be changed or saved/loaded
 	char Buff[128];
-	sprintf_s(Buff, ".\\Config\\ProjectApollo\\RTCC\\%s.txt", file.c_str());
 
-	ifstream missionfile(Buff);
+	auto missionfile = OpenRTCCInput(file + ".txt");
 	if (missionfile.is_open())
 	{
 		std::string line, strtemp;
@@ -2656,7 +2673,7 @@ bool RTCC::LoadMissionConstantsFile(std::string file)
 
 		while (getline(missionfile, line))
 		{
-			sprintf_s(Buff, line.c_str());
+			sprintf_s(Buff, "%s", line.c_str());
 
 			papiReadScenario_int(Buff, "AGCEpoch", SystemParameters.AGCEpoch);
 			papiReadScenario_double(Buff, "TEPHEM0", SystemParameters.TEPHEM0); //Only load for Skylark
@@ -38939,7 +38956,7 @@ void RTCC::EMSGSUPP(int QUEID, int refs, int refs2, unsigned man, bool headsup)
 	//Initialize star table
 	if (QUEID == 0)
 	{
-		ifstream startable(".\\Config\\ProjectApollo\\RTCC\\Star Table.txt");
+		auto startable = OpenRTCCInput("Star Table.txt");
 		std::string line;
 		VECTOR3 temp;
 		unsigned i = 0;
