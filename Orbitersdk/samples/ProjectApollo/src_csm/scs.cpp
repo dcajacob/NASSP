@@ -25,7 +25,13 @@
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "NasspCsmBitmap.h"
+#include "Production/NativeInterpreterSdk.h"
+#include <algorithm>
+#include <ctime>
+#endif
 #include "soundlib.h"
 #include "resource.h"
 #include "nasspdefs.h"
@@ -341,7 +347,7 @@ const double BMAG::GYRO_OUTPUT_LIMIT = 16.0*RAD;
 BMAG::BMAG() {
 
 	sat = NULL;
-	powered = FALSE;
+	powered = false;
 	dc_source = NULL;
 	ac_source = NULL;
 	dc_bus = NULL;
@@ -1604,19 +1610,19 @@ bool ASCP::YawDnClick(int Event)
 void ASCP::PaintRoll(SURFHANDLE surf, SURFHANDLE wheel, int TexMul )
 
 {
-	oapiBlt(surf, wheel, 0, 0, (int) rolldisplay * 17*TexMul, 0, 17*TexMul, 36*TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, wheel, 0, 0, (int) rolldisplay * 17*TexMul, 0, 17*TexMul, 36*TexMul, NasspPanelBlitKey);
 }
 
 void ASCP::PaintPitch(SURFHANDLE surf, SURFHANDLE wheel, int TexMul)
 
 {
-	oapiBlt(surf, wheel, 0, 0, (int) pitchdisplay * 17*TexMul, 0, 17*TexMul, 36*TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, wheel, 0, 0, (int) pitchdisplay * 17*TexMul, 0, 17*TexMul, 36*TexMul, NasspPanelBlitKey);
 }
 
 void ASCP::PaintYaw(SURFHANDLE surf, SURFHANDLE wheel, int TexMul)
 
 {
-	oapiBlt(surf, wheel, 0, 0, (int) yawdisplay * 17*TexMul, 0, 17*TexMul, 36*TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, wheel, 0, 0, (int) yawdisplay * 17*TexMul, 0, 17*TexMul, 36*TexMul, NasspPanelBlitKey);
 }
 
 bool ASCP::PaintDisplay(SURFHANDLE surf, SURFHANDLE digits, double value, int TexMul) {
@@ -1630,34 +1636,34 @@ bool ASCP::PaintDisplay(SURFHANDLE surf, SURFHANDLE digits, double value, int Te
 
 	srx = 8 + (digit0 * 25);	 
 	if (!(beta != 0 && digit == 9 && (digit1 == 9 || (digit1 == 5 && digit0 == 3)))) {
-		oapiBlt(surf, digits, 0, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, digits, 0, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, NasspPanelBlitKey);
 	} else {
-		oapiBlt(surf, digits, 0, sry*TexMul, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul - sry*TexMul, SURF_PREDEF_CK);			
+		oapiBlt(surf, digits, 0, sry*TexMul, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul - sry*TexMul, NasspPanelBlitKey);
 		if (digit0 == 3) digit0 = 0; else digit0++;
 		srx = 8 + (digit0 * 25);			
-		oapiBlt(surf, digits, 0, 0, srx*TexMul, 45*TexMul - sry*TexMul, 9*TexMul, sry*TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, digits, 0, 0, srx*TexMul, 45*TexMul - sry*TexMul, 9*TexMul, sry*TexMul, NasspPanelBlitKey);
 	}
 
 	srx = 8 + (digit1 * 25);
 	if (digit != 9 || beta == 0) {
-		oapiBlt(surf, digits, 10*TexMul, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, digits, 10*TexMul, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, NasspPanelBlitKey);
 	} else {
-		oapiBlt(surf, digits, 10*TexMul, sry*TexMul, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul - sry*TexMul, SURF_PREDEF_CK);			
+		oapiBlt(surf, digits, 10*TexMul, sry*TexMul, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul - sry*TexMul, NasspPanelBlitKey);
 
 		if (digit1 == 9) digit1 = 0; else digit1++;
 		if (digit1 == 6 && digit0 == 3) digit1 = 0;
 		srx = 8 + (digit1 * 25);			
-		oapiBlt(surf, digits, 10*TexMul, 0, srx*TexMul, 45*TexMul - sry*TexMul, 9*TexMul, sry*TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, digits, 10*TexMul, 0, srx*TexMul, 45*TexMul - sry*TexMul, 9*TexMul, sry*TexMul, NasspPanelBlitKey);
 	}
 
 	srx = 8 + (digit * 25);
 	if (beta == 0) {		
-		oapiBlt(surf, digits, 20*TexMul, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, digits, 20*TexMul, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, NasspPanelBlitKey);
 	} else {
-		oapiBlt(surf, digits, 20*TexMul, sry*TexMul, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul - sry*TexMul, SURF_PREDEF_CK);			
+		oapiBlt(surf, digits, 20*TexMul, sry*TexMul, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul - sry*TexMul, NasspPanelBlitKey);
 		if (digit == 9) digit = 0; else digit++;
 		srx = 8 + (digit * 25);			
-		oapiBlt(surf, digits, 20*TexMul, 0, srx*TexMul, 45*TexMul - sry*TexMul, 9*TexMul, sry*TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, digits, 20*TexMul, 0, srx*TexMul, 45*TexMul - sry*TexMul, 9*TexMul, sry*TexMul, NasspPanelBlitKey);
 	}
 	return true;
 }
@@ -4057,10 +4063,10 @@ void ECA::TimeStep(double simdt) {
 			} else {
 				if (pseudorate.x > 0) {
 					pseudorate.x -= 0.02 * simdt; 
-					pseudorate.x = max(0, pseudorate.x);
+					pseudorate.x = max(0.0, pseudorate.x);
 				} else {
 					pseudorate.x += 0.02 * simdt; 
-					pseudorate.x = min(0, pseudorate.x);
+					pseudorate.x = min(0.0, pseudorate.x);
 				}
 			}
 		} else {
@@ -4074,10 +4080,10 @@ void ECA::TimeStep(double simdt) {
 			} else {
 				if (pseudorate.y > 0) {
 					pseudorate.y -= 0.02 * simdt; 
-					pseudorate.y = max(0, pseudorate.y);
+					pseudorate.y = max(0.0, pseudorate.y);
 				} else {
 					pseudorate.y += 0.02 * simdt; 
-					pseudorate.y = min(0, pseudorate.y);
+					pseudorate.y = min(0.0, pseudorate.y);
 				}
 			}
 		} else {
@@ -4091,10 +4097,10 @@ void ECA::TimeStep(double simdt) {
 			} else {
 				if (pseudorate.z > 0) {
 					pseudorate.z -= 0.02 * simdt; 
-					pseudorate.z = max(0, pseudorate.z);
+					pseudorate.z = max(0.0, pseudorate.z);
 				} else {
 					pseudorate.z += 0.02 * simdt; 
-					pseudorate.z = min(0, pseudorate.z);
+					pseudorate.z = min(0.0, pseudorate.z);
 				}
 			}
 		} else {
@@ -5462,6 +5468,34 @@ void EMS::LoadState(FILEHANDLE scn) {
 	}
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+bool EMS::WriteScrollToFile()
+{
+	std::time_t now = std::time(nullptr);
+	std::tm local{};
+	if (!localtime_r(&now, &local)) return false;
+	char filename[80];
+	if (!std::strftime(filename, sizeof(filename), "ProjectApollo EMSScroll %Y-%m-%d_%H-%M-%S", &local))
+		return false;
+
+	const SURFHANDLE canvas = nassp::LoadCsmBitmap(IDB_EMS_SCROLL_LEO);
+	auto* sketch = oapiGetSketchpad(canvas);
+	if (!sketch) {
+		oapiDestroySurface(canvas);
+		return false;
+	}
+	auto* pen = oapiCreatePen(1, 1, oapiGetColour(255, 0, 0));
+	sketch->SetPen(pen);
+	sketch->SetBackgroundMode(oapi::Sketchpad::BK_TRANSPARENT);
+	const int points = std::clamp(ScribePntCnt, 0, EMS_SCROLL_LENGTH_PX * 3);
+	if (points > 1) sketch->Polyline(ScribePntArray, points);
+	oapiReleaseSketchpad(sketch);
+	oapiReleasePen(pen);
+	const bool saved = oapiSaveSurface(filename, canvas, oapi::IMAGE_BMP);
+	oapiDestroySurface(canvas);
+	return saved;
+}
+#else
 static PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp);
 static bool CreateBMPFile(LPTSTR pszFile, PBITMAPINFO pbi, HBITMAP hBMP, HDC hDC);
 
@@ -5519,6 +5553,8 @@ bool EMS::WriteScrollToFile() {
 	return ret;
 }
 
+#endif
+
 void EMS::SetReference(const VECTOR3& ref, const VECTOR3& _dir)
 {
 	reference = ref;
@@ -5553,6 +5589,7 @@ void EMS::DrawSwitchVC(int id, int event, SURFHANDLE surf)
 }
 
 // The following code was found and supplied by computerex at orbiter-forum.  The code is from the MSDN sample code library.
+#if !defined(NASSP_NATIVE_LINUX)
 static PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp)
 { 
 	BITMAP      bmp; 
@@ -5678,3 +5715,4 @@ static bool CreateBMPFile(LPTSTR pszFile, PBITMAPINFO pbi, HBITMAP hBMP, HDC hDC
 	GlobalFree((HGLOBAL)lpBits);
 	return true;
 }
+#endif

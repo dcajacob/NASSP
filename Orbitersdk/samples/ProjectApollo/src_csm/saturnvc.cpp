@@ -25,7 +25,12 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "NasspCsmBitmap.h"
+#include "Production/NativeGraphics.h"
+#include "Production/NativeInterpreterSdk.h"
+#endif
 #include <stdio.h>
 #include <math.h>
 #include "soundlib.h"
@@ -34,10 +39,12 @@
 #include "nasspdefs.h"
 #include "nassputils.h"
 
+#if !defined(NASSP_NATIVE_LINUX)
 #ifdef _OPENORBITER
 #include <gcCoreAPI.h>
 #else
 #include <gcConst.h>
+#endif
 #endif
 
 #include "Mission.h"
@@ -592,6 +599,15 @@ const VECTOR3 floodLightPos_P100 = { 0.0, 0.0, 0.3 };
 const COLOUR4 floodLightColor_P100 = { 1,1,1,0 };
 const COLOUR4 floodLightColor2_P100 = { 0,0,0,0 };
 
+static void SetPanelColourKey(SURFHANDLE surface, DWORD colour)
+{
+#if defined(NASSP_NATIVE_LINUX)
+	nassp::SetCsmSurfaceColourKey(surface, colour);
+#else
+	oapiSetSurfaceColourKey(surface, colour);
+#endif
+}
+
 extern GDIParams g_Param;
 
 void Saturn::InitVC()
@@ -653,28 +669,28 @@ void Saturn::InitVC()
 
 	// Set Colour Key
 
-	oapiSetSurfaceColourKey(srf[SRF_VC_DIGITALDISP], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_DIGITALDISP2], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_DSKYDISP], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_DSKY_LIGHTS], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_MASTERALARM], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_CW_LIGHTS], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_LVENGLIGHTS], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_EMS_SCROLL_BORDER], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_EMS_SCROLL_BUG], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_EMS_LIGHTS], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_ECSINDICATOR], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_SEQUENCERSWITCHES], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_LVENGLIGHTS_S1B], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_SPS_FONT_BLACK], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_SPS_FONT_WHITE], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_SPSMAXINDICATOR], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_SPSMININDICATOR], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_THUMBWHEEL_LARGEFONTSINV], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_CWS_GNLIGHTS], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_DIGITAL90], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_EVENT_TIMER_DIGITS90], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_ABORT], ck);
+	SetPanelColourKey(srf[SRF_VC_DIGITALDISP], ck);
+	SetPanelColourKey(srf[SRF_VC_DIGITALDISP2], ck);
+	SetPanelColourKey(srf[SRF_VC_DSKYDISP], ck);
+	SetPanelColourKey(srf[SRF_VC_DSKY_LIGHTS], ck);
+	SetPanelColourKey(srf[SRF_VC_MASTERALARM], ck);
+	SetPanelColourKey(srf[SRF_VC_CW_LIGHTS], ck);
+	SetPanelColourKey(srf[SRF_VC_LVENGLIGHTS], ck);
+	SetPanelColourKey(srf[SRF_VC_EMS_SCROLL_BORDER], ck);
+	SetPanelColourKey(srf[SRF_VC_EMS_SCROLL_BUG], ck);
+	SetPanelColourKey(srf[SRF_VC_EMS_LIGHTS], ck);
+	SetPanelColourKey(srf[SRF_VC_ECSINDICATOR], ck);
+	SetPanelColourKey(srf[SRF_VC_SEQUENCERSWITCHES], ck);
+	SetPanelColourKey(srf[SRF_VC_LVENGLIGHTS_S1B], ck);
+	SetPanelColourKey(srf[SRF_VC_SPS_FONT_BLACK], ck);
+	SetPanelColourKey(srf[SRF_VC_SPS_FONT_WHITE], ck);
+	SetPanelColourKey(srf[SRF_VC_SPSMAXINDICATOR], ck);
+	SetPanelColourKey(srf[SRF_VC_SPSMININDICATOR], ck);
+	SetPanelColourKey(srf[SRF_VC_THUMBWHEEL_LARGEFONTSINV], ck);
+	SetPanelColourKey(srf[SRF_VC_CWS_GNLIGHTS], ck);
+	SetPanelColourKey(srf[SRF_VC_DIGITAL90], ck);
+	SetPanelColourKey(srf[SRF_VC_EVENT_TIMER_DIGITS90], ck);
+	SetPanelColourKey(srf[SRF_VC_ABORT], ck);
 
 	//
 	// Register active areas for repainting here
@@ -2545,8 +2561,8 @@ bool Saturn::clbkVCRedrawEvent (int id, int event, SURFHANDLE surf)
 		SURFHANDLE SRF_EMS_Tex = oapiGetTextureHandle(hCMVC, VC_TEX_EMS_Scroll_dds);
 
 		oapiBlt(SRF_EMS_Tex, srf[SRF_VC_EMS_SCROLL_LEO], 5*TexMul, 4*TexMul, ems.GetScrollOffset()*TexMul, 0, 132*TexMul, 143*TexMul);
-		oapiBlt(SRF_EMS_Tex, srf[SRF_VC_EMS_SCROLL_BUG], 42*TexMul, (ems.GetGScribe() + 2)*TexMul, 0, 0, 5*TexMul, 5*TexMul, SURF_PREDEF_CK);
-		oapiBlt(SRF_EMS_Tex, srf[SRF_VC_EMS_SCROLL_BORDER], 0, 0, 0, 0, 142*TexMul, 150*TexMul, SURF_PREDEF_CK);
+		oapiBlt(SRF_EMS_Tex, srf[SRF_VC_EMS_SCROLL_BUG], 42*TexMul, (ems.GetGScribe() + 2)*TexMul, 0, 0, 5*TexMul, 5*TexMul, NasspPanelBlitKey);
+		oapiBlt(SRF_EMS_Tex, srf[SRF_VC_EMS_SCROLL_BORDER], 0, 0, 0, 0, 142*TexMul, 150*TexMul, NasspPanelBlitKey);
 		return true;
 	}
 
@@ -5978,7 +5994,7 @@ void Saturn::InitFDAICustomCamera(void) {
 
 
 
-#ifdef _OPENORBITER
+#if defined(_OPENORBITER) || defined(NASSP_NATIVE_LINUX)
 void Saturn::SetVCLighting(UINT meshidx, DWORD *matList, MatProp EmissionMode, double state, int cnt)
 #else
 void Saturn::SetVCLighting(UINT meshidx, DWORD *matList, int EmissionMode, double state, int cnt)
@@ -5995,6 +6011,10 @@ void Saturn::SetVCLighting(UINT meshidx, DWORD *matList, int EmissionMode, doubl
 	{
 		if (matList[i] == VC_MAT_NONE) continue;
 
+#if defined(NASSP_NATIVE_LINUX)
+		const oapi::FVECTOR4 intensity(static_cast<float>(state), static_cast<float>(state), static_cast<float>(state), 1.0f);
+		oapiSetMaterialEx(hMesh, matList[i], EmissionMode, &intensity);
+#else
 		gcCore *pCore = gcGetCoreInterface();
 		if (pCore) {
 			FVECTOR4 value;
@@ -6008,10 +6028,11 @@ void Saturn::SetVCLighting(UINT meshidx, DWORD *matList, int EmissionMode, doubl
 			pCore->MeshMaterial(hMesh, matList[i], EmissionMode, &value, true);
 #endif
 		}
+#endif
 	}
 }
 
-#ifdef _OPENORBITER
+#if defined(_OPENORBITER) || defined(NASSP_NATIVE_LINUX)
 void Saturn::SetVCLighting(UINT meshidx, int material, MatProp EmissionMode, double state, int cnt)
 #else
 void Saturn::SetVCLighting(UINT meshidx, int material, int EmissionMode, double state, int cnt)
@@ -6024,6 +6045,10 @@ void Saturn::SetVCLighting(UINT meshidx, int material, int EmissionMode, double 
     if (!hMesh)
         return;
 
+#if defined(NASSP_NATIVE_LINUX)
+	const oapi::FVECTOR4 intensity(static_cast<float>(state), static_cast<float>(state), static_cast<float>(state), 1.0f);
+	oapiSetMaterialEx(hMesh, material, EmissionMode, &intensity);
+#else
 	gcCore *pCore = gcGetCoreInterface();
 	if (pCore) {
 		FVECTOR4 value;
@@ -6037,6 +6062,7 @@ void Saturn::SetVCLighting(UINT meshidx, int material, int EmissionMode, double 
 		pCore->MeshMaterial(hMesh, material, EmissionMode, &value, true);
 #endif
 	}
+#endif
 }
 
 void Saturn::MoveFlashlight()
@@ -6067,7 +6093,7 @@ void Saturn::SetFlashlightOn(bool state)
 
 void Saturn::ToggleFlashlight()
 {
-	if ((oapiCockpitMode() == COCKPIT_VIRTUAL) && (oapiCameraMode() == CAM_COCKPIT)) {
+	if ((oapiCockpitMode() == COCKPIT_VIRTUAL) && oapiCameraInternal()) {
 		SetFlashlightOn(!flashlightOn);
 	}
 }

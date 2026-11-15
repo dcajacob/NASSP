@@ -4309,7 +4309,7 @@ protected:
 	//
 	// Integral Lights
 	//
-#ifdef _OPENORBITER
+#if defined(_OPENORBITER) || defined(NASSP_NATIVE_LINUX)
 	void SetVCLighting(UINT meshidx, DWORD *matList, MatProp EmissionMode, double state, int cnt);
 	void SetVCLighting(UINT meshidx, int material, MatProp EmissionMode, double state, int cnt);
 #else

@@ -54,8 +54,7 @@ if(NASSP_BUILD_NATIVE_LINUX)
     target_include_directories(NasspVesselSystems PRIVATE src_launch)
     target_link_libraries(NasspVesselSystems PUBLIC PanelSDK NasspNativeOrbiterSdk)
 
-    add_library(NasspSIVB MODULE
-        src_saturn/sivb.cpp
+    add_library(NasspInstrumentUnit STATIC
         src_saturn/dcs.cpp
         src_saturn/eds.cpp
         src_saturn/FCC.cpp
@@ -68,13 +67,19 @@ if(NASSP_BUILD_NATIVE_LINUX)
         src_saturn/lvimu.cpp
         src_launch/IUUmbilical.cpp
     )
+    set_target_properties(NasspInstrumentUnit PROPERTIES POSITION_INDEPENDENT_CODE ON
+        CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES)
+    target_include_directories(NasspInstrumentUnit PRIVATE src_aux src_launch src_saturn)
+    target_link_libraries(NasspInstrumentUnit PUBLIC NasspVesselSystems NasspOrbMech)
+
+    add_library(NasspSIVB MODULE src_saturn/sivb.cpp)
     set_target_properties(NasspSIVB PROPERTIES
         PREFIX "" OUTPUT_NAME SIVB
         CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
     )
     target_include_directories(NasspSIVB PRIVATE src_aux src_launch src_saturn)
-    target_link_libraries(NasspSIVB PRIVATE NasspVesselSystems NasspOrbMech)
+    target_link_libraries(NasspSIVB PRIVATE NasspInstrumentUnit)
     target_link_options(NasspSIVB PRIVATE "-Wl,--no-undefined")
 
     find_package(Threads REQUIRED)
@@ -133,6 +138,12 @@ if(NASSP_BUILD_NATIVE_LINUX)
     set_target_properties(NasspFDAI PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_link_libraries(NasspFDAI PUBLIC PanelSDK NasspNativeOrbiterSdk PRIVATE OpenGL::GL OpenGL::GLU)
 
+    include(Project/Saturn1B/NativePanelAssets.cmake)
+    add_library(NasspPanelAssets STATIC src_csm/NasspCsmBitmap.cpp)
+    set_target_properties(NasspPanelAssets PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_include_directories(NasspPanelAssets PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+    target_link_libraries(NasspPanelAssets PUBLIC NasspNativeOrbiterSdk)
+
     add_library(NasspSaturn1BObjects OBJECT
         src_aux/animations.cpp
         src_aux/CDK.cpp
@@ -152,7 +163,10 @@ if(NASSP_BUILD_NATIVE_LINUX)
         src_csm/satsystems.cpp
         src_csm/saturn.cpp
         src_csm/saturnmesh.cpp
+        src_csm/saturnpanel.cpp
+        src_csm/saturnvc.cpp
         src_csm/sce.cpp
+        src_csm/scs.cpp
         src_csm/secs.cpp
         src_csm/smjc.cpp
         src_csm/sps.cpp
@@ -169,14 +183,26 @@ if(NASSP_BUILD_NATIVE_LINUX)
         src_sys/ORDEAL.cpp
         src_sys/toggleswitch.cpp
     )
-    set_target_properties(NasspSaturn1BObjects PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    set_target_properties(NasspSaturn1BObjects PROPERTIES POSITION_INDEPENDENT_CODE ON
+        CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES)
     target_include_directories(NasspSaturn1BObjects PRIVATE
         src_aux src_csm src_landing src_launch src_lm src_mfd src_moon src_saturn src_sys/PanelSDK/Internals
     )
     target_include_directories(NasspSaturn1BObjects SYSTEM PRIVATE "${ORBITER_NATIVE_BUILD_DIR}/native-lua/sdk/include")
     target_link_libraries(NasspSaturn1BObjects PRIVATE
-        NasspNativeOrbiterSdk NasspControls NasspGuidance NasspVesselSystems NasspChecklist NasspCockpitSupport NasspFDAI
+        NasspNativeOrbiterSdk NasspControls NasspGuidance NasspVesselSystems NasspChecklist NasspCockpitSupport NasspFDAI NasspPanelAssets
     )
+
+    add_library(NasspSaturn1B MODULE)
+    set_target_properties(NasspSaturn1B PROPERTIES
+        PREFIX "" OUTPUT_NAME Saturn1b
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+    )
+    target_link_libraries(NasspSaturn1B PRIVATE
+        NasspSaturn1BObjects NasspInstrumentUnit NasspMission
+        "${ORBITER_NATIVE_BUILD_DIR}/native-lua/liblua.so"
+    )
+    target_link_options(NasspSaturn1B PRIVATE "-Wl,--no-undefined")
 
     add_library(NasspMCCVessel OBJECT
         src_launch/mccvessel.cpp

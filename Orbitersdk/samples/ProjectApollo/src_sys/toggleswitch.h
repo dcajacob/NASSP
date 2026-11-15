@@ -465,7 +465,6 @@ class HUDToggle: public ToggleSwitch {
 
 public:
 	void DrawSwitch(SURFHANDLE DrawSurface);
-	bool CheckMouseClick(int event, int mx, int my);
 	void Init(int xp, int yp, int w, int h, SURFHANDLE surf, SURFHANDLE bsurf, SwitchRow &row, int mode, SoundLib &s);
 	virtual bool SwitchTo(int newState,bool dontspring = false);
 

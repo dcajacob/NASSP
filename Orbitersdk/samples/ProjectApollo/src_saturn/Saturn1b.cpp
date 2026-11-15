@@ -50,6 +50,7 @@
 #include "tracer.h"
 
 #if defined(NASSP_NATIVE_LINUX)
+#include "NasspCsmBitmap.h"
 #include "Production/NativeVesselFactory.h"
 #include "Production/NativeInterpreterSdk.h"
 #define SATURN1B_CALLBACK static
@@ -185,19 +186,35 @@ void Saturn1b::initSaturn1b()
 
 SATURN1B_CALLBACK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 {
-	if (!refcount++) {
-		Saturn1bLoadMeshes();
-		SaturnInitMeshes();
+	const bool firstVessel = refcount == 0;
+	try {
+		if (firstVessel) {
+			Saturn1bLoadMeshes();
+			SaturnInitMeshes();
+#if defined(NASSP_NATIVE_LINUX)
+			nassp::InitSaturnPanelResources();
+#endif
+		}
+		BaseInit();
+		auto* vessel = new Saturn1b(hvessel, flightmodel);
+		++refcount;
+		return vessel;
+	} catch (...) {
+#if defined(NASSP_NATIVE_LINUX)
+		if (firstVessel) nassp::ReleaseSaturnPanelResources();
+#endif
+		throw;
 	}
-
-	BaseInit();
-	return new Saturn1b (hvessel, flightmodel);
 }
 
 SATURN1B_CALLBACK void ovcExit (VESSEL *vessel)
 {
+	if (!vessel) return;
+	delete static_cast<Saturn1b*>(vessel);
 	--refcount;
-	if (vessel) delete (Saturn1b *) vessel;
+#if defined(NASSP_NATIVE_LINUX)
+	if (refcount == 0) nassp::ReleaseSaturnPanelResources();
+#endif
 }
 
 #undef SATURN1B_CALLBACK

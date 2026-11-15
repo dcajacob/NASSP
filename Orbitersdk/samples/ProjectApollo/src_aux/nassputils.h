@@ -27,7 +27,7 @@
 
 #define NUM_ELEMENTS(x) (sizeof((x))/sizeof((x)[0]))
 
-#ifdef _OPENORBITER
+#if defined(_OPENORBITER) || defined(NASSP_NATIVE_LINUX)
 #define MAT_EMISSION MatProp::Emission
 #define MAT_LIGHT MatProp::Light
 #else
