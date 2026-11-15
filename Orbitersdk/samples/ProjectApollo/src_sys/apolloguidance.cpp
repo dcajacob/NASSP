@@ -32,6 +32,7 @@
 #include <thread>
 #include <mutex>
 #include <cassert>
+#include <cinttypes>
 #include "soundlib.h"
 
 #include "yaAGC/agc_engine.h"
@@ -449,7 +450,7 @@ void ApolloGuidance::SaveState(FILEHANDLE scn)
 	oapiWriteScenario_int(scn, "DSKYCHANNEL163", vagc.DskyChannel163);
 	oapiWriteScenario_int(scn, "WARNINGFILTER", vagc.WarningFilter);
 
-	sprintf(buffer, "  CYCLECOUNTER %I64d", vagc.CycleCounter);
+	sprintf(buffer, "  CYCLECOUNTER %" PRIu64, vagc.CycleCounter);
 	oapiWriteLine(scn, buffer);
 		
 	for (i = 0; i < 16; i++) {
