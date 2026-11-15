@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 
@@ -634,22 +634,22 @@ bool CMOptics::PaintDisplay(SURFHANDLE surf, SURFHANDLE digits, int value, int T
 		sry = 33;
 	else
 		sry = 22;
-	oapiBlt(surf, digits, 0, 0, srx*TexMul, sry*TexMul, 9*TexMul, 12*TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, digits, 0, 0, srx*TexMul, sry*TexMul, 9*TexMul, 12*TexMul, NasspPanelBlitKey);
 
 	srx = 8 + (digit[3] * 25);
 	if (digit[4] || digit[3])
 		sry = 33;
 	else
 		sry = 22;
-	oapiBlt(surf, digits, 10*TexMul, 0, srx*TexMul, sry*TexMul, 9*TexMul, 12*TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, digits, 10*TexMul, 0, srx*TexMul, sry*TexMul, 9*TexMul, 12*TexMul, NasspPanelBlitKey);
 
 	srx = 8 + (digit[2] * 25);
-	oapiBlt(surf, digits, 20*TexMul, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, digits, 20*TexMul, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, NasspPanelBlitKey);
 	srx = 8 + (digit[1] * 25);
-	oapiBlt(surf, digits, 30*TexMul, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, digits, 30*TexMul, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, NasspPanelBlitKey);
 	srx = 8 + (digit[0] * 25);
 	sry = (int)(digit[0] * 1.2);
-	oapiBlt(surf, digits, 40*TexMul, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, digits, 40*TexMul, 0, srx*TexMul, 33*TexMul, 9*TexMul, 12*TexMul, NasspPanelBlitKey);
 
 	oapiColourFill(surf, oapiGetColour(255, 255, 255), 29*TexMul, 5*TexMul, 1*TexMul, 2*TexMul);
 	return true;

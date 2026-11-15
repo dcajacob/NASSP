@@ -25,7 +25,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 
@@ -210,7 +210,7 @@ void CautionWarningSystem::RenderMasterAlarm(SURFHANDLE surf, SURFHANDLE alarmLi
 		oapiBlt(surf, alarmLit, 0, 0, 0, 0, 45*TexMul, 36*TexMul);
 	}
 	if (border)
-		oapiBlt(surf, border, 0, 0, 0, 0, 45*TexMul, 36*TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, border, 0, 0, 0, 0, 45*TexMul, 36*TexMul, NasspPanelBlitKey);
 }
 
 bool CautionWarningSystem::CheckMasterAlarmMouseClick(int event)

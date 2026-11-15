@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <stdio.h>
 #include <math.h>
 #include "soundlib.h"
@@ -111,9 +111,9 @@ double SaturnH2PressureMeter::QueryValue()
 void SaturnH2PressureMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
 	if (Index == 1)
-		oapiBlt(drawSurface, NeedleSurface, 0, (129 - (int)(v * 0.2942857146)), 0, 0, 10, 10, SURF_PREDEF_CK);
+		oapiBlt(drawSurface, NeedleSurface, 0, (129 - (int)(v * 0.2942857146)), 0, 0, 10, 10, NasspPanelBlitKey);
 	else
-		oapiBlt(drawSurface, NeedleSurface, 53, (129 - (int)(v * 0.2942857146)), 10, 0, 10, 10, SURF_PREDEF_CK);
+		oapiBlt(drawSurface, NeedleSurface, 53, (129 - (int)(v * 0.2942857146)), 10, 0, 10, 10, NasspPanelBlitKey);
 }
 
 
@@ -173,9 +173,9 @@ double SaturnO2PressureMeter::QueryValue() //Returns meter proportional voltage 
 void SaturnO2PressureMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
 	if (Index == 1)
-		oapiBlt(drawSurface, NeedleSurface, 86, (129 - (int)(v * 20.6)), 0, 0, 10, 10, SURF_PREDEF_CK);
+		oapiBlt(drawSurface, NeedleSurface, 86, (129 - (int)(v * 20.6)), 0, 0, 10, 10, NasspPanelBlitKey);
 	else
-		oapiBlt(drawSurface, NeedleSurface, 139, (129 - (int)(v * 20.6)), 10, 0, 10, 10, SURF_PREDEF_CK);
+		oapiBlt(drawSurface, NeedleSurface, 139, (129 - (int)(v * 20.6)), 10, 0, 10, 10, NasspPanelBlitKey);
 
 	//sprintf(oapiDebugString(), "v %lf QV %lf XV %lf", v, QueryValue(), Sat->O2Tank1PressSensor.Voltage());
 }
@@ -232,15 +232,15 @@ void SaturnCryoQuantityMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
 	if (!strcmp("H2", Substance)) {
 		if (Index == 1)
-			oapiBlt(drawSurface, NeedleSurface, 172, (129 - (int)(v * 20.6)), 0, 0, 10, 10, SURF_PREDEF_CK);
+			oapiBlt(drawSurface, NeedleSurface, 172, (129 - (int)(v * 20.6)), 0, 0, 10, 10, NasspPanelBlitKey);
 		else
-			oapiBlt(drawSurface, NeedleSurface, 225, (129 - (int)(v * 20.6)), 10, 0, 10, 10, SURF_PREDEF_CK);
+			oapiBlt(drawSurface, NeedleSurface, 225, (129 - (int)(v * 20.6)), 10, 0, 10, 10, NasspPanelBlitKey);
 	}
 	else {
 		if (Index == 1)
-			oapiBlt(drawSurface, NeedleSurface, 258, (129 - (int)(v * 20.6)), 0, 0, 10, 10, SURF_PREDEF_CK);
+			oapiBlt(drawSurface, NeedleSurface, 258, (129 - (int)(v * 20.6)), 0, 0, 10, 10, NasspPanelBlitKey);
 		else {
-			oapiBlt(drawSurface, NeedleSurface, 311, (129 - (int)(v * 20.6)), 10, 0, 10, 10, SURF_PREDEF_CK);
+			oapiBlt(drawSurface, NeedleSurface, 311, (129 - (int)(v * 20.6)), 10, 0, 10, 10, NasspPanelBlitKey);
 		}
 	}
 }
@@ -277,7 +277,7 @@ double RCSQuantityMeter::QueryValue()
 
 void RCSQuantityMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface,  150, (108 - (int)(v * 104.0)), 10, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  150, (108 - (int)(v * 104.0)), 10, 0, 10, 10, NasspPanelBlitKey);
 }
 
 
@@ -309,7 +309,7 @@ double RCSFuelPressMeter::QueryValue()
 
 void RCSFuelPressMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface,  95, (108 - (int)(v / 400.0 * 104.0)), 0, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  95, (108 - (int)(v / 400.0 * 104.0)), 0, 0, 10, 10, NasspPanelBlitKey);
 }
 
 
@@ -341,7 +341,7 @@ double RCSHeliumPressMeter::QueryValue()
 
 void RCSHeliumPressMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface,  59, (108 - (int)(v / 5000.0 * 104.0)), 10, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  59, (108 - (int)(v / 5000.0 * 104.0)), 10, 0, 10, 10, NasspPanelBlitKey);
 }
 
 
@@ -373,7 +373,7 @@ double RCSTempMeter::QueryValue()
 
 void RCSTempMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface,  4, (108 - (int)(v / 300.0 * 104.0)), 0, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  4, (108 - (int)(v / 300.0 * 104.0)), 0, 0, 10, 10, NasspPanelBlitKey);
 }
 
 
@@ -485,7 +485,7 @@ double SaturnFuelCellH2FlowMeter::QueryValue() //returns scaled voltage for mete
 
 void SaturnFuelCellH2FlowMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface, 0, (109 - (int)(v * 20.6)), 0, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, 0, (109 - (int)(v * 20.6)), 0, 0, 10, 10, NasspPanelBlitKey);
 
 	//sprintf(oapiDebugString(), "flow %lf xducerv %lf v %lf QV %lf", Sat->FCH2FlowSensor1.GetValue(), Sat->FCH2FlowSensor1.Voltage(), v, QueryValue());
 }
@@ -537,7 +537,7 @@ double SaturnFuelCellO2FlowMeter::QueryValue() //returns scaled voltage for mete
 
 void SaturnFuelCellO2FlowMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface, 53, (109 - (int)(v * 20.6)), 10, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, 53, (109 - (int)(v * 20.6)), 10, 0, 10, 10, NasspPanelBlitKey);
 
 	//sprintf(oapiDebugString(), "flow %lf xducerv %lf v %lf QV %lf", Sat->FCO2FlowSensor1.GetValue(), Sat->FCO2FlowSensor1.Voltage(), v, QueryValue());
 }
@@ -560,7 +560,7 @@ double SaturnFuelCellTempMeter::QueryValue() //returns scaled voltage for meter
 
 void SaturnFuelCellTempMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface, 86, 109 - (int)(v * 20.6), 0, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, 86, 109 - (int)(v * 20.6), 0, 0, 10, 10, NasspPanelBlitKey);
 
 	//sprintf(oapiDebugString(), "v %lf QV %lf", v, QueryValue());
 }
@@ -586,7 +586,7 @@ double SaturnFuelCellCondenserTempMeter::QueryValue() //returns scaled voltage f
 
 void SaturnFuelCellCondenserTempMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface, 139, 109 - (int)(20.6 * v), 10, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, 139, 109 - (int)(20.6 * v), 10, 0, 10, 10, NasspPanelBlitKey);
 
 	//sprintf(oapiDebugString(), "v %lf QV %lf pixel %lf", v, QueryValue(), (v*20.6));
 }
@@ -607,7 +607,7 @@ double SaturnSuitTempMeter::QueryValue()
 
 void SaturnSuitTempMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface, 1, (109 - (int)((v * 1.3733333340) - 27.4666666660)), 0, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, 1, (109 - (int)((v * 1.3733333340) - 27.4666666660)), 0, 0, 10, 10, NasspPanelBlitKey);
 }
 
 
@@ -618,7 +618,7 @@ double SaturnCabinTempMeter::QueryValue()
 
 void SaturnCabinTempMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface, 53, (109 - (int)((v * 1.2117647056) - 48.4705882359)), 10, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, 53, (109 - (int)((v * 1.2117647056) - 48.4705882359)), 10, 0, 10, 10, NasspPanelBlitKey);
 }
 
 
@@ -630,9 +630,9 @@ double SaturnSuitPressMeter::QueryValue()
 void SaturnSuitPressMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
 	if (v <= 6.0)
-		oapiBlt(drawSurface, NeedleSurface, 101, (109 - (int)(v * 8.5833333333)), 0, 0, 10, 10, SURF_PREDEF_CK); //scaling done in meter for now, should be done by sensor itself?
+		oapiBlt(drawSurface, NeedleSurface, 101, (109 - (int)(v * 8.5833333333)), 0, 0, 10, 10, NasspPanelBlitKey); //scaling done in meter for now, should be done by sensor itself?
 	else
-		oapiBlt(drawSurface, NeedleSurface, 101, (109 - (int)((v * 4.6818181818) + 23.4090909091)), 0, 0, 10, 10, SURF_PREDEF_CK);
+		oapiBlt(drawSurface, NeedleSurface, 101, (109 - (int)((v * 4.6818181818) + 23.4090909091)), 0, 0, 10, 10, NasspPanelBlitKey);
 }
 
 void SaturnSuitPressMeter::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -655,9 +655,9 @@ double SaturnCabinPressMeter::QueryValue()
 void SaturnCabinPressMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
 	if (v <= 6.0)
-		oapiBlt(drawSurface, NeedleSurface, 153, (109 - (int)(v * 8.5833333333)), 10, 0, 10, 10, SURF_PREDEF_CK); //scaling done in meter for now, should be done by sensor itself?
+		oapiBlt(drawSurface, NeedleSurface, 153, (109 - (int)(v * 8.5833333333)), 10, 0, 10, 10, NasspPanelBlitKey); //scaling done in meter for now, should be done by sensor itself?
 	else
-		oapiBlt(drawSurface, NeedleSurface, 153, (109 - (int)((v * 4.6818181818) + 23.4090909091)), 10, 0, 10, 10, SURF_PREDEF_CK);
+		oapiBlt(drawSurface, NeedleSurface, 153, (109 - (int)((v * 4.6818181818) + 23.4090909091)), 10, 0, 10, 10, NasspPanelBlitKey);
 }
 
 void SaturnCabinPressMeter::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -679,7 +679,7 @@ double SaturnPartPressCO2Meter::QueryValue()
 
 void SaturnPartPressCO2Meter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface, 215, (109 - (int)(pow(v, 0.5048232894) * 18.4991602291)), 10, 0, 10, 10, SURF_PREDEF_CK); //Scales CO2 meter 0-30
+	oapiBlt(drawSurface, NeedleSurface, 215, (109 - (int)(pow(v, 0.5048232894) * 18.4991602291)), 10, 0, 10, 10, NasspPanelBlitKey); //Scales CO2 meter 0-30
 }
 
 void SaturnPartPressCO2Meter::OnPostStep(double SimT, double DeltaT, double MJD)
@@ -727,7 +727,7 @@ void SaturnSuitCabinDeltaPMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
 	v = (v / 5.0) * 60.0;
 	DrawNeedle(drawSurface, 0, 22, 20.0, v * RAD);
-	oapiBlt(drawSurface, FrameSurface, 0, 13, 0, 0, 46, 18, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, FrameSurface, 0, 13, 0, 0, 46, 18, NasspPanelBlitKey);
 }
 
 
@@ -740,7 +740,7 @@ void SaturnRightO2FlowMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
 	v = (v - .6) / .4 * 60.0;
 	DrawNeedle(drawSurface, 45, 22, 20.0, (180.0 - v) * RAD);
-	oapiBlt(drawSurface, FrameSurface, 0, 13, 0, 0, 46, 18, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, FrameSurface, 0, 13, 0, 0, 46, 18, NasspPanelBlitKey);
 }
 
 
@@ -1279,9 +1279,9 @@ double SaturnSPSPropellantPressMeter::QueryValue()
 void SaturnSPSPropellantPressMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
 	if (Fuel) {
-		oapiBlt(drawSurface, NeedleSurface, 86, (109 - (int)(v / 250.0 * 103.0)), 0, 0, 10, 10, SURF_PREDEF_CK);	
+		oapiBlt(drawSurface, NeedleSurface, 86, (109 - (int)(v / 250.0 * 103.0)), 0, 0, 10, 10, NasspPanelBlitKey);
 	} else {
-		oapiBlt(drawSurface, NeedleSurface, 139, (109 - (int)(v / 250.0 * 103.0)), 10, 0, 10, 10, SURF_PREDEF_CK);
+		oapiBlt(drawSurface, NeedleSurface, 139, (109 - (int)(v / 250.0 * 103.0)), 10, 0, 10, 10, NasspPanelBlitKey);
 	}
 }
 
@@ -1301,7 +1301,7 @@ double SaturnSPSTempMeter::QueryValue()
 
 void SaturnSPSTempMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface, 0, (109 - (int)(v / 5.0 * 103.0)), 0, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, 0, (109 - (int)(v / 5.0 * 103.0)), 0, 0, 10, 10, NasspPanelBlitKey);
 }
 
 
@@ -1329,7 +1329,7 @@ double SaturnSPSHeliumNitrogenPressMeter::QueryValue()
 
 void SaturnSPSHeliumNitrogenPressMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface, 53, (109 - (int)(v / 5000.0 * 103.0)), 10, 0, 10, 10, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, 53, (109 - (int)(v / 5000.0 * 103.0)), 10, 0, 10, 10, NasspPanelBlitKey);
 }
 
 
@@ -1363,7 +1363,7 @@ void SaturnLVSPSPcMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
 	v = (155.0 - v) / 160.0 * 270.0;	
 	DrawNeedle(drawSurface, 48, 45, 20.0, (v - 45.0) * RAD);
-	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 95, 91, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 95, 91, NasspPanelBlitKey);
 }
 
 SaturnSystemTestMeter::SaturnSystemTestMeter(double minVal, double maxVal, double vMin, double vMax) : DCVoltMeter(minVal, maxVal, vMin, vMax)
@@ -1514,8 +1514,8 @@ double SaturnGPFPIMeter::AdjustForPower(double val)
 
 void SaturnGPFPIMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface, xOffset,      93 - (int)v, 10, 1, 7, 8, SURF_PREDEF_CK);
-	oapiBlt(drawSurface, NeedleSurface, xOffset + 12, 93 - (int)v,  3, 1, 7, 8, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, xOffset,      93 - (int)v, 10, 1, 7, 8, NasspPanelBlitKey);
+	oapiBlt(drawSurface, NeedleSurface, xOffset + 12, 93 - (int)v,  3, 1, 7, 8, NasspPanelBlitKey);
 }
 
 void SaturnGPFPIMeter::OnPostStep(double SimT, double DeltaT, double MJD)
@@ -2160,7 +2160,7 @@ void SaturnGuardedCabinPressureReliefLever::InitGuard(SURFHANDLE surf, SoundLib 
 
 void SaturnGuardedCabinPressureReliefLever::DrawSwitch(SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, guardSurface, 0, 0, guardState * 152, 0, 152, 79, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, guardSurface, 0, 0, guardState * 152, 0, 152, 79, NasspPanelBlitKey);
 	ThumbwheelSwitch::DrawSwitch(drawSurface);
 }
 
@@ -2365,7 +2365,7 @@ void SuitTestSwitch::DrawSwitch(SURFHANDLE drawSurface)
 				index = i;
 			}
 		}
-		oapiBlt(drawSurface, switchSurface, x, y, (bitmaps[index].xOffset * width) + 130, bitmaps[index].yOffset * height, width - 130, height, SURF_PREDEF_CK);
+		oapiBlt(drawSurface, switchSurface, x, y, (bitmaps[index].xOffset * width) + 130, bitmaps[index].yOffset * height, width - 130, height, NasspPanelBlitKey);
 	}
 }
 
@@ -2375,7 +2375,7 @@ void SuitTestSwitch::DrawFlash(SURFHANDLE DrawSurface)
 		return;
 
 	if (switchBorder)
-		oapiBlt(DrawSurface, switchBorder, x, y, 0, 0, width - 130, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, switchBorder, x, y, 0, 0, width - 130, height, NasspPanelBlitKey);
 }
 
 bool SuitTestSwitch::CheckMouseClick(int event, int mx, int my) 
@@ -2396,7 +2396,7 @@ void SaturnOxygenRepressPressMeter::DoDrawSwitch(double v, SURFHANDLE drawSurfac
 {
 	v = 115.0 - v / 1200.0 * 50.0 ;	
 	DrawNeedle(drawSurface, 55, 440, 60.0, v * RAD);
-	oapiBlt(drawSurface, FrameSurface, 0, 413, 0, 110, 90, 30, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, FrameSurface, 0, 413, 0, 110, 90, 30, NasspPanelBlitKey);
 }
 
 // LM power switch
@@ -2560,12 +2560,12 @@ void SaturnLiftoffNoAutoAbortSwitch::RepaintSwitchVC(SURFHANDLE drawSurface, SUR
 	int ofs = 4;
 	if (secs->LiftoffLightPower()) {
 		if (!secs->NoAutoAbortLightPower())
-			oapiBlt(drawSurface, switchsurfacevc, 0 + ofs - 1, 0 + ofs, 117*TexMul + ofs, 1 + ofs, width*TexMul - ofs, height*TexMul - ofs, SURF_PREDEF_CK);
+			oapiBlt(drawSurface, switchsurfacevc, 0 + ofs - 1, 0 + ofs, 117*TexMul + ofs, 1 + ofs, width*TexMul - ofs, height*TexMul - ofs, NasspPanelBlitKey);
 		else
-			oapiBlt(drawSurface, switchsurfacevc, 0 + ofs - 1, 0 + ofs, 273*TexMul + ofs, 1 + ofs, width*TexMul - ofs, height*TexMul - ofs, SURF_PREDEF_CK);
+			oapiBlt(drawSurface, switchsurfacevc, 0 + ofs - 1, 0 + ofs, 273*TexMul + ofs, 1 + ofs, width*TexMul - ofs, height*TexMul - ofs, NasspPanelBlitKey);
 	}
 	else {
-		oapiBlt(drawSurface, switchsurfacevc, 0 + ofs - 1, 0 + ofs, 39*TexMul + ofs, 1 + ofs, width*TexMul - ofs, height*TexMul - ofs, SURF_PREDEF_CK);
+		oapiBlt(drawSurface, switchsurfacevc, 0 + ofs - 1, 0 + ofs, 39*TexMul + ofs, 1 + ofs, width*TexMul - ofs, height*TexMul - ofs, NasspPanelBlitKey);
 	}
 }
 
@@ -2723,7 +2723,7 @@ void SaturnAltimeter::RedrawPanel_Alt(SURFHANDLE surf)
 		DrawNeedle(skp, ALTIMETER_X_CENTER, ALTIMETER_Y_CENTER, ALTIMETER_RADIUS, (alpha * range) + 10 * RAD, g_Param.pen[1], g_Param.pen[4]);//(alpha * range)
 		oapiReleaseSketchpad(skp);
 	}
-	oapiBlt(surf, surface1, 0, 0, 0, 0, 137, 137, SURF_PREDEF_CK);
+	oapiBlt(surf, surface1, 0, 0, 0, 0, 137, 137, NasspPanelBlitKey);
 }
 
 void SaturnAltimeter::RedrawPanel_Alt2(SURFHANDLE surf)
@@ -2797,7 +2797,7 @@ void SaturnAltimeter::RedrawPanel_Alt2(SURFHANDLE surf)
 		DrawNeedle(skp, ALTIMETER2_X_CENTER, ALTIMETER2_Y_CENTER, ALTIMETER2_RADIUS, (alpha * range) + 10 * RAD, g_Param.pen[1], g_Param.pen[4]);//(alpha * range)
 		oapiReleaseSketchpad(skp);
 	}
-	oapiBlt(surf, surface2, 0, 0, 0, 0, 161, 161, SURF_PREDEF_CK);
+	oapiBlt(surf, surface2, 0, 0, 0, 0, 161, 161, NasspPanelBlitKey);
 }
 
 void SaturnAltimeter::DrawSwitchVC(int id, int event, SURFHANDLE surf) {

@@ -41,6 +41,19 @@
 #include "checklistController.h"
 
 #include "tracer.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeInterpreterSdk.h"
+#endif
+
+static bool ShiftPressed()
+{
+#if defined(NASSP_NATIVE_LINUX)
+	const char* keys = oapiGetKeyState();
+	return keys && KEYMOD_SHIFT(keys);
+#else
+	return (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+#endif
+}
 
 //
 // Generic panel switch item.
@@ -325,10 +338,10 @@ bool TwoPositionSwitch::DoCheckMouseClick(int event, int mx, int my) {
 	///
 	/// \todo Get CTRL state properly if and when Orbiter supports it.
 	///
-	SHORT ctrlState = GetKeyState(VK_SHIFT);
+	const bool shiftPressed = ShiftPressed();
 
 	if (IsSpringLoaded())
-		SetHeld((ctrlState & 0x8000) != 0);
+		SetHeld(shiftPressed);
 
 	//
 	// Yes, so now we just need to check whether it's an on or
@@ -392,11 +405,11 @@ void TwoPositionSwitch::DoDrawSwitch(SURFHANDLE DrawSurface)
 {
 	if (state == TOGGLESWITCH_UP)
 	{
-		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, NasspPanelBlitKey);
 	}
 	else
 	{
-		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset + width, yOffset, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset + width, yOffset, width, height, NasspPanelBlitKey);
 	}
 }
 
@@ -438,7 +451,7 @@ void TwoPositionSwitch::DrawFlash(SURFHANDLE DrawSurface)
 		return;
 
 	if (BorderSurface)
-		oapiBlt(DrawSurface, BorderSurface, x, y, 0, 0, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, BorderSurface, x, y, 0, 0, width, height, NasspPanelBlitKey);
 }
 
 void TwoPositionSwitch::SetActive(bool s) {
@@ -556,10 +569,10 @@ bool ThreePosSwitch::CheckMouseClick(int event, int mx, int my) {
 	///
 	/// \todo Get CTRL state properly if and when Orbiter supports it.
 	///
-	SHORT ctrlState = GetKeyState(VK_SHIFT);
+	const bool shiftPressed = ShiftPressed();
 
 	if (IsSpringLoaded())
-		SetHeld((ctrlState & 0x8000) != 0);
+		SetHeld(shiftPressed);
 
 	//
 	// Yes, so now we just need to check whether it's an on or
@@ -607,7 +620,7 @@ bool ThreePosSwitch::CheckMouseClickVC(int event, VECTOR3 &p)
 void ThreePosSwitch::DrawSwitch(SURFHANDLE DrawSurface)
 
 {
-	oapiBlt(DrawSurface, SwitchSurface, x, y, (state * width), 0, width, height, SURF_PREDEF_CK);
+	oapiBlt(DrawSurface, SwitchSurface, x, y, (state * width), 0, width, height, NasspPanelBlitKey);
 }
 
 void ThreePosSwitch::DrawSwitchVC(int id, int event, SURFHANDLE surf)
@@ -692,10 +705,10 @@ bool FivePosSwitch::CheckMouseClick(int event, int mx, int my) {
 	///
 	/// \todo Get CTRL state properly if and when Orbiter supports it.
 	///
-	SHORT ctrlState = GetKeyState(VK_SHIFT);
+	const bool shiftPressed = ShiftPressed();
 
 	if (IsSpringLoaded())
-		SetHeld((ctrlState & 0x8000) != 0);
+		SetHeld(shiftPressed);
 
 	//
 	// Yes, so now we just need to check whether it's an on or
@@ -761,10 +774,10 @@ bool FivePosSwitch::CheckMouseClickVC(int event, VECTOR3 &p) {
 	///
 	/// \todo Get CTRL state properly if and when Orbiter supports it.
 	///
-	SHORT ctrlState = GetKeyState(VK_SHIFT);
+	const bool shiftPressed = ShiftPressed();
 
 	if (IsSpringLoaded())
-		SetHeld((ctrlState & 0x8000) != 0);
+		SetHeld(shiftPressed);
 
 	//
 	// Yes, so now we just need to check whether it's an on or
@@ -838,7 +851,7 @@ FivePosSwitch::~FivePosSwitch()
 
 void FivePosSwitch::DrawSwitch(SURFHANDLE DrawSurface)
 {
-	oapiBlt(DrawSurface, SwitchSurface, x, y, (state * width), 0, width, height, SURF_PREDEF_CK);
+	oapiBlt(DrawSurface, SwitchSurface, x, y, (state * width), 0, width, height, NasspPanelBlitKey);
 }
 
 void FivePosSwitch::SetDirection(const VECTOR3& _dirx, const VECTOR3 & _diry)
@@ -990,8 +1003,8 @@ bool PushSwitch::CheckMouseClick(int event, int mx, int my) {
 	///
 	/// \todo Get CTRL state properly if and when Orbiter supports it.
 	///
-	SHORT ctrlState = GetKeyState(VK_SHIFT);
-	SetHeld((ctrlState & 0x8000) != 0);
+	const bool shiftPressed = ShiftPressed();
+	SetHeld(shiftPressed);
 
 	if (event & PANEL_MOUSE_LBDOWN) {
 		SwitchTo(1, true);
@@ -1011,8 +1024,8 @@ bool PushSwitch::CheckMouseClickVC(int event, VECTOR3 &p) {
 	///
 	/// \todo Get CTRL state properly if and when Orbiter supports it.
 	///
-	SHORT ctrlState = GetKeyState(VK_SHIFT);
-	SetHeld((ctrlState & 0x8000) != 0);
+	const bool shiftPressed = ShiftPressed();
+	SetHeld(shiftPressed);
 
 	if (event & PANEL_MOUSE_LBDOWN) {
 		SwitchTo(1, true);
@@ -1787,21 +1800,21 @@ void GuardedToggleSwitch::DrawSwitch(SURFHANDLE DrawSurface) {
 
 	if (guardResetsState) { 
 		if (guardState) {
-			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + guardWidth, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + guardWidth, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 			DoDrawSwitch(DrawSurface);
 		} else {
 			DoDrawSwitch(DrawSurface);
-			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 		}
 	} else {
 		if (guardState) {
-			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 			DoDrawSwitch(DrawSurface);
 		} else {
 			if (state) {
-				oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + 3 * guardWidth, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+				oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + 3 * guardWidth, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 			} else {
-				oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + guardWidth, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+				oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + guardWidth, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 			}
 		}
 	}
@@ -1828,7 +1841,7 @@ void GuardedToggleSwitch::DrawFlash(SURFHANDLE DrawSurface)
 		return;
 
 	if (!guardState && guardBorder)
-		oapiBlt(DrawSurface, guardBorder, guardX, guardY, 0, 0, guardWidth, guardHeight, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, guardBorder, guardX, guardY, 0, 0, guardWidth, guardHeight, NasspPanelBlitKey);
 	else
 		ToggleSwitch::DrawFlash(DrawSurface);
 }
@@ -2017,7 +2030,7 @@ void GuardedPushSwitch::DoDrawSwitch(SURFHANDLE DrawSurface)
 {
 	if (lit)
 	{
-		oapiBlt(DrawSurface, SwitchSurface, x, y, litOffsetX, litOffsetY, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, SwitchSurface, x, y, litOffsetX, litOffsetY, width, height, NasspPanelBlitKey);
 	}
 	else
 		TwoPositionSwitch::DoDrawSwitch(DrawSurface);
@@ -2029,13 +2042,13 @@ void GuardedPushSwitch::DrawSwitch(SURFHANDLE DrawSurface) {
 
 	if(guardState)
 	{
-		oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + guardWidth, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + guardWidth, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 		DoDrawSwitch(DrawSurface);
 	}
 	else
 	{
 		DoDrawSwitch(DrawSurface);
-		oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 	}
 }
 
@@ -2090,7 +2103,7 @@ void GuardedPushSwitch::DrawFlash(SURFHANDLE DrawSurface)
 		return;
 
 	if (!guardState && guardBorder)
-		oapiBlt(DrawSurface, guardBorder, guardX, guardY, 0, 0, guardWidth, guardHeight, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, guardBorder, guardX, guardY, 0, 0, guardWidth, guardHeight, NasspPanelBlitKey);
 	else
 		TwoPositionSwitch::DrawFlash(DrawSurface);
 }
@@ -2260,22 +2273,22 @@ void GuardedThreePosSwitch::DrawSwitch(SURFHANDLE DrawSurface) {
 
 	if (guardResetsState) { 
 		if(guardState) {
-			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + guardWidth, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + guardWidth, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 			ThreePosSwitch::DrawSwitch(DrawSurface);
 		} else {
-			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 		}
 	} else {
 		if (guardState) {
-			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 			ThreePosSwitch::DrawSwitch(DrawSurface);
 		} else {
 			if (state == THREEPOSSWITCH_DOWN) {
-				oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + guardWidth, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+				oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + guardWidth, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 			} else if (state == THREEPOSSWITCH_CENTER) {
-				oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + 2 * guardWidth, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+				oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + 2 * guardWidth, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 			} else {
-				oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + 3 * guardWidth, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+				oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset + 3 * guardWidth, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 			}
 		}
 	}
@@ -2568,7 +2581,7 @@ void ContinuousSwitch::DrawFlash(SURFHANDLE drawSurface)
 		return;
 
 	if (switchBorder)
-		oapiBlt(drawSurface, switchBorder, x, y, 0, 0, width, height, SURF_PREDEF_CK);
+		oapiBlt(drawSurface, switchBorder, x, y, 0, 0, width, height, NasspPanelBlitKey);
 }
 
 void ContinuousSwitch::DrawSwitchVC(int id, int event, SURFHANDLE drawSurface)
@@ -2653,7 +2666,7 @@ void ContinuousThumbwheelSwitch::DrawSwitch(SURFHANDLE drawSurface)
 	//Same in integer
 	int srcx = (int)(val2 + 0.5);
 
-	oapiBlt(drawSurface, switchSurface, x, y, srcx * width, 0, width, height, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, switchSurface, x, y, srcx * width, 0, width, height, NasspPanelBlitKey);
 }
 
 bool ContinuousThumbwheelSwitch::CheckMouseClick(int event, int mx, int my)
@@ -2802,7 +2815,7 @@ void ContinuousRotationalSwitch::DrawSwitch(SURFHANDLE drawSurface)
 		srcy = 0;
 	}
 
-	oapiBlt(drawSurface, switchSurface, x, y, srcx2 * width, srcy*height, width, height, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, switchSurface, x, y, srcx2 * width, srcy*height, width, height, NasspPanelBlitKey);
 }
 
 bool ContinuousRotationalSwitch::CheckMouseClick(int event, int mx, int my)
@@ -3067,7 +3080,7 @@ void RotationalSwitch::DrawSwitch(SURFHANDLE drawSurface) {
 				index = i;
 			}
 		}
-		oapiBlt(drawSurface, switchSurface, x, y, bitmaps[index].xOffset * width, bitmaps[index].yOffset * height, width, height, SURF_PREDEF_CK);
+		oapiBlt(drawSurface, switchSurface, x, y, bitmaps[index].xOffset * width, bitmaps[index].yOffset * height, width, height, NasspPanelBlitKey);
 	}
 }
 
@@ -3078,7 +3091,7 @@ void RotationalSwitch::DrawFlash(SURFHANDLE DrawSurface)
 		return;
 
 	if (switchBorder)
-		oapiBlt(DrawSurface, switchBorder, x, y, 0, 0, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, switchBorder, x, y, 0, 0, width, height, NasspPanelBlitKey);
 }
 
 bool RotationalSwitch::CheckMouseClick(int event, int mx, int my) {
@@ -3336,7 +3349,7 @@ void OrdealRotationalSwitch::DrawSwitch(SURFHANDLE drawSurface) {
 	ContinuousRotationalSwitch::DrawSwitch(drawSurface);
 
 	if (mouseDown) {
-		RECT rt;
+		auto rt = _R(0, 0, 0, 0);
 		double value;
 		int rotstate;
 		char label[100];
@@ -3346,15 +3359,15 @@ void OrdealRotationalSwitch::DrawSwitch(SURFHANDLE drawSurface) {
 
 		oapi::Sketchpad* skp = oapiGetSketchpad(drawSurface);
 		oapi::Font* font = oapiCreateFont(22, true, "Arial", FONT_BOLD);
-		oapi::Brush* brush = oapiCreateBrush(RGB(146, 146, 146));
-		oapi::Pen* pen = oapiCreatePen(1, 1, RGB(146, 146, 146));
+		oapi::Brush* brush = oapiCreateBrush(oapiGetColour(146, 146, 146));
+		oapi::Pen* pen = oapiCreatePen(1, 1, oapiGetColour(146, 146, 146));
 		skp->SetBrush(brush);
 		skp->SetPen(pen);
 		skp->SetFont(font);
-		skp->SetTextColor(RGB(255, 255, 255));
+		skp->SetTextColor(oapiGetColour(255, 255, 255));
 		skp->SetTextAlign(oapi::Sketchpad::CENTER);
 		skp->SetBackgroundMode(oapi::Sketchpad::BK_OPAQUE);
-		skp->SetBackgroundColor(RGB(146, 146, 146));
+		skp->SetBackgroundColor(oapiGetColour(146, 146, 146));
 
 		switch (rotstate)
 		{
@@ -3612,7 +3625,7 @@ bool ThumbwheelSwitch::SwitchTo(int newState) {
 
 void ThumbwheelSwitch::DrawSwitch(SURFHANDLE DrawSurface) {
 
-	oapiBlt(DrawSurface, switchSurface, x, y, state * width, 0, width, height, SURF_PREDEF_CK);
+	oapiBlt(DrawSurface, switchSurface, x, y, state * width, 0, width, height, NasspPanelBlitKey);
 }
 
 void ThumbwheelSwitch::DrawSwitchVC(int id, int event, SURFHANDLE drawSurface) {
@@ -3628,7 +3641,7 @@ void ThumbwheelSwitch::DrawFlash(SURFHANDLE DrawSurface)
 		return;
 
 	if (switchBorder)
-		oapiBlt(DrawSurface, switchBorder, x, y, 0, 0, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, switchBorder, x, y, 0, 0, width, height, NasspPanelBlitKey);
 }
 
 void ThumbwheelSwitch::SaveState(FILEHANDLE scn) {
@@ -3848,7 +3861,7 @@ void IndicatorSwitch::SaveState(FILEHANDLE scn) {
 void IndicatorSwitch::LoadState(char *line) {
 
 	char buffer[100];
-	int st = FALSE; // Avoids crash bug
+	int st = 0; // Avoids crash bug
 
 	sscanf(line, "%s %i", buffer, &st); 
 	if (!strnicmp(buffer, name, strlen(name))) {
@@ -4201,7 +4214,7 @@ void ElectricMeter::DoDrawSwitch(double volts, SURFHANDLE drawSurface)
 {
 	double v = minAngle + (ScaleFactor * (volts - minValue));
 	DrawNeedle(drawSurface, xSize / 2, ySize / 2, 25.0, v * RAD);
-	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, xSize, ySize, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, xSize, ySize, NasspPanelBlitKey);
 
 	//angle debug lines
 	//if (strcmp(name, "DCAmpMeter") == 0)
@@ -5328,11 +5341,11 @@ void CMCOpticsZeroSwitch::DoDrawSwitch(SURFHANDLE DrawSurface)
 {
 	if (IsUp())
 	{
-		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, NasspPanelBlitKey);
 	}
 	else
 	{
-		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset - width, yOffset, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset - width, yOffset, width, height, NasspPanelBlitKey);
 	}
 }
 
@@ -5492,7 +5505,7 @@ void HandcontrollerSwitch::DrawSwitch(SURFHANDLE DrawSurface) {
 	if (!visible)
 		return;
 
-	oapiBlt(DrawSurface, switchSurface, x, y, state * width, 0, width, height, SURF_PREDEF_CK);
+	oapiBlt(DrawSurface, switchSurface, x, y, state * width, 0, width, height, NasspPanelBlitKey);
 }
 
 void HandcontrollerSwitch::DrawFlash(SURFHANDLE DrawSurface)
@@ -5502,7 +5515,7 @@ void HandcontrollerSwitch::DrawFlash(SURFHANDLE DrawSurface)
 		return;
 
 	if (borderSurface)
-		oapiBlt(DrawSurface, borderSurface, x, y, 0, 0, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, borderSurface, x, y, 0, 0, width, height, NasspPanelBlitKey);
 }
 
 void HandcontrollerSwitch::SaveState(FILEHANDLE scn) {
@@ -5640,9 +5653,9 @@ int MasterAlarmSwitch::GetState() {
 void DSKYPushSwitch::DoDrawSwitch(SURFHANDLE DrawSurface) {
 
 	if (IsUp())	{
-		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, NasspPanelBlitKey);
 	} else {
-		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset + 120, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset + 120, width, height, NasspPanelBlitKey);
 	}
 }
 

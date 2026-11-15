@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 
@@ -126,7 +126,7 @@ void SPSPropellantSource::Timestep(double simt, double simdt) {
 				// Oxidizer consumption
 				double of = SPS_NORM_OXIDIZER_FLOW * (1.0 + primOxidFlowValve + secOxidFlowValve);
 				oxidMass -= (lastPropellantMass - p) * of;
-				oxidMass = max(oxidMass, 0);
+				oxidMass = max(oxidMass, 0.0);
 
 				lastPropellantMass = p;
 			}
@@ -258,10 +258,10 @@ void SPSPropellantSource::Timestep(double simt, double simdt) {
 				if (our_vessel->SPSOxidFlowValveSwitch.IsCenter()) {
 					if (primOxidFlowValve > 0) {
 						primOxidFlowValve -= 0.03 * simdt / 3.5;
-						primOxidFlowValve = max(primOxidFlowValve, 0);
+						primOxidFlowValve = max(primOxidFlowValve, 0.0);
 					} else if (primOxidFlowValve < 0) {
 						primOxidFlowValve += 0.035 * simdt / 3.5;
-						primOxidFlowValve = min(primOxidFlowValve, 0);
+						primOxidFlowValve = min(primOxidFlowValve, 0.0);
 					}
 				
 				} else if (our_vessel->SPSOxidFlowValveSwitch.IsUp()) {
@@ -282,10 +282,10 @@ void SPSPropellantSource::Timestep(double simt, double simdt) {
 				if (our_vessel->SPSOxidFlowValveSwitch.IsCenter()) {
 					if (secOxidFlowValve > 0) {
 						secOxidFlowValve -= 0.06 * simdt / 3.5;
-						secOxidFlowValve = max(secOxidFlowValve, 0);
+						secOxidFlowValve = max(secOxidFlowValve, 0.0);
 					} else if (secOxidFlowValve < 0) {
 						secOxidFlowValve += 0.07 * simdt / 3.5;
-						secOxidFlowValve = min(secOxidFlowValve, 0);
+						secOxidFlowValve = min(secOxidFlowValve, 0.0);
 					}
 				
 				} else if (our_vessel->SPSOxidFlowValveSwitch.IsUp()) {
@@ -721,7 +721,7 @@ void SPSEngine::Timestep(double simt, double simdt) {
 			// Burn engine
 			saturn->SetThrusterResource(spsThruster, saturn->GetSPSPropellant()->Handle());
 			// Thrust decay if propellant pressure below 170 psi 
-			double thrust = min(1, saturn->GetSPSPropellant()->GetPropellantPressurePSI() / 170.0);
+			double thrust = min(1.0, saturn->GetSPSPropellant()->GetPropellantPressurePSI() / 170.0);
 			saturn->SetThrusterLevel(spsThruster, T_SPS*thrust);
 
 		} else {

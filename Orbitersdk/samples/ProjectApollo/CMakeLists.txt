@@ -134,11 +134,40 @@ if(NASSP_BUILD_NATIVE_LINUX)
     target_link_libraries(NasspFDAI PUBLIC PanelSDK NasspNativeOrbiterSdk PRIVATE OpenGL::GL OpenGL::GLU)
 
     add_library(NasspSaturn1BObjects OBJECT
+        src_aux/animations.cpp
+        src_aux/CDK.cpp
+        src_aux/OrbiterMath.cpp
+        src_csm/CSMcomputer.cpp
+        src_csm/CSMMalfunctionSimulation.cpp
+        src_csm/csmcautionwarning.cpp
+        src_csm/csmconnector.cpp
+        src_csm/csmrcs.cpp
+        src_csm/csmsensors.cpp
         src_csm/csm_telecom.cpp
+        src_csm/dockingprobe.cpp
+        src_csm/ecs.cpp
+        src_csm/eps.cpp
+        src_csm/rhc.cpp
+        src_csm/satswitches.cpp
         src_csm/satsystems.cpp
         src_csm/saturn.cpp
+        src_csm/saturnmesh.cpp
+        src_csm/sce.cpp
+        src_csm/secs.cpp
+        src_csm/smjc.cpp
+        src_csm/sps.cpp
+        src_saturn/canard.cpp
+        src_saturn/j2engine.cpp
+        src_saturn/qball.cpp
         src_saturn/Saturn1b.cpp
+        src_saturn/sat1bmesh.cpp
+        src_saturn/siisystems.cpp
+        src_sys/cautionwarning.cpp
         src_sys/checklistController.cpp
+        src_sys/MechanicalAccelerometer.cpp
+        src_sys/missiontimer.cpp
+        src_sys/ORDEAL.cpp
+        src_sys/toggleswitch.cpp
     )
     set_target_properties(NasspSaturn1BObjects PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_include_directories(NasspSaturn1BObjects PRIVATE

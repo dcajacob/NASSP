@@ -22,7 +22,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "animations.h"
 
 AnimState2::AnimState2()
@@ -144,7 +144,7 @@ void AnimState2::SaveState(FILEHANDLE scn, const char *label)
 
 bool AnimState2::ParseScenarioLine(const char *line, const char *label)
 {
-	if (!_strnicmp(line, label, strlen(label))) {
+	if (!strnicmp(line, label, strlen(label))) {
 		sscanf(line + strlen(label), "%lf%lf", &state, &speed);
 		return true;
 	}

@@ -22,7 +22,7 @@
 
   **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "nasspdefs.h"
 #include "soundlib.h"
 #include "saturn.h"

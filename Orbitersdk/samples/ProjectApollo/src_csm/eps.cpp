@@ -23,7 +23,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 **************************************************************************/
 
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <stdio.h>
 
 #include "PanelSDK/PanelSDK.h"
