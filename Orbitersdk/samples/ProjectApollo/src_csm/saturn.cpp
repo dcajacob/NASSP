@@ -25,7 +25,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
@@ -55,12 +55,19 @@
 
 #include "eva.h"
 
-#include <crtdbg.h>
+#include <algorithm>
+#include <cstdio>
 
 extern "C" {
+#if defined(NASSP_NATIVE_LINUX)
+#include <lua/lua.h>
+#include <lua/lualib.h>
+#include <lua/lauxlib.h>
+#else
 #include <lua\lua.h>
 #include <lua\lualib.h>
 #include <lua\lauxlib.h>
+#endif
 }
 
 //
@@ -301,6 +308,7 @@ void cbCSMVesim(int inputID, int eventType, int newValue, void *pdata) {
 	}
 }
 
+#if !defined(NASSP_NATIVE_LINUX)
 // DX8 callback for enumerating joysticks
 BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE* pdidInstance, VOID* pSaturn)
 {
@@ -350,6 +358,8 @@ BOOL CALLBACK EnumAxesCallback( const DIDEVICEOBJECTINSTANCE* pdidoi, VOID* pSat
 	}
     return DIENUM_CONTINUE;
 }
+#endif
+
 
 //
 // CAUTION: This disables the warning, which is triggered by the use of the "this" pointer in the 
@@ -581,6 +591,7 @@ Saturn::Saturn(OBJHANDLE hObj, int fmodel) : ProjectApolloConnectorVessel (hObj,
 	//Initialize the link to the MFD's debug function.
 	debugString = 0;
 	debugConnected = false;
+#if !defined(NASSP_NATIVE_LINUX)
 	HMODULE hdbg = GetModuleHandle("modules//plugin//ProjectApolloMFD.dll");
 	if (hdbg)
 	{
@@ -588,6 +599,7 @@ Saturn::Saturn(OBJHANDLE hObj, int fmodel) : ProjectApolloConnectorVessel (hObj,
 		if (debugString != 0)
 			debugConnected = true;
 	}
+#endif
 	if (!debugConnected)
 	{
 		debugString = &oapiDebugString;
@@ -626,8 +638,9 @@ Saturn::~Saturn()
 
 	ClearMissionManagementMemory();
 
+#if !defined(NASSP_NATIVE_LINUX)
 	// Release DirectX joystick stuff
-	if(enableVESIM || js_enabled > 0){
+	if (dx8ppv) {
 		// Release joysticks
 		while(js_enabled > 0){
 			js_enabled--;
@@ -637,6 +650,7 @@ Saturn::~Saturn()
 		dx8ppv->Release();
 		dx8ppv = NULL;
 	}
+#endif
 
 	for (int i = 0; i < 2; i++) {
 		delete[] ReticleLineLen[i];
@@ -1329,7 +1343,7 @@ void Saturn::clbkPostCreation()
 
 	char MissionName[24];
 
-	_snprintf(MissionName, 23, "Apollo%d", ApolloNo);
+	std::snprintf(MissionName, sizeof(MissionName), "Apollo%d", ApolloNo);
 	soundlib.SetSoundLibMissionPath(MissionName);
 
 	timedSounds.LoadFromFile("csmsound.csv", MissionTime);
@@ -1645,7 +1659,7 @@ void Saturn::clbkPreStep(double simt, double simdt, double mjd)
 		dsky.SendNetworkPacketDSKY();
 	}
 
-	if ((oapiGetFocusObject() == GetHandle()) && (oapiCockpitMode() == COCKPIT_VIRTUAL) && (oapiCameraMode() == CAM_COCKPIT)) {
+	if ((oapiGetFocusObject() == GetHandle()) && (oapiCockpitMode() == COCKPIT_VIRTUAL) && oapiCameraInternal()) {
 		//We have focus on this vessel, and are in the VC
 		MoveFlashlight();
 	}
@@ -3676,7 +3690,7 @@ int Saturn::clbkConsumeDirectKey(char *kstate)
 	}
 
 	if ((!KEYMOD_CONTROL(kstate)) && (!KEYMOD_ALT(kstate))) {
-		if ((oapiCockpitMode() == COCKPIT_VIRTUAL) && (oapiCameraMode() == CAM_COCKPIT)) {
+		if ((oapiCockpitMode() == COCKPIT_VIRTUAL) && oapiCameraInternal()) {
 			if (setFreeCam == true) {
 				VCFreeCam(camDir, camSlow);
 			}
@@ -4540,6 +4554,19 @@ void Saturn::GenericLoadStateSetup()
 	// Set up joysticks.
 	//
 
+#if defined(NASSP_NATIVE_LINUX)
+	if (enableVESIM) {
+		for (auto& input : vesim_csm_inputs) vesim.addInput(&input);
+		vesim.setupDevices("CSM");
+	} else {
+		legacyJoysticks = nassp::Joystick::OpenDevices();
+		js_enabled = static_cast<int>(std::min<std::size_t>(legacyJoysticks.size(), 2));
+		if (rhc_auto && rhc_id >= 0 && rhc_id < js_enabled)
+			legacyJoysticks[rhc_id].DetectLegacyAxes(rhc_rot_id, rhc_rzx_id, rhc_pov_id);
+		if (thc_auto && thc_id >= 0 && thc_id < js_enabled)
+			legacyJoysticks[thc_id].DetectLegacyAxes(thc_rot_id, thc_rzx_id, thc_pov_id);
+	}
+#else
 	HRESULT hr;
 	// Having read the configuration file, set up DirectX...	
 	hr = DirectInput8Create(dllhandle, DIRECTINPUT_VERSION, IID_IDirectInput8, (void **)&dx8ppv, NULL); // Give us a DirectInput context
@@ -4581,6 +4608,7 @@ void Saturn::GenericLoadStateSetup()
 		// We can't print an error message this early in initialization, so save this reason for later investigation.
 		dx8_failure = hr;
 	}
+#endif
 }
 
 void Saturn::SetGenericStageState()
@@ -5414,14 +5442,14 @@ int Saturn::Lua_InitInterpreter(void *context)
 }
 
 
-int LuaCall_GetPanelSwitch(lua_State *L);
-int LuaCall_SetPanelSwitch(lua_State *L);
-int LuaCall_GetPanelSwitchFlashing(lua_State *L);
-int LuaCall_SetPanelSwitchFlashing(lua_State *L);
-int LuaCall_GetAGCErasable(lua_State *L);
-int LuaCall_GetAGCChannel(lua_State *L);
-int LuaCall_SetAGCErasable(lua_State *L);
-int LuaCall_GetAGCUplinkStatus(lua_State *L);
+static int LuaCall_GetPanelSwitch(lua_State *L);
+static int LuaCall_SetPanelSwitch(lua_State *L);
+static int LuaCall_GetPanelSwitchFlashing(lua_State *L);
+static int LuaCall_SetPanelSwitchFlashing(lua_State *L);
+static int LuaCall_GetAGCErasable(lua_State *L);
+static int LuaCall_GetAGCChannel(lua_State *L);
+static int LuaCall_SetAGCErasable(lua_State *L);
+static int LuaCall_GetAGCUplinkStatus(lua_State *L);
 
 
 int Saturn::Lua_InitInstance (void *context)

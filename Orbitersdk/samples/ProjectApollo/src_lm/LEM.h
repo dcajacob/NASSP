@@ -29,8 +29,6 @@
 #include "ORDEAL.h"
 
 // DS20060413 Include DirectInput
-#define DIRECTINPUT_VERSION 0x0800
-#include "dinput.h"
 #include "vesim.h"
 #include "dsky.h"
 #include "IMU.h"
@@ -72,6 +70,8 @@
 #include "payload.h"
 #include "LMMalfunctionSimulation.h"
 #include "CueCardManager.h"
+
+class MCC;
 
 enum LMRCSThrusters
 {
@@ -737,18 +737,18 @@ public:
 
 	double DebugLineClearTimer;			// Timer for clearing debug line
 		
-	// DS20060413 DirectInput stuff
-	// Handle to DLL instance
-	HINSTANCE dllhandle;
-	// pointer to DirectInput class itself
-	LPDIRECTINPUT8 dx8ppv;
-	// Joysticks-Enabled flag / counter - Zero if we aren't using DirectInput, nonzero is the number of joysticks we have.
+	// Legacy controller mode uses the first two attached devices.
 	int js_enabled;
-	// Pointers to DirectInput joystick devices
-	LPDIRECTINPUTDEVICE8 dx8_joystick[2]; // One for THC, one for RHC, ignore extras
-	DIDEVCAPS			 dx8_jscaps[2];   // Joystick capabilities
-	DIJOYSTATE2			 dx8_jstate[2];   // Joystick state
-	HRESULT				 dx8_failure;     // DX failure reason
+#if defined(NASSP_NATIVE_LINUX)
+	std::vector<nassp::Joystick> legacyJoysticks;
+#else
+	HINSTANCE dllhandle;
+	LPDIRECTINPUT8 dx8ppv = nullptr;
+	LPDIRECTINPUTDEVICE8 dx8_joystick[2];
+	DIDEVCAPS dx8_jscaps[2];
+	DIJOYSTATE2 dx8_jstate[2];
+	HRESULT dx8_failure;
+#endif
 	Vesim vesim;                          ///< Vessel Specific Input Mngr
 	int rhc_id;							  // Joystick # for the RHC
 	int rhc_rot_id;						  // ID of ROTATOR axis to use for RHC Z-axis
@@ -766,7 +766,7 @@ public:
 	bool thc_auto;						  ///< THC Z-axis auto detection
 	bool rhc_thctoggle;					  ///< Enable RHC/THC toggle
 	int rhc_thctoggle_id;				  ///< RHC button id for RHC/THC toggle
-	bool enableVESIM;                     ///< Vessel Specific Input Mgmt enabled
+	bool enableVESIM = false;                     ///< Vessel Specific Input Mgmt enabled
 	bool rhc_thctoggle_pressed;			  ///< Button pressed flag
 	int ttca_throttle_pos;                // TTCA THROTTLE-mode position
 	double ttca_throttle_pos_dig;		  // TTCA THROTTLE-mode position mapped to 0-1
@@ -913,7 +913,7 @@ protected:
 	// LEM panel 1 //
 	/////////////////
 
-	Panel1RelayBox Panel1RelayBox;
+	::Panel1RelayBox Panel1RelayBox;
 
 	FDAI fdaiLeft;
 	int fdaiDisabled;
@@ -934,15 +934,15 @@ protected:
 	LEMDigitalHeliumPressureMeter MainHeliumPressureMeter;
 
 	SwitchRow MainPropAndEngineIndRow;
-	EngineThrustInd EngineThrustInd;
-	CommandedThrustInd CommandedThrustInd;
-	MainFuelTempInd MainFuelTempInd;
-	MainFuelPressInd MainFuelPressInd;
-	MainOxidizerTempInd MainOxidizerTempInd;
-	MainOxidizerPressInd MainOxidizerPressInd;
+	::EngineThrustInd EngineThrustInd;
+	::CommandedThrustInd CommandedThrustInd;
+	::MainFuelTempInd MainFuelTempInd;
+	::MainFuelPressInd MainFuelPressInd;
+	::MainOxidizerTempInd MainOxidizerTempInd;
+	::MainOxidizerPressInd MainOxidizerPressInd;
 
 	SwitchRow ThrustWeightIndRow;
-	ThrustWeightInd ThrustWeightInd;
+	::ThrustWeightInd ThrustWeightInd;
 
 	SwitchRow GuidContSwitchRow;
 	ToggleSwitch GuidContSwitch;
@@ -990,32 +990,32 @@ protected:
 	// LEM panel 2 //
 	/////////////////
 
-	Panel2RelayBox Panel2RelayBox;
+	::Panel2RelayBox Panel2RelayBox;
 
 	FDAI fdaiRight;
 
 	CrossPointer crossPointerRight;
 
 	SwitchRow RCSIndicatorRow;
-	LMRCSATempInd LMRCSATempInd;
-	LMRCSBTempInd LMRCSBTempInd;
-	LMRCSAPressInd LMRCSAPressInd;
-	LMRCSBPressInd LMRCSBPressInd;
-	LMRCSAQtyInd LMRCSAQtyInd;
-	LMRCSBQtyInd LMRCSBQtyInd;
+	::LMRCSATempInd LMRCSATempInd;
+	::LMRCSBTempInd LMRCSBTempInd;
+	::LMRCSAPressInd LMRCSAPressInd;
+	::LMRCSBPressInd LMRCSBPressInd;
+	::LMRCSAQtyInd LMRCSAQtyInd;
+	::LMRCSBQtyInd LMRCSBQtyInd;
 
 	SwitchRow ECSUpperIndicatorRow;
-	LMSuitTempMeter LMSuitTempMeter;
-	LMCabinTempMeter LMCabinTempMeter;
-	LMSuitPressMeter LMSuitPressMeter;
-	LMCabinPressMeter LMCabinPressMeter;
-	LMCO2Meter LMCO2Meter;
+	::LMSuitTempMeter LMSuitTempMeter;
+	::LMCabinTempMeter LMCabinTempMeter;
+	::LMSuitPressMeter LMSuitPressMeter;
+	::LMCabinPressMeter LMCabinPressMeter;
+	::LMCO2Meter LMCO2Meter;
 
 	SwitchRow ECSLowerIndicatorRow;
-	LMGlycolTempMeter LMGlycolTempMeter;
-	LMGlycolPressMeter LMGlycolPressMeter;
-	LMOxygenQtyMeter LMOxygenQtyMeter;
-	LMWaterQtyMeter LMWaterQtyMeter;
+	::LMGlycolTempMeter LMGlycolTempMeter;
+	::LMGlycolPressMeter LMGlycolPressMeter;
+	::LMOxygenQtyMeter LMOxygenQtyMeter;
+	::LMWaterQtyMeter LMWaterQtyMeter;
 
 	SwitchRow RightMasterAlarmSwitchRow;
 	LEMMasterAlarmSwitch RightMasterAlarmSwitch;
@@ -1129,7 +1129,7 @@ protected:
 	ThreePosSwitch YawSwitch;
 
 	SwitchRow TempMonitorIndRow;
-	TempMonitorInd TempMonitorInd;
+	::TempMonitorInd TempMonitorInd;
 
 	SwitchRow TempMonitorRotaryRow;
 	RotationalSwitch TempMonitorRotary;
@@ -1172,7 +1172,7 @@ protected:
 
 	SwitchRow RaderSignalStrengthMeterRow;
 	DCVoltMeter RadarSignalStrengthMeter;
-	RadarSignalStrengthAttenuator RadarSignalStrengthAttenuator;
+	::RadarSignalStrengthAttenuator RadarSignalStrengthAttenuator;
 
 
 	/////////////////

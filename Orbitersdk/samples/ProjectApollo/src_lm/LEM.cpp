@@ -25,7 +25,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 #include "lmresource.h"
@@ -318,6 +318,7 @@ void cbLMVesim(int inputID, int eventType, int newValue, void *pdata) {
 }
 
 
+#if !defined(NASSP_NATIVE_LINUX)
 // DS20060302 DX8 callback for enumerating joysticks
 BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE* pdidInstance, VOID* pLEM)
 {
@@ -367,6 +368,8 @@ BOOL CALLBACK EnumAxesCallback( const DIDEVICEOBJECTINSTANCE* pdidoi, VOID* pLEM
 	}
     return DIENUM_CONTINUE;
 }
+#endif
+
 
 // Constructor
 LEM::LEM(OBJHANDLE hObj, int fmodel) : Payload (hObj, fmodel), 
@@ -464,7 +467,9 @@ LEM::LEM(OBJHANDLE hObj, int fmodel) : Payload (hObj, fmodel),
 	Failures(this),
 	CueCards(vcidx, this, 25)
 {
+#if !defined(NASSP_NATIVE_LINUX)
 	dllhandle = g_Param.hDLL; // DS20060413 Save for later
+#endif
 	InitLEMCalled = false;
 
 	//Mission File
@@ -503,8 +508,9 @@ LEM::~LEM()
 	sevent.Done();
 #endif
 
+#if !defined(NASSP_NATIVE_LINUX)
 	// DS20060413 release DirectX stuff
-	if (enableVESIM || js_enabled > 0) {
+	if (dx8ppv) {
 		// Release joysticks
 		while(js_enabled > 0){
 			js_enabled--;
@@ -514,6 +520,7 @@ LEM::~LEM()
 		dx8ppv->Release();
 		dx8ppv = NULL;
 	}
+#endif
 
 	if (aeaa)
 	{
@@ -1755,6 +1762,19 @@ void LEM::PostLoadSetup(bool define_anims)
 		DockingLightSwitchConnector.WireTo(NULL);
 	}
 
+#if defined(NASSP_NATIVE_LINUX)
+	if (enableVESIM) {
+		for (auto& input : vesim_lm_inputs) vesim.addInput(&input);
+		vesim.setupDevices("LM");
+	} else {
+		legacyJoysticks = nassp::Joystick::OpenDevices();
+		js_enabled = static_cast<int>(std::min<std::size_t>(legacyJoysticks.size(), 2));
+		if (rhc_auto && rhc_id >= 0 && rhc_id < js_enabled)
+			legacyJoysticks[rhc_id].DetectLegacyAxes(rhc_rot_id, rhc_rzx_id, rhc_pov_id);
+		if (thc_auto && thc_id >= 0 && thc_id < js_enabled)
+			legacyJoysticks[thc_id].DetectLegacyAxes(thc_rot_id, thc_rzx_id, thc_pov_id);
+	}
+#else
 	HRESULT         hr;
 	// Having read the configuration file, set up DirectX...	
 	hr = DirectInput8Create(dllhandle, DIRECTINPUT_VERSION, IID_IDirectInput8, (void **)&dx8ppv, NULL); // Give us a DirectInput context
@@ -1792,6 +1812,7 @@ void LEM::PostLoadSetup(bool define_anims)
 		// We can't print an error message this early in initialization, so save this reason for later investigation.
 		dx8_failure = hr;
 	}
+#endif
 }
 
 void LEM::GetScenarioState(FILEHANDLE scn, void *vs)

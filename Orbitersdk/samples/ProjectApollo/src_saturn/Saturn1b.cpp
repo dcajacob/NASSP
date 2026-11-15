@@ -51,6 +51,7 @@
 
 #if defined(NASSP_NATIVE_LINUX)
 #include "Production/NativeVesselFactory.h"
+#include "Production/NativeInterpreterSdk.h"
 #define SATURN1B_CALLBACK static
 #else
 #define SATURN1B_CALLBACK DLLCLBK

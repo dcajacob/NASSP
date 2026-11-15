@@ -24,10 +24,10 @@
 
 // To force orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#include <cstdio>
 #include <stdio.h>
 #include <math.h>
-#include <winsock.h> // TODO: Replace with winsock2 when yaAGC updates
 #include "lmresource.h"
 
 #include "nasspdefs.h"
@@ -366,8 +366,8 @@ void LM_VHF::SaveState(FILEHANDLE scn)
 //PCM
 LM_PCM::LM_PCM()
 {
-	lem = NULL;
-	PCMHeat = 0;
+	lem = nullptr;
+	PCMHeat = nullptr;
 	conn_state = 0;
 	uplink_state = 0; rx_offset = 0;
 	mcc_size = 0; mcc_offset = 0;
@@ -376,73 +376,53 @@ LM_PCM::LM_PCM()
 	last_rx = 0;
 	frame_addr = 0;
 	frame_count = 0;
-	m_socket = INVALID_SOCKET;
 }
 
-LM_PCM::~LM_PCM()
+LM_PCM::~LM_PCM() = default;
+
+void LM_PCM::ReportSocketError(const char* operation, int error)
 {
-	// Close telemetry socket
-	if (m_socket != INVALID_SOCKET) {
-		shutdown(m_socket, 2); // Shutdown both streams
-		closesocket(m_socket);
-	}
+	wsk_error = 1;
+	std::snprintf(wsk_emsg, sizeof(wsk_emsg), "LM-TELECOM: %s failed (%d)", operation, error);
 }
 
-void LM_PCM::Init(LEM *vessel, h_HeatLoad *pcmh)
+void LM_PCM::Init(LEM *vessel, h_HeatLoad *heatLoad)
 {
+	telemetryClient.Close();
+	telemetryListener.Close();
 	lem = vessel;
-	PCMHeat = pcmh;
-	conn_state = 0;
-	uplink_state = 0; rx_offset = 0;
-	mcc_size = 0; mcc_offset = 0;
+	PCMHeat = heatLoad;
+	// The simulated MCC uplink also uses the listening state. It remains available
+	// when an external telemetry connection cannot be opened.
+	conn_state = 1;
+	uplink_state = 0;
+	rx_offset = 0;
+	mcc_size = 0;
+	mcc_offset = 0;
 	wsk_error = 0;
 	last_update = 0;
 	last_rx = MINUS_INFINITY;
 	word_addr = 0;
-	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (iResult != NO_ERROR) {
-		sprintf(wsk_emsg, "LM-TELECOM: Error at WSAStartup()");
-		wsk_error = 1;
-		return;
-	}
-	m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (m_socket == INVALID_SOCKET) {
-		sprintf(wsk_emsg, "LM-TELECOM: Error at socket(): %ld", WSAGetLastError());
-		WSACleanup();
-		wsk_error = 1;
-		return;
-	}
-	// Be nonblocking
-	int iMode = 1; // 0 = BLOCKING, 1 = NONBLOCKING
-	if (ioctlsocket(m_socket, FIONBIO, (u_long FAR*) &iMode) != 0) {
-		sprintf(wsk_emsg, "LM-TELECOM: ioctlsocket() failed: %ld", WSAGetLastError());
-		wsk_error = 1;
-		closesocket(m_socket);
-		WSACleanup();
-		return;
-	}
 
-	// Set up incoming options
+	if (const int error = telemetryRuntime.Start()) {
+		ReportSocketError("socket startup", error);
+		return;
+	}
+	if (const int error = telemetryListener.Open(SOCK_STREAM, IPPROTO_TCP)) {
+		ReportSocketError("socket", error);
+		return;
+	}
+	sockaddr_in service{};
 	service.sin_family = AF_INET;
 	service.sin_addr.s_addr = htonl(INADDR_ANY);
-	service.sin_port = htons(14243); // CM on 14242, LM on 14243
-
-	if (::bind(m_socket, (SOCKADDR*)&service, sizeof(service)) == SOCKET_ERROR) {
-		sprintf(wsk_emsg, "Failed to start LM telemetry. Please completely exit Orbiter and restart. Please file a bug report if this message persists.");
-		wsk_error = 1;
-		closesocket(m_socket);
-		WSACleanup();
-		return;
+	service.sin_port = htons(14243);
+	if (::bind(telemetryListener.Get(), reinterpret_cast<const sockaddr*>(&service), sizeof(service)) != 0) {
+		ReportSocketError("bind", LastSocketError());
+		telemetryListener.Close();
+	} else if (listen(telemetryListener.Get(), 1) != 0) {
+		ReportSocketError("listen", LastSocketError());
+		telemetryListener.Close();
 	}
-	if (listen(m_socket, 1) == SOCKET_ERROR) {
-		wsk_error = 1;
-		sprintf(wsk_emsg, "LM-TELECOM: listen() failed: %ld", WSAGetLastError());
-		closesocket(m_socket);
-		WSACleanup();
-		return;
-	}
-	conn_state = 1; // INITIALIZED, LISTENING
-	uplink_state = 0; rx_offset = 0;
 }
 
 bool LM_PCM::TimingSignal() //Currently just looking for power from the PCM/TE cb, this needs to generate a 512 KHz timing signal
@@ -576,147 +556,74 @@ unsigned char LM_PCM::scale_scea(double data)
 	return static_cast<unsigned char>(data*256.0 / 5.0 + 0.5);
 }
 
-void LM_PCM::perform_io(double simt){
-	// Do TCP IO
-	switch(conn_state){
-		case 0: // UNINITIALIZED
-			break;
-		case 1: // INITALIZED, LISTENING
-				// Do we have data from MCC?
-			if (mcc_size > 0) {
-				// sprintf(oapiDebugString(), "MCCSIZE %d LRX %f LRXINT %f", mcc_size, last_rx, ((simt - last_rx) / 0.005));
-				// Should we recieve?
-				if ((fabs(simt - last_rx) / 0.1) < 1 || lem->agc.InterruptPending(ApolloGuidance::Interrupt::UPRUPT)) {
-					return; // No
-				}
+bool LM_PCM::UplinkEnabled() const
+{
+	return lem->COMM_UP_DATA_LINK_CB.IsPowered() &&
+	       lem->Panel12UpdataLinkSwitch.GetState() == THREEPOSSWITCH_DOWN;
+}
+
+void LM_PCM::ConsumeMccByte()
+{
+	if (mcc_size <= 0) return;
+	rx_data[rx_offset] = mcc_data[mcc_offset++];
+	if (UplinkEnabled())
+		handle_uplink();
+	if (mcc_offset >= mcc_size)
+		mcc_offset = mcc_size = 0;
+}
+
+void LM_PCM::DisconnectTelemetryClient()
+{
+	telemetryClient.Close();
+	conn_state = 1;
+	uplink_state = 0;
+	rx_offset = 0;
+}
+
+void LM_PCM::perform_io(double simt)
+{
+	if (conn_state == 0) return;
+	if (conn_state == 1) {
+		if (mcc_size > 0) {
+			if (fabs(simt - last_rx) >= 0.1 && !lem->agc.InterruptPending(ApolloGuidance::Interrupt::UPRUPT)) {
 				last_rx = simt;
-				// Yes. Take a byte
-				rx_data[rx_offset] = mcc_data[mcc_offset];
-				mcc_offset++;
-				// If uplink isn't blocked
-				if (lem->COMM_UP_DATA_LINK_CB.IsPowered() && lem->Panel12UpdataLinkSwitch.GetState() == THREEPOSSWITCH_DOWN) {
-					// Handle it
-					handle_uplink();
-				}
-				// Are we done?
-				if (mcc_offset >= mcc_size) {
-					// We reached the end of the MCC buffer.
-					mcc_offset = mcc_size = 0;
-				}
+				ConsumeMccByte();
 			}
-			else {
-				// Try to accept
-				AcceptSocket = accept(m_socket, NULL, NULL);
-				if (AcceptSocket != INVALID_SOCKET) {
-					conn_state = 2; // Accept this!
-					wsk_error = 0; // For now
-				}
-			}
-			// Otherwise loop and try again.
-			break;
-		case 2: // CONNECTED			
-			int bytesSent,bytesRecv;
-
-			bytesSent = send(AcceptSocket, (char *)tx_data, tx_size, 0 );
-			if(bytesSent == SOCKET_ERROR){
-				long errnumber = WSAGetLastError();
-				switch(errnumber){
-					// KNOWN CODES that we can ignore
-					case 10035: // Operation Would Block
-						// We can ignore this entirely. It's not an error.
-						break;
-
-					case 10038: // Socket isn't a socket
-					case 10053: // Software caused connection abort
-					case 10054: // Connection reset by peer
-						closesocket(AcceptSocket);
-						conn_state = 1; // Accept another
-						uplink_state = 0; rx_offset = 0;
-						break;
-
-					default:           // If unknown
-						wsk_error = 1; // do this
-						sprintf(wsk_emsg,"LM-TELECOM: send() failed: %ld",errnumber);
-						closesocket(AcceptSocket);
-						conn_state = 1; // Accept another
-						uplink_state = 0; rx_offset = 0;
-						break;					
-				}
-			}
-			// Should we receive?
-			if (((simt - last_rx) / 0.005) < 1 || lem->agc.InterruptPending(ApolloGuidance::Interrupt::UPRUPT)) {
-				return; // No
-			}
-			last_rx = simt;
-			bytesRecv = recv( AcceptSocket, (char *)(rx_data+rx_offset), 1, 0 );
-			if(bytesRecv == SOCKET_ERROR){
-				long errnumber = WSAGetLastError();
-				switch(errnumber){
-					// KNOWN CODES that we can ignore
-					case 10035: // Operation Would Block
-						// We can ignore this entirely. It's not an error.
-						break;
-
-					case 10053: // Software caused connection abort
-					case 10038: // Socket isn't a socket
-					case 10054: // Connection reset by peer
-						closesocket(AcceptSocket);
-						conn_state = 1; // Accept another
-						uplink_state = 0; rx_offset = 0;
-						break;
-
-					default:           // If unknown
-						wsk_error = 1; // do this
-						sprintf(wsk_emsg,"LM-TELECOM: recv() failed: %ld",errnumber);
-						closesocket(AcceptSocket);
-						conn_state = 1; // Accept another
-						uplink_state = 0; rx_offset = 0;
-						break;					
-				}
-				// Do we have data from MCC instead?
-				if (mcc_size > 0) {
-					// Yes. Take a byte
-					rx_data[rx_offset] = mcc_data[mcc_offset];
-					mcc_offset++;
-					// If the telemetry data-path is disconnected, discard the data
-					if (lem->COMM_UP_DATA_LINK_CB.IsPowered() && lem->Panel12UpdataLinkSwitch.GetState() == THREEPOSSWITCH_DOWN) {
-						// otherwise handle it
-						handle_uplink();
-					}
-					// Are we done?
-					if (mcc_offset >= mcc_size) {
-						// We reached the end of the MCC buffer.
-						mcc_offset = mcc_size = 0;
-					}
-				}
-			}else{
-				// FIXME: Check to make sure the up-data equipment is powered
-				// Reject uplink if switch is not down.
-				if(lem->COMM_UP_DATA_LINK_CB.IsPowered() == false || lem->Panel12UpdataLinkSwitch.GetState() != THREEPOSSWITCH_DOWN){
-					return; // Discard the data
-				}
-				if(bytesRecv > 0){
-					handle_uplink();
-				}
-				else
-				{
-					// Do we have data from MCC instead?
-					if (mcc_size > 0) {
-						// Yes. Take a byte
-						rx_data[rx_offset] = mcc_data[mcc_offset];
-						mcc_offset++;
-						// Handle it
-						handle_uplink();
-						// Are we done?
-						if (mcc_offset >= mcc_size) {
-							// We reached the end of the MCC buffer.
-							mcc_offset = mcc_size = 0;
-						}
-					}
-				}
-			}
-			break;			
+		} else if (telemetryListener && telemetryClient.Accept(telemetryListener) == 0) {
+			conn_state = 2;
+			wsk_error = 0;
+		}
+		return;
 	}
+
+	if (send(telemetryClient.Get(), reinterpret_cast<const char*>(tx_data), tx_size, socketSendFlags) < 0) {
+		const int error = LastSocketError();
+		if (!RetrySocketError(error)) {
+			if (!SocketDisconnected(error)) ReportSocketError("send", error);
+			DisconnectTelemetryClient();
+			return;
+		}
+	}
+
+	if (fabs(simt - last_rx) < 0.005 || lem->agc.InterruptPending(ApolloGuidance::Interrupt::UPRUPT))
+		return;
+	last_rx = simt;
+	const auto count = recv(telemetryClient.Get(), reinterpret_cast<char*>(rx_data + rx_offset), 1, 0);
+	if (count > 0) {
+		if (UplinkEnabled())
+			handle_uplink();
+		return;
+	}
+	if (count == 0) {
+		DisconnectTelemetryClient();
+	} else {
+		const int error = LastSocketError();
+		if (!RetrySocketError(error)) {
+			if (!SocketDisconnected(error)) ReportSocketError("recv", error);
+			DisconnectTelemetryClient();
+		}
+	}
+	ConsumeMccByte();
 }
 
 // Handle data moved to buffer from either the socket or mcc buffer

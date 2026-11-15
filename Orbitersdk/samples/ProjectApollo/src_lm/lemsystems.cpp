@@ -26,7 +26,11 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#include <algorithm>
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeInterpreterSdk.h"
+#endif
 #include "stdio.h"
 #include "math.h"
 #include "lmresource.h"
@@ -46,6 +50,12 @@
 
 #include "papi.h"
 #include "Mission.h"
+
+#if defined(NASSP_NATIVE_LINUX)
+static constexpr auto cockpitBlitKey = SURF_NO_CK;
+#else
+static constexpr auto cockpitBlitKey = SURF_PREDEF_CK;
+#endif
 
 void LEM::ResetThrusters()
 
@@ -944,7 +954,9 @@ void LEM::JoystickTimestep(double simdt)
 		// 480 points per count.
 
 		// Read data
+#if !defined(NASSP_NATIVE_LINUX)
 		HRESULT hr;
+#endif
 		// Handle RHC
 		if (enableVESIM) {
 			if (GetAttitudeMode() == RCS_ROT) {
@@ -954,6 +966,24 @@ void LEM::JoystickTimestep(double simdt)
 				
 			}
 		}
+#if defined(NASSP_NATIVE_LINUX)
+		else if (rhc_id >= 0 && rhc_id < js_enabled && legacyJoysticks[rhc_id].Poll()) {
+			using Axis = nassp::Joystick::Axis;
+			const auto& stick = legacyJoysticks[rhc_id];
+			rhc_pos[0] = stick.Position(Axis::X).value_or(32768);
+			rhc_pos[1] = stick.Position(Axis::Y).value_or(32768);
+			rhc_pos[2] = 65536 - stick.LongitudinalPosition(rhc_rot_id, rhc_rzx_id != -1);
+			if (const auto slider = stick.Slider(rhc_sld_id)) {
+				ttca_throttle_pos = *slider;
+				ttca_throttle_pos_dig = (65536.0 - ttca_throttle_pos) / 65536.0;
+			}
+			if (rhc_thctoggle && thc_id == -1 && rhc_thctoggle_id >= 0) {
+				const bool pressed = stick.Button(rhc_thctoggle_id).value_or(false);
+				if (pressed && !rhc_thctoggle_pressed) SetAttitudeMode(RCS_LIN);
+				rhc_thctoggle_pressed = pressed;
+			}
+		}
+#else
 		else if (rhc_id != -1 && rhc_id < js_enabled) {
 			// CHECK FOR POWER HERE
 			hr = dx8_joystick[rhc_id]->Poll();
@@ -1008,6 +1038,7 @@ void LEM::JoystickTimestep(double simdt)
 				}
 			}
 		}
+#endif
 		else {
 
 			// No JS
@@ -1249,6 +1280,25 @@ void LEM::JoystickTimestep(double simdt)
 			}
 			ttca_throttle_pos_dig = (65536.0 - (double)ttca_throttle_pos) / 65536.0;
 		}
+#if defined(NASSP_NATIVE_LINUX)
+		else if (thc_id >= 0 && thc_id < js_enabled && legacyJoysticks[thc_id].Poll()) {
+			using Axis = nassp::Joystick::Axis;
+			const auto& stick = legacyJoysticks[thc_id];
+			const auto slider = stick.Slider(thc_tjt_id);
+			ttca_realistic_throttle = slider.has_value();
+			if (LeftTTCATranslSwitch.IsUp()) {
+				thc_tjt_pos = slider.value_or(32768);
+				thc_x_pos = stick.Position(Axis::X).value_or(32768) - 32768;
+				thc_y_pos = stick.Position(Axis::Y).value_or(32768) - 32768;
+				thc_z_pos = stick.LongitudinalPosition(thc_rot_id, thc_rzx_id != -1) - 32768;
+			}
+			if (rhc_thctoggle && rhc_id == -1 && rhc_thctoggle_id >= 0) {
+				const bool pressed = stick.Button(rhc_thctoggle_id).value_or(false);
+				if (pressed && !rhc_thctoggle_pressed) SetAttitudeMode(RCS_ROT);
+				rhc_thctoggle_pressed = pressed;
+			}
+		}
+#else
 		else if (thc_id != -1 && thc_id < js_enabled) {
 			hr = dx8_joystick[thc_id]->Poll();
 			if (FAILED(hr)) { // Did that work?
@@ -1314,6 +1364,7 @@ void LEM::JoystickTimestep(double simdt)
 				}
 			}
 		}
+#endif
 		else {
 			// No JS
 
@@ -1403,8 +1454,8 @@ void LEM::JoystickTimestep(double simdt)
 
 void LEM::SystemsInternalTimestep(double simdt)
 {
-	double mintFactor = __max(simdt / 50.0, 0.02);
-	double tFactor = __min(mintFactor, simdt);
+	double mintFactor = (std::max)(simdt / 50.0, 0.02);
+	double tFactor = (std::min)(mintFactor, simdt);
 	while (simdt > 0) {
 
 		// Each Timestep is passed to the SPSDK
@@ -1491,7 +1542,7 @@ void LEM::SystemsInternalTimestep(double simdt)
 		LMPManualEngineStop.SystemTimestep(tFactor);
 
 		simdt -= tFactor;
-		tFactor = __min(mintFactor, simdt);
+		tFactor = (std::min)(mintFactor, simdt);
 	}
 }
 
@@ -3183,31 +3234,31 @@ void LEM_RadarTape::LoadState(FILEHANDLE scn, char *end_str) {
 void LEM_RadarTape::RenderRange(SURFHANDLE surf) {
 	if (dispRange > 6321.0)
 	{
-		oapiBlt(surf, tape2, 0, 0, 0, (int)(dispRange)-6317, 43, 163, SURF_PREDEF_CK);
+		oapiBlt(surf, tape2, 0, 0, 0, (int)(dispRange)-6317, 43, 163, cockpitBlitKey);
 	}
 	else
 	{
-		oapiBlt(surf, tape1, 0, 0, 0, (int)(dispRange), 43, 163, SURF_PREDEF_CK);
+		oapiBlt(surf, tape1, 0, 0, 0, (int)(dispRange), 43, 163, cockpitBlitKey);
 	}
 }
 
 void LEM_RadarTape::RenderRate(SURFHANDLE surf)
 {
-	oapiBlt(surf, tape1, 0, 0, 42, (int)(dispRate), 35, 163, SURF_PREDEF_CK);
+	oapiBlt(surf, tape1, 0, 0, 42, (int)(dispRate), 35, 163, cockpitBlitKey);
 }
 
 void LEM_RadarTape::RenderRangeVC(SURFHANDLE surf, SURFHANDLE surf1a, SURFHANDLE surf1b, SURFHANDLE surf2, int TexMul) {
 	if (dispRange > 6321.0)
 	{
-		oapiBlt(surf, surf2, 0, 0, 0, (int)(dispRange)*TexMul - 6317 * TexMul, 43 * TexMul, 163 * TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, surf2, 0, 0, 0, (int)(dispRange)*TexMul - 6317 * TexMul, 43 * TexMul, 163 * TexMul, cockpitBlitKey);
 	}
 	else if (dispRange > 3181.0)
 	{
-		oapiBlt(surf, surf1b, 0, 0, 0, (int)(dispRange)*TexMul - 3026 * TexMul, 43 * TexMul, 163 * TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, surf1b, 0, 0, 0, (int)(dispRange)*TexMul - 3026 * TexMul, 43 * TexMul, 163 * TexMul, cockpitBlitKey);
 	}
 	else
 	{
-		oapiBlt(surf, surf1a, 0, 0, 0, (int)(dispRange)*TexMul, 43 * TexMul, 163 * TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, surf1a, 0, 0, 0, (int)(dispRange)*TexMul, 43 * TexMul, 163 * TexMul, cockpitBlitKey);
 	}
 }
 
@@ -3215,10 +3266,10 @@ void LEM_RadarTape::RenderRateVC(SURFHANDLE surf, SURFHANDLE surf1a, SURFHANDLE 
 {
 	if (dispRate > 3181.0) {
 
-		oapiBlt(surf, surf1b, 0, 0, 42 * TexMul, (int)(dispRate)*TexMul - 3026 * TexMul, 35 * TexMul, 163 * TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, surf1b, 0, 0, 42 * TexMul, (int)(dispRate)*TexMul - 3026 * TexMul, 35 * TexMul, 163 * TexMul, cockpitBlitKey);
 	}
 	else {
-		oapiBlt(surf, surf1a, 0, 0, 42 * TexMul, (int)(dispRate)*TexMul, 35 * TexMul, 163 * TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, surf1a, 0, 0, 42 * TexMul, (int)(dispRate)*TexMul, 35 * TexMul, 163 * TexMul, cockpitBlitKey);
 	}
 }
 

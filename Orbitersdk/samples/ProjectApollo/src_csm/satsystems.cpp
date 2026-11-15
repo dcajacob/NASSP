@@ -25,7 +25,11 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#include <algorithm>
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeInterpreterSdk.h"
+#endif
 #include <stdio.h>
 #include <math.h>
 #include "soundlib.h"
@@ -1859,8 +1863,8 @@ void Saturn::SystemsInternalTimestep(double simdt)
 {
 	TRACESETUP("Saturn::SystemsInternalTimestep");
 
-	double mintFactor = __max(simdt / 100.0, 0.5);
-	double tFactor = __min(mintFactor, simdt);
+	double mintFactor = (std::max)(simdt / 100.0, 0.5);
+	double tFactor = (std::min)(mintFactor, simdt);
 	while (simdt > 0) {
 
 		// Each timestep is passed to the SPSDK
@@ -1939,7 +1943,7 @@ void Saturn::SystemsInternalTimestep(double simdt)
 		ExteriorLighting.SystemTimestep(tFactor);
 
 		simdt -= tFactor;
-		tFactor = __min(mintFactor, simdt);
+		tFactor = (std::min)(mintFactor, simdt);
 		TRACE("Internal timestep done");
 	}
 
@@ -1997,7 +2001,9 @@ void Saturn::JoystickTimestep()
 			sprintf(oapiDebugString(),"DX8JS: Joystick selected as RHC does not exist.");
 		}
 
+#if !defined(NASSP_NATIVE_LINUX)
 		HRESULT hr;
+#endif
 		ChannelValue val31;
 		e_object *direct_power1, *direct_power2;
 		val31 = agc.GetInputChannel(031); // Get current data
@@ -2075,6 +2081,20 @@ void Saturn::JoystickTimestep()
 			}
 			//sprintf(oapiDebugString(), "RHC: X/Y/Z = %d / %d / %d | rzx_id %d rot_id %d", rhc_x_pos, rhc_y_pos, rhc_rot_pos, rhc_rzx_id, rhc_rot_id);
 		}
+#if defined(NASSP_NATIVE_LINUX)
+		else if (rhc_id >= 0 && rhc_id < js_enabled && legacyJoysticks[rhc_id].Poll()) {
+			using Axis = nassp::Joystick::Axis;
+			const auto& stick = legacyJoysticks[rhc_id];
+			rhc_x_pos = stick.Position(Axis::X).value_or(32768);
+			rhc_y_pos = stick.Position(Axis::Y).value_or(32768);
+			rhc_rot_pos = stick.LongitudinalPosition(rhc_rot_id, rhc_rzx_id != -1, rhc_sld_id);
+			if (rhc_thctoggle && thc_id == -1 && rhc_thctoggle_id >= 0) {
+				const bool pressed = stick.Button(rhc_thctoggle_id).value_or(false);
+				if (pressed && !rhc_thctoggle_pressed) SetAttitudeMode(RCS_LIN);
+				rhc_thctoggle_pressed = pressed;
+			}
+		}
+#else
 		else if (rhc_id != -1 && rhc_id < js_enabled) {	
 			hr = dx8_joystick[rhc_id]->Poll();
 			if (FAILED(hr)) { // Did that work?
@@ -2119,7 +2139,9 @@ void Saturn::JoystickTimestep()
 				}
 			}
 		// Use Orbiter's attitude control as RHC
-		} else {
+		}
+#endif
+		else {
 			// Roll
 			double rollLeft = rhc_keyboard_deflection[THGROUP_ATT_BANKLEFT - THGROUP_ATT_PITCHUP];
 			double rollRight = rhc_keyboard_deflection[THGROUP_ATT_BANKRIGHT - THGROUP_ATT_PITCHUP];
@@ -2532,6 +2554,23 @@ void Saturn::JoystickTimestep()
 				thc_rot_pos = vesim.getInputValue(CSM_AXIS_INPUT_RHC_Y);
 			}
 		}
+#if defined(NASSP_NATIVE_LINUX)
+		else if (thc_id >= 0 && thc_id < js_enabled && legacyJoysticks[thc_id].Poll()) {
+			using Axis = nassp::Joystick::Axis;
+			const auto& stick = legacyJoysticks[thc_id];
+			thc_x_pos = stick.Position(Axis::X).value_or(32768);
+			thc_y_pos = stick.Position(Axis::Y).value_or(32768);
+			thc_rot_pos = stick.LongitudinalPosition(thc_rot_id, thc_rzx_id != -1, thc_sld_id);
+			const auto hat = stick.Hat(thc_pov_id, true);
+			if (hat == 0) thc_rot_pos = 65536;
+			if (hat == 65535) thc_rot_pos = 0;
+			if (rhc_thctoggle && rhc_id == -1 && rhc_thctoggle_id >= 0) {
+				const bool pressed = stick.Button(rhc_thctoggle_id).value_or(false);
+				if (pressed && !rhc_thctoggle_pressed) SetAttitudeMode(RCS_ROT);
+				rhc_thctoggle_pressed = pressed;
+			}
+		}
+#else
 		else if (thc_id != -1 && thc_id < js_enabled){
 			hr = dx8_joystick[thc_id]->Poll();
 			if (FAILED(hr)) { // Did that work?
@@ -2589,7 +2628,9 @@ void Saturn::JoystickTimestep()
 			}
 
 		// Use Orbiter's attitude control as THC
-		} else {
+		}
+#endif
+		else {
 			// Up/down
 			if (GetManualControlLevel(THGROUP_ATT_DOWN) > 0) {
 				thc_y_pos = (int) ((1. - GetManualControlLevel(THGROUP_ATT_DOWN)) * 32768.);

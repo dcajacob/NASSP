@@ -34,7 +34,7 @@
 #include "saturn.h"
 #include "LEM.h"
 #if defined(NASSP_NATIVE_LINUX)
-#include "Production/NativeRenderApi.h"
+#include "Production/NativeGraphics.h"
 #include "Production/ResourceResolver.h"
 #endif
 
@@ -775,7 +775,7 @@ void ChecklistController::timestep(double missiontime, SaturnEvents eventControl
 	// Flashing
 	if (active.program.group != -1) {
 		if (active.set.size() == 0) {
-			oapiWriteLogError("Invalid/empty checklist group! Something is wrong with your scenario.");
+			oapiWriteLog("Invalid or empty checklist group in the scenario.");
 		}
 		else if (active.sequence->checkExec(missiontime + 1, active.startTime, lastItemTime, eventController, true)) {
 			active.sequence->setFlashing(&conn, flashing);

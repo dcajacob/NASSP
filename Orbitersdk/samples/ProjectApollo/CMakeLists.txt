@@ -121,6 +121,10 @@ if(NASSP_BUILD_NATIVE_LINUX)
     target_include_directories(NasspChecklist PRIVATE src_aux src_mfd)
     target_link_libraries(NasspChecklist PUBLIC NasspNativeOrbiterSdk PRIVATE NasspAudio NasspVesselSystems)
 
+    add_library(NasspControls STATIC src_aux/vesim.cpp src_aux/NasspJoystick.cpp)
+    set_target_properties(NasspControls PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_link_libraries(NasspControls PUBLIC NasspNativeOrbiterSdk)
+
     find_package(OpenGL REQUIRED)
     if(NOT TARGET OpenGL::GLU)
         message(FATAL_ERROR "The native NASSP FDAI requires the OpenGL Utility Library (GLU).")
@@ -128,6 +132,22 @@ if(NASSP_BUILD_NATIVE_LINUX)
     add_library(NasspFDAI STATIC src_sys/FDAI.cpp)
     set_target_properties(NasspFDAI PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_link_libraries(NasspFDAI PUBLIC PanelSDK NasspNativeOrbiterSdk PRIVATE OpenGL::GL OpenGL::GLU)
+
+    add_library(NasspSaturn1BObjects OBJECT
+        src_csm/csm_telecom.cpp
+        src_csm/satsystems.cpp
+        src_csm/saturn.cpp
+        src_saturn/Saturn1b.cpp
+        src_sys/checklistController.cpp
+    )
+    set_target_properties(NasspSaturn1BObjects PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_include_directories(NasspSaturn1BObjects PRIVATE
+        src_aux src_csm src_landing src_launch src_lm src_mfd src_moon src_saturn src_sys/PanelSDK/Internals
+    )
+    target_include_directories(NasspSaturn1BObjects SYSTEM PRIVATE "${ORBITER_NATIVE_BUILD_DIR}/native-lua/sdk/include")
+    target_link_libraries(NasspSaturn1BObjects PRIVATE
+        NasspNativeOrbiterSdk NasspControls NasspGuidance NasspVesselSystems NasspChecklist NasspCockpitSupport NasspFDAI
+    )
 
     add_library(NasspMCCVessel OBJECT
         src_launch/mccvessel.cpp

@@ -24,8 +24,17 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #pragma once
 
+#include "NasspOrbiterSdk.h"
+#include <optional>
+#include <string>
+#include <vector>
+
+#if defined(NASSP_NATIVE_LINUX)
+#include "NasspJoystick.h"
+#else
 #define DIRECTINPUT_VERSION 0x0800
 #include "dinput.h"
+#endif
 
 #define VESIM_INPUTTYPE_BUTTON 1
 #define VESIM_INPUTTYPE_AXIS   2
@@ -47,7 +56,7 @@ typedef  void (*CbInputChanged)(int inputID, int eventType, int newValue, void *
 
 struct VesimInputDefinition {
 	int id;
-	char *name;
+	const char *name;
 	int type;
 	int defaultValue;
 	bool notifyOnChange;
@@ -75,7 +84,7 @@ private:
 	int value;
 
 public:
-	VesimInput(int inputID, char *name, int type, int defaultValue, bool notifyOnChange) :
+	VesimInput(int inputID, const char *name, int type, int defaultValue, bool notifyOnChange) :
 		ID(inputID),
 		name(name),
 		type(type),
@@ -84,13 +93,10 @@ public:
 		value(defaultValue)
 	{};
 
-	int VesimInput::addConnection(int deviceID, int subdeviceType, int subdeviceID, int modifiers, bool reverse);
+	int addConnection(int deviceID, int subdeviceType, int subdeviceID, int modifiers, bool reverse);
 
 	friend class VesimDevice;
 	friend class Vesim;
-};
-
-class VesimDeviceAxis {
 };
 
 class VesimDevice {
@@ -98,16 +104,25 @@ private:
 	std::string name;
 	Vesim *parent;
 	int type;
-	std::vector<VesimDeviceAxis> axes;
-	LPDIRECTINPUTDEVICE8 dx8_joystick {NULL};
-	DIJOYSTATE2			 dx8_jstate;
+#if defined(NASSP_NATIVE_LINUX)
+	std::optional<nassp::Joystick> joystick;
+#else
+	LPDIRECTINPUTDEVICE8 dx8_joystick = nullptr;
+	DIJOYSTATE2 dx8_jstate{};
+	bool stateAvailable = false;
+#endif
 
 	void poolDevice();
+	std::optional<int> axisPosition(int id) const;
+	std::optional<bool> buttonPressed(int id) const;
 
 public:
 	VesimDevice(Vesim* parent);
+#if defined(NASSP_NATIVE_LINUX)
+	VesimDevice(Vesim* parent, nassp::Joystick&& device);
+#else
 	VesimDevice(Vesim* parent, const char* deviceName, LPDIRECTINPUTDEVICE8 dx8_joystick);
-	~VesimDevice();
+#endif
 	friend class Vesim;
 };
 
@@ -121,25 +136,30 @@ private:
 	int key2conn[256][2];
 
 	std::vector<VesimDevice> vdev;
-	std::vector<VesimDeviceInputConn> vconn;
+	std::string vesselStationName;
+#if !defined(NASSP_NATIVE_LINUX)
+	LPDIRECTINPUT8 dx8ppv = nullptr;
+#endif
 
-	bool Vesim::connectDeviceToInput(int inputidx, int deviceID, int subdeviceType, int subdeviceID, bool reverse, int modifiers);
+	void loadDeviceConfigs();
+	void updateInput(VesimInput& input);
+	bool connectDeviceToInput(int inputidx, int deviceID, int subdeviceType, int subdeviceID, bool reverse, int modifiers);
 public:
-	char* vesselStationName;
-	LPDIRECTINPUT8 dx8ppv;
-
 #ifdef _DEBUG
 	FILE *out_file;
 #endif
 	Vesim(CbInputChanged cbInputChanged, void *pCbData);
 	~Vesim();
-	bool addInput(int inputID, char *inputName, int inputType, int defaultValue = VESIM_DEFAULT_AXIS_VALUE, bool notifyOnChange = false);
+	bool addInput(int inputID, const char *inputName, int inputType, int defaultValue = VESIM_DEFAULT_AXIS_VALUE, bool notifyOnChange = false);
 	bool addInput(VesimInputDefinition *vid);
-	bool setupDevices(char* vesselStationName, LPDIRECTINPUT8 dx8ppv);
+#if defined(NASSP_NATIVE_LINUX)
+	bool setupDevices(const char* station);
+#else
+	bool setupDevices(const char* station, LPDIRECTINPUT8 dx8ppv);
+	void createUserConfigs();
+	friend BOOL CALLBACK VesimEnumJoysticksCB(const DIDEVICEINSTANCE* pdidInstance, VOID* pVesim);
+#endif
 	int clbkConsumeBufferedKey(DWORD key, bool down, char *keystate);
 	void poolDevices();
 	int getInputValue(int inputID);
-	void createUserConfigs();
-
-	friend BOOL CALLBACK VesimEnumJoysticksCB(const DIDEVICEINSTANCE* pdidInstance, VOID* pVesim);
 };

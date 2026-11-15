@@ -70,8 +70,6 @@
 #include "CueCardManager.h"
 #include "CSMMalfunctionSimulation.h"
 
-#define DIRECTINPUT_VERSION 0x0800
-#include "dinput.h"
 #include "vesim.h"
 
 class MCC;
@@ -762,7 +760,7 @@ public:
 
 	//This simply equips us with a reference to either the mfd debug string, 
 	//or in the extreme case, the orbiter debug string
-	char *(__cdecl *debugString)();
+	char *(*debugString)();
 	bool debugConnected;
 	///
 	/// \brief Standard constructor with the usual Orbiter parameters.
@@ -864,18 +862,18 @@ public:
 	// RHC/THC 
 	//
 
-	// DirectInput stuff
-	/// Handle to DLL instance
-	HINSTANCE dllhandle;
-	/// pointer to DirectInput class itself
-	LPDIRECTINPUT8 dx8ppv;
-	/// Joysticks-Enabled flag / counter - Zero if we aren't using DirectInput, nonzero is the number of joysticks we have.
+	// Legacy controller mode uses the first two attached devices.
 	int js_enabled;
-	/// Pointers to DirectInput joystick devices
-	LPDIRECTINPUTDEVICE8 dx8_joystick[2]; ///< One for THC, one for RHC, ignore extras
-	DIDEVCAPS			 dx8_jscaps[2];   ///< Joystick capabilities
-	DIJOYSTATE2			 dx8_jstate[2];   ///< Joystick state
-	HRESULT				 dx8_failure;     ///< DX failure reason
+#if defined(NASSP_NATIVE_LINUX)
+	std::vector<nassp::Joystick> legacyJoysticks;
+#else
+	HINSTANCE dllhandle;
+	LPDIRECTINPUT8 dx8ppv = nullptr;
+	LPDIRECTINPUTDEVICE8 dx8_joystick[2];
+	DIDEVCAPS dx8_jscaps[2];
+	DIJOYSTATE2 dx8_jstate[2];
+	HRESULT dx8_failure;
+#endif
 	Vesim vesim;                          ///< Vessel Specific Input Mngr
 	int rhc_id;							  ///< Joystick # for the RHC
 	int rhc_rot_id;						  ///< ID of ROTATOR axis to use for RHC Z-axis
@@ -893,7 +891,7 @@ public:
 	bool thc_auto;						  ///< THC Z-axis auto detection
 	bool rhc_thctoggle;					  ///< Enable RHC/THC toggle
 	int rhc_thctoggle_id;				  ///< RHC button id for RHC/THC toggle
-	bool enableVESIM;                     ///< Vessel Specific Input Mgmt enabled
+	bool enableVESIM = false;                     ///< Vessel Specific Input Mgmt enabled
 	bool rhc_thctoggle_pressed;			  ///< Button pressed flag				  
 	int js_current;
 
@@ -1301,7 +1299,7 @@ public:
 	//System Access
 	InertialData *GetInertialData() { return &inertialData; };
 	SPSPropellantSource *GetSPSPropellant() { return &SPSPropellant; };
-	SPSEngine *GetSPSEngine() { return &SPSEngine; };
+	::SPSEngine *GetSPSEngine() { return &SPSEngine; };
 	SCE *GetSCE() { return &sce; }
 	EDA *GetEDA() { return &eda; }
 	IU *GetIU() { return iu; };
@@ -1327,7 +1325,7 @@ public:
 	void MoveFlashlight();
 	void SetFlashlightOn(bool state);
 	void ToggleFlashlight();
-	SpotLight* flashlight;
+	::SpotLight* flashlight;
 	COLOUR4 flashlightColor;
 	COLOUR4 flashlightColor2;
 	VECTOR3 flashlightPos;
@@ -1712,7 +1710,7 @@ protected:
 	PanelGroup pgPanels200;
 
 	SwitchRow MasterAlarmSwitchRow;
-	MasterAlarmSwitch MasterAlarmSwitch; 
+	::MasterAlarmSwitch MasterAlarmSwitch;
 
 	// EMS
 	SwitchRow EMSFunctionSwitchRow;
@@ -1853,10 +1851,10 @@ protected:
 	ToggleSwitch SMRCSIndSwitch;
 
 	SwitchRow RCSGaugeRow;
-	RCSQuantityMeter RCSQuantityMeter;
-	RCSFuelPressMeter RCSFuelPressMeter;
-	RCSHeliumPressMeter RCSHeliumPressMeter;
-	RCSTempMeter RCSTempMeter;
+	::RCSQuantityMeter RCSQuantityMeter;
+	::RCSFuelPressMeter RCSFuelPressMeter;
+	::RCSHeliumPressMeter RCSHeliumPressMeter;
+	::RCSTempMeter RCSTempMeter;
 
 	SwitchRow SMRCSProp1Row;
 	ThreePosSwitch SMRCSProp1ASwitch;
@@ -2696,7 +2694,7 @@ protected:
 	ToggleSwitch UPTLMSwitch;
 
 	SwitchRow OpticsHandcontrollerSwitchRow;
-	OpticsHandcontrollerSwitch OpticsHandcontrollerSwitch;
+	::OpticsHandcontrollerSwitch OpticsHandcontrollerSwitch;
 
 	SwitchRow OpticsMarkButtonRow;
 	PushSwitch OpticsMarkButton;
@@ -2705,7 +2703,7 @@ protected:
 	PushSwitch OpticsMarkRejectButton;
 
 	SwitchRow MinImpulseHandcontrollerSwitchRow;
-	MinImpulseHandcontrollerSwitch MinImpulseHandcontrollerSwitch;
+	::MinImpulseHandcontrollerSwitch MinImpulseHandcontrollerSwitch;
 
 
 	///////////////
@@ -2758,7 +2756,7 @@ protected:
 	///////////////////////
 
 	SwitchRow LeftCOASPowerSwitchRow;
-	LeftCOASPowerSwitch LeftCOASPowerSwitch;
+	::LeftCOASPowerSwitch LeftCOASPowerSwitch;
 
 	SwitchRow LeftUtilityPowerSwitchRow;
 	ToggleSwitch LeftUtilityPowerSwitch;
@@ -3567,7 +3565,7 @@ protected:
 	// And state that doesn't need to be saved.
 	//
 
-	boolean StageUnloadState = 0;
+	bool StageUnloadState = false;
 	double LastVPAccelTime = -10000.0, StageUnloadTime = -1.0;
 	double VibrationVisualizationMultiplier = 1.0;
 
@@ -3852,7 +3850,7 @@ protected:
 
 	PowerMerge BatteryRelayBus;
 
-	BatteryCharger BatteryCharger;
+	::BatteryCharger BatteryCharger;
 
 	PowerMerge PyroBusAFeeder;
 	PowerMerge PyroBusBFeeder;
@@ -3893,7 +3891,7 @@ protected:
 	NumericLights LEBNumericLights;
 
 	// Exterior Lighting
-	ExteriorLighting ExteriorLighting;
+	::ExteriorLighting ExteriorLighting;
 	PowerMerge RunEVAFeeder;
 
 	// GSE
@@ -3926,13 +3924,13 @@ protected:
 	AtmRegen *SuitCompressor1;
 	AtmRegen *SuitCompressor2;
 	h_crew *Crew;
-	CabinPressureRegulator CabinPressureRegulator;
-	O2DemandRegulator O2DemandRegulator;
+	::CabinPressureRegulator CabinPressureRegulator;
+	::O2DemandRegulator O2DemandRegulator;
 	CabinPressureReliefValve CabinPressureReliefValve1;
 	CabinPressureReliefValve CabinPressureReliefValve2;
-	SuitCircuitReturnValve SuitCircuitReturnValve;
-	O2SMSupply O2SMSupply;
-	CrewStatus CrewStatus;
+	::SuitCircuitReturnValve SuitCircuitReturnValve;
+	::O2SMSupply O2SMSupply;
+	::CrewStatus CrewStatus;
 	SaturnSideHatch SideHatch;
 	BoostProtectiveCover BPC;
 	SaturnWaterController WaterController;
@@ -4558,7 +4556,7 @@ protected:
 	SMRCSPropellantSource SMQuadCRCS;
 	SMRCSPropellantSource SMQuadDRCS;
 
-	SPSEngine SPSEngine;
+	::SPSEngine SPSEngine;
 	SPSPropellantSource SPSPropellant;
 	Boiler *SPSFuelSumpTankHeaterA;
 	Boiler *SPSFuelSumpTankHeaterB;
@@ -4661,7 +4659,7 @@ protected:
 	ChecklistDataInterface cdi;
 
 	//RF connectors
-	CSM_RRTto_LM_RRConnector CSM_RRTto_LM_RRConnector;
+	::CSM_RRTto_LM_RRConnector CSM_RRTto_LM_RRConnector;
 	CSM_VHFto_LM_VHFConnector csm_vhfto_lm_vhfconnector;
 
 	//
@@ -4736,7 +4734,7 @@ protected:
 	friend class DSE;
 	friend class EMS;
 	friend class SPSPropellantSource;
-	friend class SPSEngine;
+	friend class ::SPSEngine;
 	friend class SPSGimbalActuator;
 	friend class CMOptics;
 	friend class CSMCautionWarningSystem;
