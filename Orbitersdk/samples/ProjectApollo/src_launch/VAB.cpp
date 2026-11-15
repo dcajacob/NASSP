@@ -26,7 +26,11 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
+#include <algorithm>
 #include "stdio.h"
 #include "math.h"
 #include "nasspsound.h"
@@ -39,25 +43,55 @@
 #include "saturn.h"
 #include "papi.h"
 
+#if !defined(NASSP_NATIVE_LINUX)
 HINSTANCE g_hDLL;
+#endif
 char trace_file[] = "ProjectApollo VAB.log";
 
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK void InitModule(HINSTANCE hModule) {
 	g_hDLL = hModule;
 }
+#endif
 
 
-DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
+#if defined(NASSP_NATIVE_LINUX)
+#define APOLLO_VESSEL_CALLBACK static
+#else
+#define APOLLO_VESSEL_CALLBACK DLLCLBK
+#endif
+
+APOLLO_VESSEL_CALLBACK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
 
 	return new VAB(hvessel, flightmodel);
 }
 
 
-DLLCLBK void ovcExit(VESSEL *vessel) {
+APOLLO_VESSEL_CALLBACK void ovcExit(VESSEL *vessel) {
 
 	if (vessel) delete (VAB*)vessel;
 }
+
+#undef APOLLO_VESSEL_CALLBACK
+
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+using VABFactory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor nativeModule = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Vehicle Assembly Building",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI,
+	VABFactory::initialize, VABFactory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &nativeModule : nullptr;
+}
+#endif
 
 
 VAB::VAB(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {
@@ -95,20 +129,41 @@ VAB::VAB(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {
 	}
 }
 
+namespace {
+void DeleteAnimationTransform(MGROUP_TRANSFORM* transform)
+{
+	if (!transform) return;
+	switch (transform->Type()) {
+	case MGROUP_TRANSFORM::ROTATE:
+		delete static_cast<MGROUP_ROTATE*>(transform);
+		break;
+	case MGROUP_TRANSFORM::TRANSLATE:
+		delete static_cast<MGROUP_TRANSLATE*>(transform);
+		break;
+	case MGROUP_TRANSFORM::SCALE:
+		delete static_cast<MGROUP_SCALE*>(transform);
+		break;
+	case MGROUP_TRANSFORM::NULLTRANSFORM:
+		delete transform;
+		break;
+	}
+}
+}
+
 VAB::~VAB() {
 
 	int i;
 	for (i = 0; i < 5; i++) {
 		for (int j = 0; j < 16; j++) 
-			if (mgroupCrane[i][j]) delete mgroupCrane[i][j];
+			DeleteAnimationTransform(mgroupCrane[i][j]);
 	}
 	for (i = 0; i < 24; i++) {
 		for (int j = 0; j < 8; j++) 
-			if (mgroupSaturn[i][j]) delete mgroupSaturn[i][j];
+			DeleteAnimationTransform(mgroupSaturn[i][j]);
 	}
 	for (i = 0; i < 5; i++) {
 		for (int j = 0; j < 8; j++) 
-			if (mgroupCrane2[i][j]) delete mgroupCrane2[i][j];
+			DeleteAnimationTransform(mgroupCrane2[i][j]);
 	}
 }
 
@@ -546,13 +601,13 @@ void VAB::clbkPostStep (double simt, double simdt, double mjd) {
 		double da = simdt / 90.0;
 		if (highBay1Door_Status == DOOR_CLOSING) {
 			if (highBay1Door_Proc > 0.0)
-				highBay1Door_Proc = max(0.0, highBay1Door_Proc - da);
+				highBay1Door_Proc = (std::max)(0.0, highBay1Door_Proc - da);
 			else
 				highBay1Door_Status = DOOR_CLOSED;
 
 		} else { // door opening
 			if (highBay1Door_Proc < 1.0)
-				highBay1Door_Proc = min(1.0, highBay1Door_Proc + da);
+				highBay1Door_Proc = (std::min)(1.0, highBay1Door_Proc + da);
 			else
 				highBay1Door_Status = DOOR_OPEN;
 		}
@@ -564,13 +619,13 @@ void VAB::clbkPostStep (double simt, double simdt, double mjd) {
 		double da = simdt / 90.0;
 		if (highBay3Door_Status == DOOR_CLOSING) {
 			if (highBay3Door_Proc > 0.0)
-				highBay3Door_Proc = max(0.0, highBay3Door_Proc - da);
+				highBay3Door_Proc = (std::max)(0.0, highBay3Door_Proc - da);
 			else
 				highBay3Door_Status = DOOR_CLOSED;
 
 		} else { // door opening
 			if (highBay3Door_Proc < 1.0)
-				highBay3Door_Proc = min(1.0, highBay3Door_Proc + da);
+				highBay3Door_Proc = (std::min)(1.0, highBay3Door_Proc + da);
 			else
 				highBay3Door_Status = DOOR_OPEN;
 		}
@@ -589,7 +644,7 @@ void VAB::clbkPostStep (double simt, double simdt, double mjd) {
 			if (crane_Status == CRANE_BUILDING) {
 				if (platform_Proc[0] > 0) {
 					for (i = 0; i < 5; i++) {
-						platform_Proc[i] = max(0.0, platform_Proc[i] - simdt / 1000.0);
+						platform_Proc[i] = (std::max)(0.0, platform_Proc[i] - simdt / 1000.0);
 					}
 				} else {
 					if (ml) {
@@ -601,7 +656,7 @@ void VAB::clbkPostStep (double simt, double simdt, double mjd) {
 			} else { // unbuilding
 				if (platform_Proc[0] < 1.0) {
 					for (i = 0; i < 5; i++) {
-						platform_Proc[i] = min(1.0, platform_Proc[i] + simdt / 1000.0);
+						platform_Proc[i] = (std::min)(1.0, platform_Proc[i] + simdt / 1000.0);
 					}
 					if (ml) {
 						ml->SetVABBuildState();
@@ -641,7 +696,7 @@ void VAB::clbkPostStep (double simt, double simdt, double mjd) {
 
 			if (crane_Status == CRANE_BUILDING) {
 				if (crane_Proc < 1.0)
-					crane_Proc = min(1.0, crane_Proc + da);
+					crane_Proc = (std::min)(1.0, crane_Proc + da);
 				else
 					crane_Status = CRANE_END;
 
@@ -658,7 +713,7 @@ void VAB::clbkPostStep (double simt, double simdt, double mjd) {
 
 				// Platforms
 				if (lav && crane_Proc > 0.8 && platform_Proc[lav->GetBuildStatus() - 1] < 1.0)
-					platform_Proc[lav->GetBuildStatus() - 1] = min(1.0, platform_Proc[lav->GetBuildStatus() - 1] + simdt / 1000.0);
+					platform_Proc[lav->GetBuildStatus() - 1] = (std::min)(1.0, platform_Proc[lav->GetBuildStatus() - 1] + simdt / 1000.0);
 
 				// Saturn Stage 1
 				if (currentAnimCrane == (int) animCrane[0])
@@ -666,7 +721,7 @@ void VAB::clbkPostStep (double simt, double simdt, double mjd) {
 
 			} else { // unbuilding
 				if (crane_Proc > 0.00001)
-					crane_Proc = max(0.00001, crane_Proc - da);
+					crane_Proc = (std::max)(0.00001, crane_Proc - da);
 				else
 					crane_Status = CRANE_BEGIN;
 
@@ -683,7 +738,7 @@ void VAB::clbkPostStep (double simt, double simdt, double mjd) {
 
 				// Platforms
 				if (lav &&  crane_Proc < 0.95 && crane_Proc > 0.8 && platform_Proc[lav->GetBuildStatus() - 1] > 0)
-					platform_Proc[lav->GetBuildStatus() - 1] = max(0, platform_Proc[lav->GetBuildStatus() - 1] - simdt / 1000.0);
+					platform_Proc[lav->GetBuildStatus() - 1] = (std::max)(0.0, platform_Proc[lav->GetBuildStatus() - 1] - simdt / 1000.0);
 
 				// Saturn Stage 1
 				if (currentAnimCrane == (int) animCrane[0]) {
@@ -709,7 +764,7 @@ void VAB::clbkPostStep (double simt, double simdt, double mjd) {
 	// sprintf(oapiDebugString(), "platform_Proc %f crane_Status %d", platform_Proc, crane_Status);		
 }
 			
-void VAB::SetSaturnMeshVisibilityMode(int buildStatus, WORD mode) {
+void VAB::SetSaturnMeshVisibilityMode(int buildStatus, DWORD mode) {
 
 	int i;
 

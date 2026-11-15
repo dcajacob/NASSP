@@ -25,6 +25,7 @@
 #if !defined(_PA_SIVB_H)
 #define _PA_SIVB_H
 
+#include <vector>
 #include "PanelSDK/PanelSDK.h"
 #include "payload.h"
 #include "pyro.h"

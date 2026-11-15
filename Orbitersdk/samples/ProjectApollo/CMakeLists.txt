@@ -283,6 +283,33 @@ if(NASSP_BUILD_NATIVE_LINUX)
     target_include_directories(NasspCMChute PRIVATE src_aux)
     target_link_libraries(NasspCMChute PRIVATE NasspNativeOrbiterSdk)
     target_link_options(NasspCMChute PRIVATE "-Wl,--no-undefined")
+
+    add_library(NasspS1B MODULE src_saturn/s1b.cpp)
+    add_library(NasspVAB MODULE src_launch/VAB.cpp src_launch/VABAnimations.cpp)
+    add_library(NasspLC34 MODULE
+        src_launch/LC34.cpp
+        src_launch/IU_ESE.cpp
+        src_launch/IUUmbilical.cpp
+        src_launch/IUUmbilicalInterface.cpp
+        src_launch/RCA110A.cpp
+        src_launch/SCMUmbilical.cpp
+        src_launch/SI_ESE.cpp
+        src_launch/SIB_ESE.cpp
+        src_launch/TailUmbilical.cpp
+    )
+    set_target_properties(NasspS1B PROPERTIES OUTPUT_NAME s1b)
+    set_target_properties(NasspVAB PROPERTIES OUTPUT_NAME VAB)
+    set_target_properties(NasspLC34 PROPERTIES OUTPUT_NAME LC34)
+    set_target_properties(NasspS1B NasspVAB NasspLC34 PROPERTIES
+        PREFIX ""
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+    )
+    foreach(target IN ITEMS NasspS1B NasspVAB NasspLC34)
+        target_include_directories(${target} PRIVATE src_aux src_csm src_launch src_mfd src_saturn)
+        target_link_libraries(${target} PRIVATE NasspVesselSystems NasspAudio)
+        target_link_options(${target} PRIVATE "-Wl,--no-undefined")
+    endforeach()
+    target_link_libraries(NasspLC34 PRIVATE NasspInstrumentUnit)
     return()
 endif()
 

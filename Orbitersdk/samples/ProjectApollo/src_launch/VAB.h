@@ -96,5 +96,5 @@ protected:
 	void DefineCraneAnimation(MGROUP_TRANSFORM *mgroup[], double pickupHeight, double releaseHeight);
 	void DefineSaturnAnimation(MGROUP_TRANSFORM *mgroup[], int meshindex, double pickupHeight, double releaseHeight);
 	void DefineCrane2Animation(MGROUP_TRANSFORM *mgroup[], double pickupHeight, double length);
-	void SetSaturnMeshVisibilityMode(int buildStatus, WORD mode);
+	void SetSaturnMeshVisibilityMode(int buildStatus, DWORD mode);
 };

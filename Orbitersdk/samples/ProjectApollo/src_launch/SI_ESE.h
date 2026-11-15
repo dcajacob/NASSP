@@ -27,7 +27,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 class TailUmbilical;
 class LCCPadInterface;
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
 class SI_ESE
 {

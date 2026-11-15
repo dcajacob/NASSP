@@ -26,7 +26,11 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
+#include <algorithm>
 #include "stdio.h"
 #include "math.h"
 #include "nasspsound.h"
@@ -49,7 +53,9 @@
 #include "papi.h"
 #include "RCA110A.h"
 
+#if !defined(NASSP_NATIVE_LINUX)
 HINSTANCE g_hDLL;
+#endif
 char trace_file[] = "ProjectApollo LC34.log";
 
 
@@ -78,22 +84,50 @@ PARTICLESTREAMSPEC liftoffStreamSpec = {
 };
 
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK void InitModule(HINSTANCE hModule) {
 
 	g_hDLL = hModule;
 }
+#endif
 
 
-DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
+#if defined(NASSP_NATIVE_LINUX)
+#define APOLLO_VESSEL_CALLBACK static
+#else
+#define APOLLO_VESSEL_CALLBACK DLLCLBK
+#endif
+
+APOLLO_VESSEL_CALLBACK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
 
 	return new LC34(hvessel, flightmodel);
 }
 
 
-DLLCLBK void ovcExit(VESSEL *vessel) {
+APOLLO_VESSEL_CALLBACK void ovcExit(VESSEL *vessel) {
 
 	if (vessel) delete (LC34*)vessel;
 }
+
+#undef APOLLO_VESSEL_CALLBACK
+
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+using LC34Factory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor nativeModule = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP LC-34 launch complex",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI,
+	LC34Factory::initialize, LC34Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &nativeModule : nullptr;
+}
+#endif
 
 
 LC34::LC34(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {
@@ -218,7 +252,7 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 	case STATE_PRELAUNCH:
 		// Move MSS, no clue if 20min are OK?
 		if (mssProc < 1) {
-			mssProc = min(1.0, mssProc + simdt / (60.0 * 20.0));
+			mssProc = (std::min)(1.0, mssProc + simdt / (60.0 * 20.0));
 			SetAnimation(mssAnim, mssProc);
 		}
 
@@ -238,7 +272,7 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 	case STATE_CMARM1:
 		// Move CM arm 12 deg, no clue if 60s are OK?
 		if (cmarmProc < 12.0 / 180.0 * 0.7) {
-			cmarmProc = min(12.0 / 180.0 * 0.7, cmarmProc + simdt / 60.0);
+			cmarmProc = (std::min)(12.0 / 180.0 * 0.7, cmarmProc + simdt / 60.0);
 			SetAnimation(cmarmAnim, cmarmProc);
 		}
 
@@ -255,7 +289,7 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 	case STATE_CMARM2:
 		// Move CM arm to retracted position, no clue if 60s are OK?
 		if (cmarmProc < 1) {
-			cmarmProc = min(1.0, cmarmProc + simdt / 60.0);
+			cmarmProc = (std::min)(1.0, cmarmProc + simdt / 60.0);
 			SetAnimation(cmarmAnim, cmarmProc);
 		}
 
@@ -410,7 +444,7 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 		{
 			// Soft-Release Pin Dragging
 			if (MissionTime < 0.5) {
-				double PinDragFactor = min(1.0, 1.0 - (MissionTime * 2.0));
+				double PinDragFactor = (std::min)(1.0, 1.0 - (MissionTime * 2.0));
 				if (sat)
 				{
 					sat->AddForce(_V(0, 0, -(sat->GetFirstStageThrust() * PinDragFactor)), _V(0, 0, 0));
