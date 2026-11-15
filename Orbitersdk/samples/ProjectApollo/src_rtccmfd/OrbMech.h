@@ -1,7 +1,7 @@
 #ifndef _ORBMECH_H
 #define _ORBMECH_H
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <vector>
 
 #define NUMBEROFGROUNDSTATIONS 19
@@ -166,7 +166,7 @@ private:
 	double mu_Q;
 	double mjd0;
 	double rect1, rect2;
-	CELBODY *cMoon, *cEarth;
+	OBJHANDLE moon, earth;
 	MATRIX3 Rot; //Rotation matrix from J2000 to BRCS
 	VECTOR3 U_Z_E, U_Z_M; //Polar unit vectors in BRCS
 	int B;

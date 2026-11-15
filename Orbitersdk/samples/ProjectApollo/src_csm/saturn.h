@@ -32,6 +32,7 @@
 //
 
 #include "PanelSDK/PanelSDK.h"
+#include "nasspdefs.h"
 
 #include "connector.h"
 #include "csmconnector.h"
@@ -4709,9 +4710,6 @@ protected:
 
 	// InitSaturn is called twice, but some things must run only once
 	bool InitSaturnCalled;
-
-#define SISYSTEMS_START_STRING		"SISYSTEMS_BEGIN"
-#define SISYSTEMS_END_STRING		"SISYSTEMS_END"
 
 	//
 	// Friend Class List for systems objects 

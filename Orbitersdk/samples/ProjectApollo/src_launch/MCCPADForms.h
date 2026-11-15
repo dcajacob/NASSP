@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
   // PAD FORMS
   // APOLLO 7 - BLOCK DATA
@@ -72,7 +72,7 @@ struct AP7MNV {
 // APOLLO 7 - TERMINAL PHASE INITIATE
 // (The form doesn't match the field list?)
 struct AP7TPI {
-	AP7TPI::AP7TPI()
+	AP7TPI()
 	{
 		GETI = 0.0;
 		Vg = _V(0, 0, 0);
@@ -124,7 +124,7 @@ struct SLMNV {
 
 // SKYLAB - TERMINAL PHASE INITIATE
 struct SLTPI {
-	SLTPI::SLTPI()
+	SLTPI()
 	{
 		GETI = 0.0;
 		Vg = _V(0, 0, 0);
@@ -336,7 +336,7 @@ struct AP11MNV {
 
 // APOLLO 11 LM - MANEUVER
 struct AP11LMMNV {
-	AP11LMMNV::AP11LMMNV()
+	AP11LMMNV()
 	{
 		type = 0;
 		Att = _V(0, 0, 0);

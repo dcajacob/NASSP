@@ -38,27 +38,27 @@ PARTICLESTREAMSPEC panelsdk_srb_exhaust = {
 	PARTICLESTREAMSPEC::ATM_PLOG, 1e-6, 0.1
 };
 
-Mesh::Mesh()
+PanelMesh::PanelMesh()
 {next=NULL;
  name[0]=0;
  mesh_name[0]=0;
  h_mesh=NULL;
  dry_weight=0;
 }
-Mesh::~Mesh()
+PanelMesh::~PanelMesh()
 {if (next) delete next;
 };
-void Mesh::Init()
+void PanelMesh::Init()
 {
 h_mesh=oapiLoadMeshGlobal(mesh_name);
 if (next) next->Init();
 }
-void Mesh::AddToList(Mesh *new_mesh)
+void PanelMesh::AddToList(PanelMesh *new_mesh)
 {
 new_mesh->next=next;
 next=new_mesh;
 }
-void Mesh::Show(VESSEL *vs, int stage)
+void PanelMesh::Show(VESSEL *vs, int stage)
 { if ((stage>=min_stage)&&(stage<max_stage)) {
 	vs->AddMesh(h_mesh,&offset[stage]);
 	double w=vs->GetEmptyMass();
@@ -362,7 +362,7 @@ while (!Compare(line,"</ELEMENTS>")){
 	{
 		sscanf(line+1,"%s %s %lf %i %i",name, mesh,&w,&min,&max);
 		name[strlen(name)-1]=0;
-		Mesh *new_m=new Mesh;
+		PanelMesh *new_m=new PanelMesh;
 		strcpy(new_m->name,name);
 		strcpy(new_m->mesh_name,mesh);
 		new_m->dry_weight=w;

@@ -25,7 +25,8 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#include <algorithm>
 #include <stdio.h>
 
 #include "PanelSDK/PanelSDK.h"
@@ -766,7 +767,7 @@ void BatteryCharger::UpdateFlow(double dt)
 	e_object::UpdateFlow(dt);
 
 	if (currentBattery && dcPower.Voltage() > SP_MIN_DCVOLTAGE && acPower->Voltage() > SP_MIN_ACVOLTAGE) {
-		Volts = max(10.0, currentBattery->Voltage());
+		Volts = (std::max)(10.0, currentBattery->Voltage());
 	} else {
 		Volts = 0;
 		Amperes = 0;

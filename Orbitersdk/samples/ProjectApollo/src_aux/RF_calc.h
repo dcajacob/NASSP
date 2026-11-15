@@ -25,7 +25,7 @@
 
 #pragma once
 #include "math.h"
-#include "OrbiterAPI.h"
+#include "NasspOrbiterSdk.h"
 
 #define RF_ZERO_POWER_DBM -1000.0; //safe "0" for power, nothing should ever get this low
 

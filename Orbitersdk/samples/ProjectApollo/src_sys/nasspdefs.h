@@ -202,6 +202,8 @@
 #if !defined(_PA_NASSPDEFS_H)
 #define _PA_NASSPDEFS_H
 
+#include <cstdint>
+
 //
 // Compatibility warning crap.
 //
@@ -222,9 +224,11 @@
 /// \brief Windows GDI parameter structure.
 ///
 typedef struct {
+#if !defined(NASSP_NATIVE_LINUX)
 	HINSTANCE hDLL;		///< DLL handle.
+#endif
 	oapi::Font  *font[3];		///< GDI fonts.
-	DWORD col[6];		///< GDI colors.
+	std::uint32_t col[6];		///< GDI colors.
 	oapi::Brush *brush[4];	///< GDI brushes.
 	oapi::Pen   *pen[7];		///< GDI pens.
 } GDIParams;
@@ -427,6 +431,10 @@ static inline void CSMToOrbiterCoordinates(VECTOR3 &vec)
 #define TEXTURES_8K 4
 
 const int TexMul = TEXTURES_4K;
+
+// First-stage systems markers shared by the launch vehicle and separated stages.
+#define SISYSTEMS_START_STRING		"SISYSTEMS_BEGIN"
+#define SISYSTEMS_END_STRING		"SISYSTEMS_END"
 
 #define VC_MAT_NONE 0xffff
 

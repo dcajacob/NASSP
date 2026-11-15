@@ -28,7 +28,7 @@
 #include "Thermal.h"
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "Hsystems.h"
 
 class E_system;
@@ -635,7 +635,7 @@ public:
 				double powerDraw,
 				double nomVoltage);
 
-	~ElectricLight() = default;
+	~ElectricLight() override;
 	virtual void refresh(double dt);
 	void UpdatePosition(VECTOR3 offset);
 
@@ -655,6 +655,7 @@ private:
 	COLOUR4 Lightdiffuse;
 	COLOUR4 Lightspecular;
 	COLOUR4 Lightambient;
+	VESSEL* vessel;
 	SpotLight *lamp;
 	VECTOR3 lampBeaconColor;
 	BEACONLIGHTSPEC lampBeacon;

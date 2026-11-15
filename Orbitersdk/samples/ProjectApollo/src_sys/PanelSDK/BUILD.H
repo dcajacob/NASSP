@@ -22,13 +22,7 @@
 
   **************************************************************************/
 
-// DS20060223 Try to do the right thing based on which compiler the user has.
-// 13xx is VS .Net 2003, 14xx is VS .Net 2005
-#if _MSC_VER > 1300 
 #include <fstream>
-#else
-#include <fstream.h>
-#endif
 
 char* ReadConfigLine();
 void BuildError(int err);

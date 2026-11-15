@@ -28,7 +28,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 #include "mcc.h"
 #include "rtcc.h"
 
-bool RTCC::Calculation(int mission, int fcn, LPVOID &pad, char * upString, char * upDesc, char * upMessage)
+bool RTCC::Calculation(int mission, int fcn, void*&pad, char * upString, char * upDesc, char * upMessage)
 {
 	bool scrubbed = false;
 

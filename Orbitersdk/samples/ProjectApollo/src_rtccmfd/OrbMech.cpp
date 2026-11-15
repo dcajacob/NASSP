@@ -1,4 +1,30 @@
 #include "OrbMech.h"
+#include <algorithm>
+#include <cfloat>
+#include <stdexcept>
+
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/CelestialServices.h"
+#endif
+
+namespace {
+int ReadEphemeris(OBJHANDLE handle, double mjd, int request, double* result)
+{
+	if (!handle)
+		throw std::runtime_error("Missing celestial body for NASSP ephemeris");
+
+#if defined(NASSP_NATIVE_LINUX)
+	const auto& body = *static_cast<const CelestialBody*>(handle);
+	const auto& services = orbiter::production::GetCelestialServices();
+	if (services.HasModule(body))
+		return services.Ephemeris(body, mjd, request, result);
+#else
+	if (auto* body = oapiGetCelbodyInterface(handle))
+		return body->clbkEphemeris(mjd, request, result);
+#endif
+	throw std::runtime_error("Missing celestial ephemeris provider");
+}
+}
 #include <limits>
 #include <vector>
 
@@ -1849,7 +1875,7 @@ double findelev_gs(int Epoch, MATRIX3 Rot_J_B, VECTOR3 R_A0, VECTOR3 V_A0, VECTO
 		dE = E_A - E;
 		w_P = dotp(V_A, unit(crossp(U_N, R_A)) / r_A);
 		alpha = E + sign(dotp(crossp(R_proj, R_A), U_N))*acos(dotp(R_proj / r_P, R_A / r_A));
-		dt = (alpha - acos(min(1.0, r_P*cos(E) / r_A))) / (w_A - w_P);
+		dt = (alpha - acos((std::min)(1.0, r_P*cos(E) / r_A))) / (w_A - w_P);
 
 		if (abs(dt) > dt_max)
 		{
@@ -2943,8 +2969,6 @@ double sunrise(MATRIX3 Rot_J_B, VECTOR3 R, VECTOR3 V, double MJD, OBJHANDLE plan
 	hMoon = oapiGetObjectByName("Moon");
 	hSun = oapiGetObjectByName("Sun");
 
-	CELBODY *cPlan = oapiGetCelbodyInterface(planet);
-
 	OELEMENTS coe;
 	double h, e, theta0, a, dt, dt_old;
 	int i, imax, err;
@@ -2958,8 +2982,7 @@ double sunrise(MATRIX3 Rot_J_B, VECTOR3 R, VECTOR3 V, double MJD, OBJHANDLE plan
 	{
 		if (planet == hMoon && planet2 == hSun)
 		{
-			CELBODY *cEarth = oapiGetCelbodyInterface(hEarth);
-			options = cPlan->clbkEphemeris(MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
+			options = ReadEphemeris(planet, MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
 			if (options & EPHEM_POLAR)
 			{
 				R_EM = Polar2Cartesian(PlanPos[2] * AU, PlanPos[1], PlanPos[0]);
@@ -2968,7 +2991,7 @@ double sunrise(MATRIX3 Rot_J_B, VECTOR3 R, VECTOR3 V, double MJD, OBJHANDLE plan
 			{
 				R_EM = _V(PlanPos[0], PlanPos[2], PlanPos[1]);
 			}
-			options = cEarth->clbkEphemeris(MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
+			options = ReadEphemeris(hEarth, MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
 			if (options & EPHEM_POLAR)
 			{
 				R_SE = Polar2Cartesian(PlanPos[2] * AU, PlanPos[1], PlanPos[0]);
@@ -2981,7 +3004,7 @@ double sunrise(MATRIX3 Rot_J_B, VECTOR3 R, VECTOR3 V, double MJD, OBJHANDLE plan
 		}
 		else
 		{
-			options = cPlan->clbkEphemeris(MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
+			options = ReadEphemeris(planet, MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
 
 			if (options & EPHEM_POLAR)
 			{
@@ -3139,7 +3162,7 @@ VECTOR3 backupgdcalignment(const VECTOR3 *navstars, MATRIX3 REFS, VECTOR3 R_C, d
 	SBNB = _M(cos(a), 0, -sin(a), 0, 1, 0, sin(a), 0, cos(a));
 
 	//In case the input is nonsense
-	prefset = max(0, min(prefset, maxset));
+	prefset = (std::max)(0, (std::min)(prefset, maxset));
 	set = prefset;
 
 	do
@@ -4806,7 +4829,7 @@ void poweredflight(VECTOR3 R, VECTOR3 V, double mjd0, OBJHANDLE gravref, double 
 		a_T = f_T / mnow;
 		tau = v_ex / a_T;
 		t_remain = tau*(1.0 - exp(-dVnow / v_ex));
-		dt = min(dt_max, t_remain);
+		dt = (std::min)(dt_max, t_remain);
 		dvdt = U_TD*f_T / mnow*dt;
 
 		Rnow = Rnow + (Vnow + gp*dt*0.5 + dvdt*0.5)*dt;
@@ -6236,7 +6259,7 @@ OrbMech_DROOTS_C:
 		double z1, z2;
 		z1 = 2.0*power(-b/2.0, 1.0 / 3.0);
 		z2 = power(b / 2.0, 1.0 / 3.0);
-		z = max(z1, z2);
+		z = (std::max)(z1, z2);
 	}
 	else if (delta > 0.0)
 	{
@@ -6250,7 +6273,7 @@ OrbMech_DROOTS_C:
 		z1 = 2.0*sqrt(-a / 3.0)*cos(phi / 3.0) - p / 3.0;
 		z2 = 2.0*sqrt(-a / 3.0)*cos(phi / 3.0 + PI2 / 3.0) - p / 3.0;
 		z3 = 2.0*sqrt(-a / 3.0)*cos(phi / 3.0 + PI2 * 2.0 / 3.0) - p / 3.0;
-		z = max(z1, max(z2, z3));
+		z = (std::max)(z1, (std::max)(z2, z3));
 	}
 
 	double ra, xi, beta, delta1, delta2;
@@ -6392,8 +6415,8 @@ CoastIntegrator::CoastIntegrator(int Epoch, VECTOR3 R00, VECTOR3 V00, double mjd
 	U_Z_E = _V(0, 0, 1);
 	U_Z_M = mul(Rot, U_Z_M);
 
-	cMoon = oapiGetCelbodyInterface(oapiGetObjectByName("Moon"));
-	cEarth = oapiGetCelbodyInterface(oapiGetObjectByName("Earth"));
+	moon = oapiGetObjectByName("Moon");
+	earth = oapiGetObjectByName("Earth");
 
 	R_QC = R0;
 
@@ -6448,9 +6471,9 @@ bool CoastIntegrator::iteration(bool allow_stop)
 	{
 		M = 1;
 	}
-	dt_max = 0.3*min(dt_lim, min(K*OrbMech::power(rr, 1.5) / sqrt(mu), (M == 0 ? 10e10 : K * OrbMech::power(r_qc, 1.5) / sqrt(mu_Q))));
+	dt_max = 0.3*(std::min)(dt_lim, (std::min)(K*OrbMech::power(rr, 1.5) / sqrt(mu), (M == 0 ? 10e10 : K * OrbMech::power(r_qc, 1.5) / sqrt(mu_Q))));
 	Y = OrbMech::sign(t_F - t);
-	dt = Y*min(abs(t_F - t), dt_max);
+	dt = Y*(std::min)(abs(t_F - t), dt_max);
 
 	if (M == 1)
 	{
@@ -6462,7 +6485,7 @@ bool CoastIntegrator::iteration(bool allow_stop)
 				VECTOR3 R_EM, V_PQ;
 
 				MJD = mjd0 + t / 86400.0;
-				cMoon->clbkEphemeris(MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
+				ReadEphemeris(moon, MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
 
 				if (B == 1)
 				{
@@ -6499,7 +6522,7 @@ bool CoastIntegrator::iteration(bool allow_stop)
 			VECTOR3 R_EM, V_PQ;
 
 			MJD = mjd0 + t / 86400.0;
-			cMoon->clbkEphemeris(MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
+			ReadEphemeris(moon, MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
 
 			if (B == 1)
 			{
@@ -6587,7 +6610,7 @@ bool CoastIntegrator::iteration(bool allow_stop)
 			VECTOR3 R_EM, V_PQ, V_EM;
 
 			MJD = mjd0 + t / 86400.0;
-			cMoon->clbkEphemeris(MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
+			ReadEphemeris(moon, MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
 
 			R_EM = mul(Rot, _V(MoonPos[0], MoonPos[2], MoonPos[1]));
 			V_EM = mul(Rot, _V(MoonPos[3], MoonPos[5], MoonPos[4]));
@@ -6619,7 +6642,7 @@ void CoastIntegrator::SolarEphemeris(double t, VECTOR3 &R_ES, VECTOR3 &V_ES)
 		double EarthPos[12];
 		VECTOR3 EarthVec, EarthVecVel;
 
-		cEarth->clbkEphemeris(mjd0 + t_F / 2.0 / 24.0 / 3600.0, EPHEM_TRUEPOS | EPHEM_TRUEVEL, EarthPos);
+		ReadEphemeris(earth, mjd0 + t_F / 2.0 / 24.0 / 3600.0, EPHEM_TRUEPOS | EPHEM_TRUEVEL, EarthPos);
 
 		EarthVec = OrbMech::Polar2Cartesian(EarthPos[2] * AU, EarthPos[1], EarthPos[0]);
 		EarthVecVel = OrbMech::Polar2CartesianVel(EarthPos[2] * AU, EarthPos[1], EarthPos[0], EarthPos[5] * AU, EarthPos[4], EarthPos[3]);
@@ -6694,7 +6717,7 @@ VECTOR3 CoastIntegrator::adfunc(VECTOR3 R)
 
 		MJD = mjd0 + t / 86400.0;
 
-		cMoon->clbkEphemeris(MJD, EPHEM_TRUEPOS, MoonPos);
+		ReadEphemeris(moon, MJD, EPHEM_TRUEPOS, MoonPos);
 		SolarEphemeris(t - t_F/2.0, R_ES, V_ES);
 		R_EM = mul(Rot, _V(MoonPos[0], MoonPos[2], MoonPos[1]));
 
@@ -6753,12 +6776,12 @@ MATRIX3 MatrixRH_LH(MATRIX3 A)
 
 double acos2(double _X)
 {
-	return acos(min(1.0, max(-1.0, _X)));
+	return acos((std::min)(1.0, (std::max)(-1.0, _X)));
 }
 
 double asin2(double _X)
 {
-	return asin(min(1.0, max(-1.0, _X)));
+	return asin((std::min)(1.0, (std::max)(-1.0, _X)));
 }
 
 double factorial(unsigned n)

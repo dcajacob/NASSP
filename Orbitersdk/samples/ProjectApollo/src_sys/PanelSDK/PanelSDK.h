@@ -26,7 +26,7 @@
 #define __PANELSDK_H_
 
 #include <stdio.h>
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
 
 #define PANELSDK_VERSION	 "1.9.10"

@@ -26,7 +26,7 @@
 
 #include <vector>
 #include <bitset>
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
 struct EphemerisData
 {
@@ -759,7 +759,7 @@ struct StationTable
 //State vector and more
 struct VehicleDataBlock
 {
-	VehicleDataBlock::VehicleDataBlock()
+	VehicleDataBlock()
 	{
 		KFactor = 0.0;
 		Area = 0.0;
@@ -773,7 +773,7 @@ struct VehicleDataBlock
 
 struct StationContact
 {
-	StationContact::StationContact()
+	StationContact()
 	{
 		GMTAOS = 0.0;
 		GMTLOS = 0.0;

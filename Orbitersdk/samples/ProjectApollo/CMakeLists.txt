@@ -7,6 +7,59 @@ project(NASSP VERSION 9.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(NASSP_BUILD_NATIVE_LINUX "Build NASSP components ported to the native Linux Orbiter SDK" OFF)
+if(NASSP_BUILD_NATIVE_LINUX)
+    set(ORBITER_NATIVE_SOURCE_DIR "" CACHE PATH "Source checkout matching the native Orbiter build")
+    set(ORBITER_NATIVE_BUILD_DIR "" CACHE PATH "Configured native Orbiter production engine")
+    if(NOT EXISTS "${ORBITER_NATIVE_SOURCE_DIR}/Orbitersdk/include/NativeVesselAPI.h"
+        OR NOT EXISTS "${ORBITER_NATIVE_BUILD_DIR}/native-sdk/OrbiterNativeBuild.h")
+        message(FATAL_ERROR "Set ORBITER_NATIVE_SOURCE_DIR and ORBITER_NATIVE_BUILD_DIR to the matching native Orbiter source and engine build.")
+    endif()
+
+    set(NASSP_SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+    add_library(NasspNativeOrbiterSdk INTERFACE)
+    target_include_directories(NasspNativeOrbiterSdk SYSTEM INTERFACE
+        "${ORBITER_NATIVE_SOURCE_DIR}/Orbitersdk/include"
+        "${ORBITER_NATIVE_SOURCE_DIR}/Src/Orbiter"
+        "${ORBITER_NATIVE_BUILD_DIR}/native-sdk"
+    )
+    target_include_directories(NasspNativeOrbiterSdk INTERFACE
+        "${NASSP_SOURCE_ROOT}/src_sys"
+    )
+    target_compile_definitions(NasspNativeOrbiterSdk INTERFACE
+        NASSP_NATIVE_LINUX ORBITER_NATIVE_BUILD_CONFIGURATION="$<CONFIG>"
+    )
+    target_link_libraries(NasspNativeOrbiterSdk INTERFACE
+        "${ORBITER_NATIVE_BUILD_DIR}/liborbiter_production_boundary.so"
+        "${ORBITER_NATIVE_BUILD_DIR}/liborbiter_production_vessels.so"
+    )
+
+    add_subdirectory(Project/PanelSDK)
+    add_library(NasspOrbMech STATIC src_rtccmfd/OrbMech.cpp)
+    add_library(NasspMission STATIC src_aux/Mission.cpp)
+    set_target_properties(NasspOrbMech NasspMission PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_link_libraries(NasspOrbMech PUBLIC NasspNativeOrbiterSdk)
+    target_link_libraries(NasspMission PUBLIC NasspNativeOrbiterSdk)
+    add_library(NasspVesselSystems STATIC
+        src_saturn/sivbsystems.cpp
+        src_saturn/s1bsystems.cpp
+        src_sys/connector.cpp
+        src_sys/DelayTimer.cpp
+        src_sys/inertial.cpp
+        src_sys/powersource.cpp
+        src_sys/pyro.cpp
+    )
+    set_target_properties(NasspVesselSystems PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_include_directories(NasspVesselSystems PRIVATE src_launch)
+    target_link_libraries(NasspVesselSystems PUBLIC PanelSDK NasspNativeOrbiterSdk)
+
+    add_library(NasspMCCVessel OBJECT src_launch/mccvessel.cpp src_launch/mccvc.cpp)
+    set_target_properties(NasspMCCVessel PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_include_directories(NasspMCCVessel PRIVATE src_aux src_rtccmfd)
+    target_link_libraries(NasspMCCVessel PRIVATE NasspNativeOrbiterSdk)
+    return()
+endif()
+
 if(CMAKE_SIZEOF_VOID_P EQUAL 8) # 64-bit build?
     set(BUILD64 1)
     set(ARCH "x64")

@@ -23,7 +23,12 @@
   **************************************************************************/
 
 #pragma once
-#pragma warning(disable : 4996 ) 
+
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeInterpreterSdk.h"
+#else
+#pragma warning(disable : 4996 )
+#endif
 
 
 // All inline functions and const variables should be static, see
@@ -148,6 +153,9 @@ static inline bool papiReadScenario_vec(char *line, char *item, VECTOR3 &v) {
 }
 
 static inline void papiCameraSetAperture(double fov) {
+#if defined(NASSP_NATIVE_LINUX)
+	oapiCameraSetAperture(fov);
+#else
 
 	// Artlav's camera aperture hack is working with the 20060929 version only
 	int version = oapiGetOrbiterVersion();
@@ -177,9 +185,13 @@ static inline void papiCameraSetAperture(double fov) {
 	oapiCameraSetAperture(fov);
 	*pfov=fov; 
 	*pfovx=(fov*1.06869);
+#endif
 }
 
 static inline double papiCameraAperture() {
+#if defined(NASSP_NATIVE_LINUX)
+	return oapiCameraAperture();
+#else
 
 	// Artlav's camera aperture hack is working with the 20060929 version only
 	int version = oapiGetOrbiterVersion();
@@ -203,6 +215,7 @@ static inline double papiCameraAperture() {
 	pfov=d;
 
 	return *pfov;
+#endif
 }
 
 static inline void papiWriteScenario_boolarr(FILEHANDLE scn, char *item, bool *v, int len) {

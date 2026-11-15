@@ -23,8 +23,9 @@
 
 #pragma once
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "RF_calc.h"
+#include <string>
 
 class MCC;
 class RTCC;
@@ -66,6 +67,9 @@ protected:
 	std::string strMission;
 
 	mission::Mission* pMission;
+#if defined(NASSP_NATIVE_LINUX)
+	oapi::Font* mfdButtonFont = nullptr;
+#endif
 };
 
 extern void LoadMeshes();

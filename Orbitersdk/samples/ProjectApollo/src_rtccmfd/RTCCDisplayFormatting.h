@@ -23,7 +23,13 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #pragma once
 
-#include "Orbitersdk.h"
+#include <cstdint>
+#include <string>
+#include <vector>
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "DrawAPI.h"
+#endif
 
 namespace rtcc
 {
@@ -44,7 +50,7 @@ namespace rtcc
 	class RTCCDisplayPrint
 	{
 	public:
-		void Print(oapi::Sketchpad *skp, DWORD CW, DWORD WOFF, DWORD CH, DWORD HOFF, unsigned dispnum) const;
+		void Print(oapi::Sketchpad *skp, std::uint32_t CW, std::uint32_t WOFF, std::uint32_t CH, std::uint32_t HOFF, unsigned dispnum) const;
 	protected:
 		std::vector<RTCCDisplay> displays;
 	};

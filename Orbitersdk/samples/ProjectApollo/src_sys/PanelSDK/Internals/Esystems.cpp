@@ -22,6 +22,7 @@
 
   **************************************************************************/
 
+#include <algorithm>
 #include "Esystems.h"
 #include "nasspdefs.h"
 #include <math.h>
@@ -353,13 +354,13 @@ void FCell::Reaction(double dt)
 	// purging
 	if (purge_handle == 1)
 	{
-		H2_flow += __min(0.67 / 7.93665 * dt, H2_maxflow - H2_flow);
+		H2_flow += (std::min)(0.67 / 7.93665 * dt, H2_maxflow - H2_flow);
 		H2_clogging -= H2_clogging * 0.05 * dt; //take approximately 2 minutes to purge
 	}
 
 	if (purge_handle == 2)
 	{
-		O2_flow += __min(0.67 / 7.93665 * dt, O2_maxflow - O2_flow);
+		O2_flow += (std::min)(0.67 / 7.93665 * dt, O2_maxflow - O2_flow);
 		O2_clogging -= O2_clogging * 0.05 * dt; //take approximately 2 minutes to purge
 	}
 
@@ -1742,7 +1743,7 @@ void Diode::Save(FILEHANDLE scn)
 }
 
 //------------------------------ Light Class -----------------------------------
-ElectricLight::ElectricLight(char* lightname, e_object* i_src, const bool flashing, const double onTime, const double offTime, VESSEL* thisVessel, VECTOR3 pos, VECTOR3 dir, double range, double att0, double att1, double att2, double umbra, double penumbra, COLOUR4 diffuse, COLOUR4 specular, COLOUR4 ambient, double powerDraw, double nomVoltage)
+ElectricLight::ElectricLight(char* lightname, e_object* i_src, const bool flashing, const double onTime, const double offTime, VESSEL* thisVessel, VECTOR3 pos, VECTOR3 dir, double range, double att0, double att1, double att2, double umbra, double penumbra, COLOUR4 diffuse, COLOUR4 specular, COLOUR4 ambient, double powerDraw, double nomVoltage) : vessel(thisVessel)
 {
 	strcpy(name, lightname);
 	SRC = i_src;
@@ -1771,6 +1772,12 @@ ElectricLight::ElectricLight(char* lightname, e_object* i_src, const bool flashi
 	lampBeaconColor = _V(diffuse.r, diffuse.g, diffuse.b);
 	lampBeacon.col = &lampBeaconColor;
 	thisVessel->AddBeacon(&lampBeacon);
+}
+
+ElectricLight::~ElectricLight()
+{
+	vessel->DelBeacon(&lampBeacon);
+	if (lamp) vessel->DelLightEmitter(lamp);
 }
 
 void ElectricLight::refresh(double dt) {
@@ -1886,7 +1893,7 @@ void FixedVoltageTransformer::UpdateFlow(double dt)
 {
 	if (SRC)
 	{
-		Volts = min(SRC->Voltage(), output_voltage);
+		Volts = (std::min)(SRC->Voltage(), output_voltage);
 	}
 	else
 	{
@@ -1913,7 +1920,7 @@ void VariableVoltageTransformer::UpdateFlow(double dt)
 	double DesVolts = min_output_voltage + (max_output_voltage - min_output_voltage) * GetValue();
 	if (SRC && !DCtoAC)
 	{
-		Volts = min(SRC->Voltage(), DesVolts);
+		Volts = (std::min)(SRC->Voltage(), DesVolts);
 	}
 	else if (SRC && DCtoAC && SRC->Voltage() > SP_MIN_DCVOLTAGE)
 	{

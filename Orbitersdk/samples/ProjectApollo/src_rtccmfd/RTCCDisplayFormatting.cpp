@@ -26,7 +26,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 namespace rtcc
 {
-	void RTCCDisplayPrint::Print(oapi::Sketchpad* skp, DWORD CW, DWORD WOFF, DWORD CH, DWORD HOFF, unsigned dispnum) const
+	void RTCCDisplayPrint::Print(oapi::Sketchpad* skp, std::uint32_t CW, std::uint32_t WOFF, std::uint32_t CH, std::uint32_t HOFF, unsigned dispnum) const
 	{
 		for (unsigned i = 0; i < displays.size(); i++)
 		{

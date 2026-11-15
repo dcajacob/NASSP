@@ -22,11 +22,12 @@
 
   **************************************************************************/
 
+#include <stdexcept>
 #include "Hsystems.h"
 #include "Esystems.h"
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <stdio.h>
 #include <math.h>
 #include "../BUILD.H"
@@ -550,8 +551,8 @@ void H_system::Create_h_ExteriorVentPipe(char* line) {
 	out = (h_Valve*)GetPointerByString("HYDRAULIC:EXTERIOR_ENVIRONMENT:IN");
 	if (!out) {
 		char errorBuffer[255];
-		sprintf_s(errorBuffer, sizeof(errorBuffer), "Fatal Error, could not connect %s to EXTERIOR_ENVIRONMENT:IN", name);
-		oapiWriteLogError(errorBuffer, "%s");
+		std::snprintf(errorBuffer, sizeof(errorBuffer), "Fatal Error, could not connect %s to EXTERIOR_ENVIRONMENT:IN", name);
+		throw std::runtime_error(errorBuffer);
 	}
 
 	int two_way = 1;

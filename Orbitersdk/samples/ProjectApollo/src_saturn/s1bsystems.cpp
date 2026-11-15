@@ -22,17 +22,19 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#include <algorithm>
+#include "nasspdefs.h"
 
 #include "soundlib.h"
 
-#include "apolloguidance.h"
-#include "CSMcomputer.h"
-#include "saturn.h"
 #include "papi.h"
 
 #include "s1bsystems.h"
 #include "SCMUmbilical.h"
+#include "PanelSDK/PanelSDK.h"
+#include "PanelSDK/Internals/Esystems.h"
+#include "pyro.h"
 
 H1Engine::H1Engine(VESSEL *v, THRUSTER_HANDLE &h1, bool cangimbal, double pcant, double ycant)
 	:vessel(v), th_h1(h1)
@@ -125,13 +127,13 @@ void H1Engine::Timestep(double simdt)
 			{
 				if (ThrustTimer < tm_2)
 				{
-					ThrustLevel = min(ThrustLevel, 1.0 - 3.35*(ThrustTimer - tm_1));
+					ThrustLevel = (std::min)(ThrustLevel, 1.0 - 3.35*(ThrustTimer - tm_1));
 				}
 				else
 				{
 					if (ThrustTimer < tm_3)
 					{
-						ThrustLevel = min(ThrustLevel, 0.33 - 0.825*(ThrustTimer - tm_2));
+						ThrustLevel = (std::min)(ThrustLevel, 0.33 - 0.825*(ThrustTimer - tm_2));
 					}
 					else
 					{
@@ -141,7 +143,7 @@ void H1Engine::Timestep(double simdt)
 			}
 			else
 			{
-				ThrustLevel = min(ThrustLevel, 1);
+				ThrustLevel = (std::min)(ThrustLevel, 1.0);
 			}
 
 			vessel->SetThrusterLevel(th_h1, ThrustLevel);

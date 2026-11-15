@@ -27,7 +27,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 struct TLMCCDataTable
 {
-	TLMCCDataTable::TLMCCDataTable()
+	TLMCCDataTable()
 	{
 		for (int i = 0;i < 25; i++)
 		{

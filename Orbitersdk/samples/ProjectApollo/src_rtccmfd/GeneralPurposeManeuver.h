@@ -23,7 +23,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #pragma once
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "AnalyticEphemerisGenerator.h"
 #include "RTCCModule.h"
 #include "RTCCTables.h"

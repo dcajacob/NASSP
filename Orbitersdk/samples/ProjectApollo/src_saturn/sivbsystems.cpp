@@ -22,13 +22,10 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#include <algorithm>
+#include "nasspdefs.h"
 
-#include "soundlib.h"
-
-#include "apolloguidance.h"
-#include "CSMcomputer.h"
-#include "saturn.h"
 #include "papi.h"
 
 #include "sivbsystems.h"
@@ -749,7 +746,7 @@ void SIVBSystems::Timestep(double simdt)
 		//Thrust rising linearly from STDV opening for 2.8 seconds to 100%
 		if (ThrustTimer < 2.8)
 		{
-			ThrustLevel = min(ThrustTimer*0.357, 1.0);
+			ThrustLevel = (std::min)(ThrustTimer*0.357, 1.0);
 		}
 		else
 		{
@@ -841,7 +838,7 @@ void SIVBSystems::UpdatePropellants()
 		{
 			double of = (MixtureRatio / (1.0 + MixtureRatio));
 			oxidMass -= (lastPropellantMass - p) * of;
-			oxidMass = max(oxidMass, 0);
+			oxidMass = (std::max)(oxidMass, 0.0);
 
 		}
 	}
@@ -1089,7 +1086,7 @@ void SIVBSystems::LH2PropellantCalculations(double simdt)
 	//Calculate total venting flowrate
 	mdot_gas = mdot_gas_CVS + mdot_gas_NPV;
 	//Calculate updated GH2 mass
-	GH2_Mass = max(0.0, GH2_Mass - mdot_gas * simdt);
+	GH2_Mass = (std::max)(0.0, GH2_Mass - mdot_gas * simdt);
 
 	//sprintf(oapiDebugString(), "Fuel %lf Ullage %lf BoiloffTime %lf heatflow %lf, mdot_boil %lf m_boil %lf GH2_Mass %lf Press %lf", FuelPercentage, UllageVolume, BoiloffTime, heatflow, mdot_boil, m_boil, GH2_Mass, LH2TankUllagePressurePSI);
 	//sprintf(oapiDebugString(), "CVS %d Press %lf, Regulator %lf Bypass %lf mdot %lf F %lf NPV %d mdot_gas_NPV %lf", LH2CVSReliefOverrideShutoffValve, LH2TankUllagePressurePSI, CVSRegulator, CVSBypass, mdot_gas_CVS, F_CVS, LH2LatchingReliefValve || LH2FuelVentAndReliefValve, mdot_gas_NPV);
@@ -1102,9 +1099,9 @@ void SIVBSystems::LH2PropellantCalculations(double simdt)
 	}
 
 	//Particle effect for CVS
-	LH2_CVS_Stream_Lvl = min(1.0, mdot_gas_CVS);
+	LH2_CVS_Stream_Lvl = (std::min)(1.0, mdot_gas_CVS);
 	//Particle effect for NPV
-	LH2_NPV_Stream_Lvl = min(1.0, mdot_gas_NPV);
+	LH2_NPV_Stream_Lvl = (std::min)(1.0, mdot_gas_NPV);
 }
 
 void SIVBSystems::UpdateLOXValveStates()
@@ -1254,7 +1251,7 @@ void SIVBSystems::LOXPropellantCalculations(double simdt)
 			GO2_Mass = GO2_Mass - mdot_gas_NPV * simdt;
 		}
 	}
-	LOX_NPV_Stream_Lvl = min(1.0, mdot_gas_NPV / 4.0);
+	LOX_NPV_Stream_Lvl = (std::min)(1.0, mdot_gas_NPV / 4.0);
 
 	//Propulsive vent
 	mdot_gas_vent = 0.0;
@@ -1280,7 +1277,7 @@ void SIVBSystems::LOXPropellantCalculations(double simdt)
 	mdot_gas_leak = 2.039614202645544e-04*LOXTankUllagePressurePSI;
 
 	//Calculate updated GOX mass
-	GO2_Mass = max(0.0, GO2_Mass - mdot_gas_leak * simdt);
+	GO2_Mass = (std::max)(0.0, GO2_Mass - mdot_gas_leak * simdt);
 
 	//LOX dump
 	double F_LOX_Dump = 0.0;
@@ -1289,7 +1286,7 @@ void SIVBSystems::LOXPropellantCalculations(double simdt)
 	if (oxidMass > 0.0 && MainstageOn && HeliumControlOn && !EngineOnLogic())
 	{
 		//LOX dump mass flow
-		double mdot_lox_dump = min(20.0, 0.06*oxidMass);
+		double mdot_lox_dump = (std::min)(20.0, 0.06*oxidMass);
 		if (oxidMass < mdot_lox_dump*simdt)
 		{
 			mdot_lox_dump = 0.0;
@@ -1319,7 +1316,7 @@ void SIVBSystems::LOXPropellantCalculations(double simdt)
 		F_LOX_Dump = mdot_lox_dump * LOX_DUMP_ISP + mdot_GOX_dump * GOX_DUMP_ISP;
 		vessel->AddForce(_V(0, 0, F_LOX_Dump), _V(0, 0, 0));
 
-		LOX_Dump_Stream_Lvl = min(1.0, F_LOX_Dump / 2500.0);
+		LOX_Dump_Stream_Lvl = (std::min)(1.0, F_LOX_Dump / 2500.0);
 	}
 	else
 	{
@@ -1559,7 +1556,7 @@ void SIVBSystems::SetAPSAttitudeEngine(int n, bool on)
 
 			//On the first timestep when an APS thruster is fired, cause a minimum impulse firing (7.5 lbf-sec impulse with 150 lbf thrust equals 50 milliseconds)
 			Level += 0.05 / oapiGetSimStep();
-			Level = min(1.0, Level);
+			Level = (std::min)(1.0, Level);
 		}
 		else
 		{

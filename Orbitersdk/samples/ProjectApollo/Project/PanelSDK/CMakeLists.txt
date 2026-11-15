@@ -19,6 +19,14 @@ set(SOURCES
     ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK/Internals/Thermal.cpp
 )
 
+if(NASSP_BUILD_NATIVE_LINUX)
+    add_library(PanelSDK STATIC ${SOURCES})
+    set_target_properties(PanelSDK PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_include_directories(PanelSDK PRIVATE ${INCLUDE_DIRS})
+    target_link_libraries(PanelSDK PUBLIC NasspNativeOrbiterSdk)
+    return()
+endif()
+
 link_directories(${ORBITERSDK_DIR}/lib)
 link_directories(${ORBITERSDK_DIR}/XRSound)
 

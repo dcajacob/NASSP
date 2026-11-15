@@ -24,7 +24,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 **************************************************************************/
 
 #pragma once
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
 #define INERTIAL_DATA_START_STRING	 "INERTIAL_DATA_BEGIN"
 #define INERTIAL_DATA_END_STRING    "INERTIAL_DATA_END"

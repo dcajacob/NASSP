@@ -23,17 +23,25 @@
   **************************************************************************/
 
 #include "Mission.h"
-#include "OrbiterAPI.h"
+#include "nasspdefs.h"
+#include <cstdio>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeGraphics.h"
+#include "Production/ResourceResolver.h"
+#endif
 #include <map>
 
 std::map<std::string, mission::Mission*> pa_mission_hashmap;
 
-DLLCLBK mission::Mission* paGetDefaultMission()
+mission::Mission* paGetDefaultMission()
 {
 	return paGetMission("");
 }
 
-DLLCLBK mission::Mission* paGetMission(const std::string& mission_name)
+mission::Mission* paGetMission(const std::string& mission_name)
 {
 	if (pa_mission_hashmap.find(mission_name) != pa_mission_hashmap.end())
 	{
@@ -66,6 +74,7 @@ void ClearMissionManagementMemory()
 		}
 		iter++;
 	}
+	pa_mission_hashmap.clear();
 }
 
 namespace mission {
@@ -195,15 +204,21 @@ namespace mission {
 	bool Mission::LoadMission(const std::string& strMission)
 	{
 		char buffer[256];
-		std::string filename;
-		filename = "Missions\\ProjectApollo\\" + strMission + ".cfg";
+		const std::string filename = "Missions/ProjectApollo/" + strMission + ".cfg";
+		std::filesystem::path path(filename);
 		strFileName = strMission;
 
-		sprintf_s(buffer, 255, "(Mission) Loading mission %s from file %s",
-			strMission.c_str(), filename.c_str());
+#if defined(NASSP_NATIVE_LINUX)
+		const auto* resolver = orbiter::production::GetNativeRenderContext().programFiles;
+		if (!resolver || !resolver->Contains(filename))
+			return false;
+		path = resolver->Resolve(filename);
+#endif
+		std::snprintf(buffer, sizeof(buffer), "(Mission) Loading mission %s from file %s",
+			strMission.c_str(), path.string().c_str());
 		oapiWriteLog(buffer);
 
-		std::ifstream hFile(filename.c_str());
+		std::ifstream hFile(path);
 
 		if (!hFile.is_open())
 		{
@@ -219,256 +234,259 @@ namespace mission {
 
 		while (hFile.getline(line, sizeof line))
 		{
-			if (!_strnicmp(line, "Name=", 5)) {
+			const auto length = std::strlen(line);
+			if (length && line[length - 1] == '\r')
+				line[length - 1] = '\0';
+			if (!strnicmp(line, "Name=", 5)) {
 				strncpy(buffer, line + 5, 255);
 				strMissionName.assign(buffer);
 			}
-			else if (!_strnicmp(line, "SMJCVersion=", 12)) {
+			else if (!strnicmp(line, "SMJCVersion=", 12)) {
 				sscanf(line + 12, "%d", &iSMJCVersion);
 			}
-			else if (!_strnicmp(line, "JMission=", 9)) {
+			else if (!strnicmp(line, "JMission=", 9)) {
 				strncpy(buffer, line + 9, 255);
-				bJMission = !_strnicmp(buffer, "TRUE", 4);
+				bJMission = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "Panel277Version=", 16)) {
+			else if (!strnicmp(line, "Panel277Version=", 16)) {
 				sscanf(line + 16, "%d", &iPanel277Version);
 			}
-			else if (!_strnicmp(line, "Panel278Version=", 16)) {
+			else if (!strnicmp(line, "Panel278Version=", 16)) {
 				sscanf(line + 16, "%d", &iPanel278Version);
 			}
-			else if (!_strnicmp(line, "LMDSKYVersion=", 14)) {
+			else if (!strnicmp(line, "LMDSKYVersion=", 14)) {
 				sscanf(line + 14, "%d", &iLMDSKYVersion);
 			}
-			else if (!_strnicmp(line, "HasLMProgramer=", 15)) {
+			else if (!strnicmp(line, "HasLMProgramer=", 15)) {
 				strncpy(buffer, line + 15, 255);
-				bHasLMProgramer = !_strnicmp(buffer, "TRUE", 4);
+				bHasLMProgramer = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "HasAEA=", 7)) {
+			else if (!strnicmp(line, "HasAEA=", 7)) {
 				strncpy(buffer, line + 7, 255);
-				bHasAEA = !_strnicmp(buffer, "TRUE", 4);
+				bHasAEA = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "LMHasAscEngArmAssy=", 19)) {
+			else if (!strnicmp(line, "LMHasAscEngArmAssy=", 19)) {
 				strncpy(buffer, line + 19, 255);
-				bLMHasAscEngArmAssy = !_strnicmp(buffer, "TRUE", 4);
+				bLMHasAscEngArmAssy = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "LMHasLegs=", 10)) {
+			else if (!strnicmp(line, "LMHasLegs=", 10)) {
 				strncpy(buffer, line + 10, 255);
-				bLMHasLegs = !_strnicmp(buffer, "TRUE", 4);
+				bLMHasLegs = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "LMHasDeflectors=", 16)) {
+			else if (!strnicmp(line, "LMHasDeflectors=", 16)) {
 				strncpy(buffer, line + 16, 255);
-				bLMHasDeflectors = !_strnicmp(buffer, "TRUE", 4);
+				bLMHasDeflectors = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "LMHasCask=", 10)) {
+			else if (!strnicmp(line, "LMHasCask=", 10)) {
 				strncpy(buffer, line + 10, 255);
-				bLMHasCask = !_strnicmp(buffer, "TRUE", 4);
+				bLMHasCask = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "CSMHasHGA=", 10)) {
+			else if (!strnicmp(line, "CSMHasHGA=", 10)) {
 				strncpy(buffer, line + 10, 255);
-				bCSMHasHGA = !_strnicmp(buffer, "TRUE", 4);
+				bCSMHasHGA = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "CSMHasVHFRanging=", 17)) {
+			else if (!strnicmp(line, "CSMHasVHFRanging=", 17)) {
 				strncpy(buffer, line + 17, 255);
-				bCSMHasVHFRanging = !_strnicmp(buffer, "TRUE", 4);
+				bCSMHasVHFRanging = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "CMCVersion=", 11)) {
+			else if (!strnicmp(line, "CMCVersion=", 11)) {
 				strncpy(buffer, line + 11, 255);
 				strCMCVersion.assign(buffer);
 				UpdateTEPHEM0();
 			}
-			else if (!_strnicmp(line, "LGCVersion=", 11)) {
+			else if (!strnicmp(line, "LGCVersion=", 11)) {
 				strncpy(buffer, line + 11, 255);
 				strLGCVersion.assign(buffer);
 			}
-			else if (!_strnicmp(line, "AEAVersion=", 11)) {
+			else if (!strnicmp(line, "AEAVersion=", 11)) {
 				strncpy(buffer, line + 11, 255);
 				strAEAVersion.assign(buffer);
 			}
-			else if (!_strnicmp(line, "InvertLMStageBit=", 17)) {
+			else if (!strnicmp(line, "InvertLMStageBit=", 17)) {
 				strncpy(buffer, line + 17, 255);
-				bInvertLMStageBit = !_strnicmp(buffer, "TRUE", 4);
+				bInvertLMStageBit = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "ATCA_PRM_Factor=", 16)) {
+			else if (!strnicmp(line, "ATCA_PRM_Factor=", 16)) {
 				sscanf(line + 16, "%lf", &dATCA_PRM_Factor);
 			}
-			else if (!_strnicmp(line, "LM_CGX_Coefficients=", 20)) {
+			else if (!strnicmp(line, "LM_CGX_Coefficients=", 20)) {
 				sscanf(line + 20, "%lf %lf %lf", &LM_CG_Coefficients.m11, &LM_CG_Coefficients.m12, &LM_CG_Coefficients.m13);
 			}
-			else if (!_strnicmp(line, "LM_CGY_Coefficients=", 20)) {
+			else if (!strnicmp(line, "LM_CGY_Coefficients=", 20)) {
 				sscanf(line + 20, "%lf %lf %lf", &LM_CG_Coefficients.m21, &LM_CG_Coefficients.m22, &LM_CG_Coefficients.m23);
 			}
-			else if (!_strnicmp(line, "LM_CGZ_Coefficients=", 20)) {
+			else if (!strnicmp(line, "LM_CGZ_Coefficients=", 20)) {
 				sscanf(line + 20, "%lf %lf %lf", &LM_CG_Coefficients.m31, &LM_CG_Coefficients.m32, &LM_CG_Coefficients.m33);
 			}
-			else if (!_strnicmp(line, "CMtoLMPowerConnectionVersion=", 29)) {
+			else if (!strnicmp(line, "CMtoLMPowerConnectionVersion=", 29)) {
 				sscanf(line + 29, "%d", &iCMtoLMPowerConnectionVersion);
 			}
-			else if (!_strnicmp(line, "EmptySMCG=", 10)) {
+			else if (!strnicmp(line, "EmptySMCG=", 10)) {
 				sscanf(line + 10, "%lf %lf %lf", &EmptySMCG.x, &EmptySMCG.y, &EmptySMCG.z);
 			}
-			else if (!_strnicmp(line, "HasRateAidedOptics=", 19)) {
+			else if (!strnicmp(line, "HasRateAidedOptics=", 19)) {
 				strncpy(buffer, line + 19, 255);
-				bHasRateAidedOptics = !_strnicmp(buffer, "TRUE", 4);
+				bHasRateAidedOptics = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "CrossPointerReversePolarity=", 28)) {
+			else if (!strnicmp(line, "CrossPointerReversePolarity=", 28)) {
 				strncpy(buffer, line + 28, 255);
-				bCrossPointerReversePolarity = !_strnicmp(buffer, "TRUE", 4);
+				bCrossPointerReversePolarity = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "CrossPointerShades=", 19)) {
+			else if (!strnicmp(line, "CrossPointerShades=", 19)) {
 				strncpy(buffer, line + 19, 255);
-				bCrossPointerShades = !_strnicmp(buffer, "TRUE", 4);
+				bCrossPointerShades = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "TEPHEM0=", 8)) {
+			else if (!strnicmp(line, "TEPHEM0=", 8)) {
 				sscanf(line + 8, "%lf", &dTEPHEM0);
 			}
-			else if (!_strnicmp(line, "LMNumber=", 9)) {
+			else if (!strnicmp(line, "LMNumber=", 9)) {
 				sscanf(line + 9, "%d", &iLMNumber);
 			}
-			else if (!_strnicmp(line, "LMEventTimerReverseAtZero=", 26)) {
+			else if (!strnicmp(line, "LMEventTimerReverseAtZero=", 26)) {
 				strncpy(buffer, line + 26, 255);
-				bLMEventTimerReverseAtZero = !_strnicmp(buffer, "TRUE", 4);
+				bLMEventTimerReverseAtZero = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "Apollo13Failures=", 17)) {
+			else if (!strnicmp(line, "Apollo13Failures=", 17)) {
 				strncpy(buffer, line + 17, 255);
-				bApollo13Failures = !_strnicmp(buffer, "TRUE", 4);
+				bApollo13Failures = !strnicmp(buffer, "TRUE", 4);
 			}
-			else if (!_strnicmp(line, "CDRVesselName=", 14)) {
+			else if (!strnicmp(line, "CDRVesselName=", 14)) {
 				strncpy(buffer, line + 14, 255);
 				strCDRName.assign(buffer);
 			}
-			else if (!_strnicmp(line, "CMPVesselName=", 14)) {
+			else if (!strnicmp(line, "CMPVesselName=", 14)) {
 				strncpy(buffer, line + 14, 255);
 				strCMPName.assign(buffer);
 			}
-			else if (!_strnicmp(line, "LMPVesselName=", 14)) {
+			else if (!strnicmp(line, "LMPVesselName=", 14)) {
 				strncpy(buffer, line + 14, 255);
 				strLMPName.assign(buffer);
 			}
-			else if (!_strnicmp(line, "CDRSuitName=", 12)) {
+			else if (!strnicmp(line, "CDRSuitName=", 12)) {
 				strncpy(buffer, line + 12, 255);
 				strCDRSuitName.assign(buffer);
 			}
-			else if (!_strnicmp(line, "CMPSuitName=", 12)) {
+			else if (!strnicmp(line, "CMPSuitName=", 12)) {
 				strncpy(buffer, line + 12, 255);
 				strCMPSuitName.assign(buffer);
 			}
-			else if (!_strnicmp(line, "LMPSuitName=", 12)) {
+			else if (!strnicmp(line, "LMPSuitName=", 12)) {
 				strncpy(buffer, line + 12, 255);
 				strLMPSuitName.assign(buffer);
 			}
-			else if(!_strnicmp(line, "CSMDefaultCueCards=", 19)) {
+			else if(!strnicmp(line, "CSMDefaultCueCards=", 19)) {
 				strncpy(buffer, line + 19, 255);
-				bCSMUseDefaultCueCards = !_strnicmp(buffer, "TRUE", 4);
+				bCSMUseDefaultCueCards = !strnicmp(buffer, "TRUE", 4);
 				if (!bCSMUseDefaultCueCards) ClearCueCards(0);
 			}
-			else if (!_strnicmp(line, "LMDefaultCueCards=", 18)) {
+			else if (!strnicmp(line, "LMDefaultCueCards=", 18)) {
 				strncpy(buffer, line + 18, 255);
-				bLMUseDefaultCueCards = !_strnicmp(buffer, "TRUE", 4);
+				bLMUseDefaultCueCards = !strnicmp(buffer, "TRUE", 4);
 				if (!bLMUseDefaultCueCards) ClearCueCards(1);
 				}
-			else if (!_strnicmp(line, "CSMCueCard=", 11)) {
+			else if (!strnicmp(line, "CSMCueCard=", 11)) {
 				ReadCueCardLine(line + 11, 0);
 			}
-			else if (!_strnicmp(line, "LMCueCard=", 10)) {
+			else if (!strnicmp(line, "LMCueCard=", 10)) {
 				ReadCueCardLine(line + 10, 1);
 			}
-			else if (!_strnicmp(line, "CMNBDX=", 7)) {
+			else if (!strnicmp(line, "CMNBDX=", 7)) {
 				sscanf(line + 7, "%lf", &CM_IMUDriftRates.m11);
 			}
-			else if (!_strnicmp(line, "CMNBDY=", 7)) {
+			else if (!strnicmp(line, "CMNBDY=", 7)) {
 				sscanf(line + 7, "%lf", &CM_IMUDriftRates.m12);
 			}
-			else if (!_strnicmp(line, "CMNBDZ=", 7)) {
+			else if (!strnicmp(line, "CMNBDZ=", 7)) {
 				sscanf(line + 7, "%lf", &CM_IMUDriftRates.m13);
 			}
-			else if (!_strnicmp(line, "CMADSRAX=", 9)) {
+			else if (!strnicmp(line, "CMADSRAX=", 9)) {
 				sscanf(line + 9, "%lf", &CM_IMUDriftRates.m21);
 			}
-			else if (!_strnicmp(line, "CMADSRAY=", 9)) {
+			else if (!strnicmp(line, "CMADSRAY=", 9)) {
 				sscanf(line + 9, "%lf", &CM_IMUDriftRates.m22);
 			}
-			else if (!_strnicmp(line, "CMADSRAZ=", 9)) {
+			else if (!strnicmp(line, "CMADSRAZ=", 9)) {
 				sscanf(line + 9, "%lf", &CM_IMUDriftRates.m23);
 			}
-			else if (!_strnicmp(line, "CMADIAX=", 8)) {
+			else if (!strnicmp(line, "CMADIAX=", 8)) {
 				sscanf(line + 8, "%lf", &CM_IMUDriftRates.m31);
 			}
-			else if (!_strnicmp(line, "CMADIAY=", 8)) {
+			else if (!strnicmp(line, "CMADIAY=", 8)) {
 				sscanf(line + 8, "%lf", &CM_IMUDriftRates.m32);
 			}
-			else if (!_strnicmp(line, "CMADIAZ=", 8)) {
+			else if (!strnicmp(line, "CMADIAZ=", 8)) {
 				sscanf(line + 8, "%lf", &CM_IMUDriftRates.m33);
 			}
-			else if (!_strnicmp(line, "CMPIPABIASX=", 12)) {
+			else if (!strnicmp(line, "CMPIPABIASX=", 12)) {
 				sscanf(line + 12, "%lf", &CM_PIPABias.x);
 			}
-			else if (!_strnicmp(line, "CMPIPABIASY=", 12)) {
+			else if (!strnicmp(line, "CMPIPABIASY=", 12)) {
 				sscanf(line + 12, "%lf", &CM_PIPABias.y);
 			}
-			else if (!_strnicmp(line, "CMPIPABIASZ=", 12)) {
+			else if (!strnicmp(line, "CMPIPABIASZ=", 12)) {
 				sscanf(line + 12, "%lf", &CM_PIPABias.z);
 			}
-			else if (!_strnicmp(line, "CMPIPASCALEX=", 13)) {
+			else if (!strnicmp(line, "CMPIPASCALEX=", 13)) {
 				sscanf(line + 13, "%lf", &CM_PIPAScale.x);
 			}
-			else if (!_strnicmp(line, "CMPIPASCALEY=", 13)) {
+			else if (!strnicmp(line, "CMPIPASCALEY=", 13)) {
 				sscanf(line + 13, "%lf", &CM_PIPAScale.y);
 			}
-			else if (!_strnicmp(line, "CMPIPASCALEZ=", 13)) {
+			else if (!strnicmp(line, "CMPIPASCALEZ=", 13)) {
 				sscanf(line + 13, "%lf", &CM_PIPAScale.z);
 			}
-			else if (!_strnicmp(line, "LMNBDX=", 7)) {
+			else if (!strnicmp(line, "LMNBDX=", 7)) {
 				sscanf(line + 7, "%lf", &LM_IMUDriftRates.m11);
 			}
-			else if (!_strnicmp(line, "LMNBDY=", 7)) {
+			else if (!strnicmp(line, "LMNBDY=", 7)) {
 				sscanf(line + 7, "%lf", &LM_IMUDriftRates.m12);
 			}
-			else if (!_strnicmp(line, "LMNBDZ=", 7)) {
+			else if (!strnicmp(line, "LMNBDZ=", 7)) {
 				sscanf(line + 7, "%lf", &LM_IMUDriftRates.m13);
 			}
-			else if (!_strnicmp(line, "LMADSRAX=", 9)) {
+			else if (!strnicmp(line, "LMADSRAX=", 9)) {
 				sscanf(line + 9, "%lf", &LM_IMUDriftRates.m21);
 			}
-			else if (!_strnicmp(line, "LMADSRAY=", 9)) {
+			else if (!strnicmp(line, "LMADSRAY=", 9)) {
 				sscanf(line + 9, "%lf", &LM_IMUDriftRates.m22);
 			}
-			else if (!_strnicmp(line, "LMADSRAZ=", 9)) {
+			else if (!strnicmp(line, "LMADSRAZ=", 9)) {
 				sscanf(line + 9, "%lf", &LM_IMUDriftRates.m23);
 			}
-			else if (!_strnicmp(line, "LMADIAX=", 8)) {
+			else if (!strnicmp(line, "LMADIAX=", 8)) {
 				sscanf(line + 8, "%lf", &LM_IMUDriftRates.m31);
 			}
-			else if (!_strnicmp(line, "LMADIAY=", 8)) {
+			else if (!strnicmp(line, "LMADIAY=", 8)) {
 				sscanf(line + 8, "%lf", &LM_IMUDriftRates.m32);
 			}
-			else if (!_strnicmp(line, "LMADIAZ=", 8)) {
+			else if (!strnicmp(line, "LMADIAZ=", 8)) {
 				sscanf(line + 8, "%lf", &LM_IMUDriftRates.m33);
 			}
-			else if (!_strnicmp(line, "LMPIPABIASX=", 12)) {
+			else if (!strnicmp(line, "LMPIPABIASX=", 12)) {
 				sscanf(line + 12, "%lf", &LM_PIPABias.x);
 			}
-			else if (!_strnicmp(line, "LMPIPABIASY=", 12)) {
+			else if (!strnicmp(line, "LMPIPABIASY=", 12)) {
 				sscanf(line + 12, "%lf", &LM_PIPABias.y);
 			}
-			else if (!_strnicmp(line, "LMPIPABIASZ=", 12)) {
+			else if (!strnicmp(line, "LMPIPABIASZ=", 12)) {
 				sscanf(line + 12, "%lf", &LM_PIPABias.z);
 			}
-			else if (!_strnicmp(line, "LMPIPASCALEX=", 13)) {
+			else if (!strnicmp(line, "LMPIPASCALEX=", 13)) {
 				sscanf(line + 13, "%lf", &LM_PIPAScale.x);
 			}
-			else if (!_strnicmp(line, "LMPIPASCALEY=", 13)) {
+			else if (!strnicmp(line, "LMPIPASCALEY=", 13)) {
 				sscanf(line + 13, "%lf", &LM_PIPAScale.y);
 			}
-			else if (!_strnicmp(line, "LMPIPASCALEZ=", 13)) {
+			else if (!strnicmp(line, "LMPIPASCALEZ=", 13)) {
 				sscanf(line + 13, "%lf", &LM_PIPAScale.z);
 			}
-			else if (!_strnicmp(line, "GroundStation=", 14)) {
+			else if (!strnicmp(line, "GroundStation=", 14)) {
 				ReadGroundStationLine(line + 14);
 			}
-			else if (!_strnicmp(line, "GroundStationPosition=", 22)) {
+			else if (!strnicmp(line, "GroundStationPosition=", 22)) {
 				ReadGroundStationPostionLine(line + 22);
 			}
-			else if (!_strnicmp(line, "GroundStationActive=", 20)) {
+			else if (!strnicmp(line, "GroundStationActive=", 20)) {
 				ReadGroundStationActiveLine(line + 20);
 			}
 		}

@@ -23,7 +23,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #pragma once
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "RTCCModule.h"
 
 class CoastIntegrator2 : public RTCCModule

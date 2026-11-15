@@ -30,6 +30,14 @@
 #include "Internals/Hsystems.h"
 #include "Internals/Esystems.h"
 #include "OAPICHAR.CPP"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeGraphics.h"
+#include "Production/ResourceResolver.h"
+#endif
+#include <filesystem>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 int Line_Number;
 char I_line[275];
@@ -39,10 +47,9 @@ FILE* resources;
 FILE* debug;
 char* ReadConfigLine()
 {
-	if (!feof(config_file))
+	if (fgets(I_line, 255, config_file))
 	{
-		fgets(I_line, 255, config_file);
-		I_line[strlen(I_line) - 1] = 0; //drop the CR?
+		I_line[std::strcspn(I_line, "\r\n")] = 0;
 		Line_Number++;	//counter for the line we are reading
 		int i;
 		for (i = 0; i < (int)strlen(I_line); i++)
@@ -57,10 +64,9 @@ char* ReadConfigLine()
 }
 char* ReadResourceLine()
 {
-	if (!feof(resources))
+	if (fgets(I_line, 255, resources))
 	{
-		fgets(I_line, 255, resources);
-		I_line[strlen(I_line) - 1] = 0; //drop the CR?
+		I_line[std::strcspn(I_line, "\r\n")] = 0;
 		Line_Number++;	//counter for the line we are reading
 		int i;
 		for (i = 0; i < (int)strlen(I_line); i++)
@@ -109,9 +115,20 @@ void PanelSDK::InitFromFile(char* FileName)
 	char name[40];
 	char type[40];
 	int stage;
-	sprintf(name, "Config\\\\%s.cfg", FileName);
-
-	config_file = fopen(name, "rt");
+	const std::string relative = std::string(FileName) + ".cfg";
+#if defined(NASSP_NATIVE_LINUX)
+	const auto* resolver = orbiter::production::GetNativeRenderContext().configurationFiles;
+	if (!resolver)
+		throw std::runtime_error("PanelSDK configuration resolver is unavailable");
+	const auto path = resolver->Resolve(relative);
+#else
+	const auto path = std::filesystem::path("Config") / relative;
+#endif
+	const std::unique_ptr<FILE, decltype(&std::fclose)> input(
+		std::fopen(path.string().c_str(), "rt"), std::fclose);
+	if (!input)
+		throw std::runtime_error("Cannot read PanelSDK configuration: " + path.string());
+	config_file = input.get();
 
 #ifdef _DEBUG
 	debug = fopen("ProjectApollo PanelSDK.log", "wt");
@@ -185,7 +202,7 @@ void PanelSDK::InitFromFile(char* FileName)
 		//do something
 		//do something
 	};
-	fclose(config_file);
+	config_file = nullptr;
 
 #ifdef _DEBUG
 	fclose(debug);

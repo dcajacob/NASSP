@@ -24,12 +24,13 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include <cstdint>
+#include "NasspOrbiterSdk.h"
 
-class Mesh
+class PanelMesh
 { public:
-  Mesh();
-  ~Mesh();
+  PanelMesh();
+  ~PanelMesh();
   MESHHANDLE h_mesh;
   VECTOR3 offset[10];
   char name[25];
@@ -40,8 +41,8 @@ class Mesh
 
   void Init();
   void Show(VESSEL *vs,int stage);
-  void AddToList(Mesh * new_mesh);
-  Mesh *next;
+  void AddToList(PanelMesh * new_mesh);
+  PanelMesh *next;
 };
 
 class Propellant
@@ -124,7 +125,7 @@ class Stage
 
 class KeyPress
 {public:
-   DWORD key;
+   std::uint32_t key;
    int trigger_type;	//1- separation , 2- animation
    int index;			//ie. which separation or which animation
    KeyPress *next;
@@ -138,7 +139,7 @@ class KeyPress
 class VesselMgmt
 {public:
    Stage Stages[10];	      //up 10 staging options
-   Mesh *Meshes;			  // actual meshes list
+   PanelMesh *Meshes;			  // actual meshes list
    Propellant *Propellants;	  //actual props lists
    KeyPress *DefinedKeys;
    int max_stages;

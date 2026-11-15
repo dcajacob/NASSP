@@ -24,8 +24,9 @@
 
 #pragma once
 
-#include <OrbiterAPI.h>
+#include "NasspOrbiterSdk.h"
 #include <string>
+#include <vector>
 
 namespace mission
 {
@@ -244,7 +245,14 @@ namespace mission
 	};
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+extern "C" {
+	mission::Mission* paGetDefaultMission();
+	mission::Mission* paGetMission(const std::string& filename);
+}
+#else
 DLLCLBK mission::Mission* paGetDefaultMission();
 DLLCLBK mission::Mission* paGetMission(const std::string& filename);
+#endif
 void ClearMissionManagementMemory();
 void InitMissionManagementMemory();

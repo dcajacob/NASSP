@@ -22,19 +22,22 @@
 
   **************************************************************************/
 
-  // To force Orbitersdk.h to use <fstream> in any compiler version
-#pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "DrawAPI.h"
+#include <stdexcept>
+#endif
 #include <stdio.h>
 #include <math.h>
-#include "soundlib.h"
 #include "nasspdefs.h"
 
 #include "mccvessel.h"
 
 MESHHANDLE hMCCVC;
 
+#if !defined(NASSP_NATIVE_LINUX)
 GDIParams g_Param;
+#endif
 
 // MFD button area IDs
 #define AID_MFD_L_BUTTONS		0
@@ -133,6 +136,10 @@ const VECTOR3 MFD_2_BUTTONPOS[15] = {
 
 void MCCVessel::LoadVC() 
 {
+#if defined(NASSP_NATIVE_LINUX)
+	if (!hMCCVC) throw std::runtime_error("Could not load the NASSP Mission Control Center cockpit mesh");
+	if (!mfdButtonFont) mfdButtonFont = oapiCreateFont(14, false, "Sans");
+#endif
 	int vcidx = AddMesh(hMCCVC);
 	SetMeshVisibilityMode(vcidx, MESHVIS_VC);
 }
@@ -319,8 +326,14 @@ bool MCCVessel::clbkVCMouseEvent(int id, int event, VECTOR3 &p)
 void MCCVessel::RedrawPanel_MFDButton(SURFHANDLE surf, int mfd, int side, int xoffset, int yoffset, int xdist) {
 
 	oapi::Sketchpad* skp = oapiGetSketchpad(surf);
+	if (!skp) return;
+#if defined(NASSP_NATIVE_LINUX)
+	skp->SetFont(mfdButtonFont);
+	skp->SetTextColor(oapiGetColour(196, 196, 196));
+#else
 	skp->SetFont(g_Param.font[2]);
 	skp->SetTextColor(RGB(196, 196, 196));
+#endif
 	skp->SetTextAlign(oapi::Sketchpad::CENTER);
 	skp->SetBackgroundMode(oapi::Sketchpad::BK_TRANSPARENT);
 	const char* label;

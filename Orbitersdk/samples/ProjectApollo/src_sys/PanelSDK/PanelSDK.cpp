@@ -22,6 +22,7 @@
 
   **************************************************************************/
 
+#include <algorithm>
 #include "PanelSDK.h"
 #include "Internals/Thermal.h"
 #include "Internals/Hsystems.h"
@@ -114,15 +115,15 @@ void PanelSDK::Timestep(double time){
 	double dt = time - lastTime;
 	lastTime = time;
 
-	double mintFactor = __max(dt / 100.0, 0.5);
-	double tFactor = __min(mintFactor, dt);
+	double mintFactor = (std::max)(dt / 100.0, 0.5);
+	double tFactor = (std::min)(mintFactor, dt);
 	while (dt > 0) {
 		THERMAL->Radiative(tFactor);
 		HYDRAULIC->Refresh(tFactor);
 		ELECTRIC->Refresh(tFactor);
 
 		dt -= tFactor;
-		tFactor = __min(mintFactor, dt);
+		tFactor = (std::min)(mintFactor, dt);
 	}
 }
 

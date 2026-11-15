@@ -31,7 +31,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 #include "mcc.h"
 #include "rtcc.h"
 
-bool RTCC::CalculationMTP_B(int fcn, LPVOID &pad, char * upString, char * upDesc, char * upMessage)
+bool RTCC::CalculationMTP_B(int fcn, void*&pad, char * upString, char * upDesc, char * upMessage)
 {
 	char uplinkdata[1024 * 3];
 

@@ -4248,7 +4248,7 @@ void MCC::freePad(){
 }
 
 // Keypress handler
-void MCC::keyDown(DWORD key){
+void MCC::keyDown(std::uint32_t key){
 	char buf[MAX_MSGSIZE];
 	char menubuf[300];
 	

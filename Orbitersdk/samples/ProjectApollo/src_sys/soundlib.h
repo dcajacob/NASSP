@@ -25,12 +25,14 @@
 #ifndef SOUNDLIB_H
 #define SOUNDLIB_H
 
+#include <cstdint>
+
 class XRSound;
 
 // This is the structure used by Set3dWaveParameters
 typedef struct OS3DCONE {
-    DWORD dwInsideConeAngle;
-    DWORD dwOutsideConeAngle;
+    std::uint32_t dwInsideConeAngle;
+    std::uint32_t dwOutsideConeAngle;
     VECTOR3 vConeOrientation;
     double lConeOutsideVolume;
 } OS3DCONE;
@@ -114,7 +116,7 @@ public:
 	void SetSoundData(SoundData *s);
 	void SetSoundLib(SoundLib *s) { sl = s; };
 
-	Sound& Sound::operator=(const Sound &s);
+	Sound& operator=(const Sound &s);
 
 protected:
 	int soundflags;
@@ -247,7 +249,10 @@ protected:
 // code.
 //
 
+#if !defined(NASSP_NATIVE_LINUX)
+// The DirectSound-based SoundEvent is used by the Lunar Module.
 #include "soundevents.h"
+#endif
 
 //
 // Timed sound sequencing.

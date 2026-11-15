@@ -27,9 +27,19 @@
 #include "paCBGmessageID.h"
 #include "Mission.h"
 
+#include "nasspdefs.h"
+
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#define MCC_VESSEL_CALLBACK static
+#else
 #define ORBITER_MODULE
+#define MCC_VESSEL_CALLBACK DLLCLBK
+#endif
 
 static int refcount = 0;
+
+#if !defined(NASSP_NATIVE_LINUX)
 
 DLLCLBK void InitModule(HINSTANCE hDLL)
 {
@@ -38,8 +48,9 @@ DLLCLBK void InitModule(HINSTANCE hDLL)
 DLLCLBK void ExitModule(HINSTANCE hDLL)
 {
 }
+#endif
 
-DLLCLBK VESSEL* ovcInit(OBJHANDLE hVessel, int iFlightModel)
+MCC_VESSEL_CALLBACK VESSEL* ovcInit(OBJHANDLE hVessel, int iFlightModel)
 {
 	if (!refcount++) {
 		LoadMeshes();
@@ -48,12 +59,32 @@ DLLCLBK VESSEL* ovcInit(OBJHANDLE hVessel, int iFlightModel)
 	return new MCCVessel(hVessel, iFlightModel);
 }
 
-DLLCLBK void ovcExit(VESSEL* pVessel)
+MCC_VESSEL_CALLBACK void ovcExit(VESSEL* pVessel)
 {
     --refcount;
 
 	delete static_cast<MCCVessel*>(pVessel);
 }
+
+#undef MCC_VESSEL_CALLBACK
+
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+using MCCFactory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor mccModule = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Mission Control Center",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI,
+	MCCFactory::initialize, MCCFactory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &mccModule : nullptr;
+}
+#endif
 
 MCCVessel::MCCVessel(OBJHANDLE hVessel, int flightmodel) : VESSEL4(hVessel, flightmodel)
 {
@@ -71,6 +102,9 @@ MCCVessel::MCCVessel(OBJHANDLE hVessel, int flightmodel) : VESSEL4(hVessel, flig
 
 MCCVessel::~MCCVessel()
 {
+#if defined(NASSP_NATIVE_LINUX)
+	if (mfdButtonFont) oapiReleaseFont(mfdButtonFont);
+#endif
 	if (rtcc)
 	{
 		delete rtcc;
@@ -161,7 +195,7 @@ void MCCVessel::clbkLoadStateEx(FILEHANDLE scn, void *status)
 	char *line;
 
 	while (oapiReadScenario_nextline(scn, line)) {
-		if (!_strnicmp(line, "MISSIONTRACKING", 15)) {
+		if (!strnicmp(line, "MISSIONTRACKING", 15)) {
 			int i;
 			sscanf(line + 15, "%d", &i);
 			if (i)
@@ -170,31 +204,31 @@ void MCCVessel::clbkLoadStateEx(FILEHANDLE scn, void *status)
 				mcc->enableMissionTracking();
 			}
 		}
-		else if (!_strnicmp(line, "MISSION ", 8))
+		else if (!strnicmp(line, "MISSION ", 8))
 		{
 			CreateMCC();
 			strMission = line + 8;
 			LoadMissionFile();
 			SetConfiguration();
 		}
-		else if (!_strnicmp(line, "CSMNAME", 7))
+		else if (!strnicmp(line, "CSMNAME", 7))
 		{
 			strncpy(CSMName, line + 8, 64);
 		}
-		else if (!_strnicmp(line, "LVNAME", 6))
+		else if (!strnicmp(line, "LVNAME", 6))
 		{
 			strncpy(LVName, line + 7, 64);
 		}
-		else if (!_strnicmp(line, "LEMNAME", 7))
+		else if (!strnicmp(line, "LEMNAME", 7))
 		{
 			strncpy(LEMName, line + 8, 64);
 		}
-		else if (!_strnicmp(line, MCC_START_STRING, sizeof(MCC_START_STRING)))
+		else if (!strnicmp(line, MCC_START_STRING, sizeof(MCC_START_STRING)))
 		{
 			CreateMCC();
 			if (mcc) mcc->LoadState(scn);
 		}
-		else if (!_strnicmp(line, RTCC_START_STRING, sizeof(RTCC_START_STRING))) {
+		else if (!strnicmp(line, RTCC_START_STRING, sizeof(RTCC_START_STRING))) {
 			if (rtcc) rtcc->LoadState(scn);
 		}
 		else ParseScenarioLineEx(line, status);

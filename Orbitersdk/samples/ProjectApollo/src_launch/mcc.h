@@ -26,6 +26,10 @@
 
 #include "MCCPADForms.h"
 #include <fstream>
+#include <cstdint>
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeInterpreterSdk.h"
+#endif
 #include <atomic>
 #include "thread.h"
 #include "MCC_Calculations.h"
@@ -261,7 +265,7 @@ public:
 	void AutoUpdateXmitGroundStation(VESSEL* Ves, const TrackingVesselType Type, const TrackingSlot Slot);	// Automaticially Update the Transmitting Ground Station
 	bool UpdateGroundStationPosition(unsigned int i, VECTOR3 &LocalPos, VECTOR3 &GlobalPos);
 	void UpdateRevCounters(const TrackingSlot Slot);
-	virtual void keyDown(DWORD key);						// Notification of keypress	
+	virtual void keyDown(std::uint32_t key);						// Notification of keypress
 	void addMessage(char *msg);								// Add message into buffer
 	void redisplayMessages();								// Cause messages in ring buffer to be redisplayed
 	void pushCMCUplinkString(const char *str);              // Send sequence to CMC
@@ -351,7 +355,7 @@ public:
 	int padState;											// PAD display state
 	bool padAutoShow;										// PAD Auto Show flag
 	int padNumber;											// PAD display number
-	LPVOID padForm;											// Pointer to pad form buffer
+	void* padForm;											// Pointer to pad form buffer
 	char upString[1024 * 3];								// Uplink string buffer
 	char upDescr[1024];										// Uplink Description
 	char upMessage[1024];									// Update message

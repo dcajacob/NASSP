@@ -32,7 +32,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 #include "rtcc.h"
 #include "../src_skylab/skylab.h"
 
-bool RTCC::CalculationMTP_SL(int fcn, LPVOID& pad, char* upString, char* upDesc, char* upMessage)
+bool RTCC::CalculationMTP_SL(int fcn, void*& pad, char* upString, char* upDesc, char* upMessage)
 {
 	char uplinkdata[1024 * 3];
 	char Buff[128];
