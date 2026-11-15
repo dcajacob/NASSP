@@ -1288,7 +1288,7 @@ public:
 	int Lua_InitInstance(void *context);
 
 	int Lua_GetPanelSwitch(const char *name);
-	void Lua_SetPanelSwitch(const char *name, int state);
+	void Lua_SetPanelSwitch(const char *name, int state, bool hold);
 	bool Lua_GetPanelSwitchFlashing(const char *name);
 	void Lua_SetPanelSwitchFlashing(const char *name, bool flash);
 	int Lua_GetAGCErasable(int page, int addr);

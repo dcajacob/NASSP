@@ -5490,8 +5490,8 @@ int Saturn::Lua_GetPanelSwitch(const char *name) {
 	return MainPanel.GetState(name);
 }
 
-void Saturn::Lua_SetPanelSwitch(const char *name, int state) {
-	MainPanel.SetState(name, state);
+void Saturn::Lua_SetPanelSwitch(const char *name, int state, bool hold) {
+	MainPanel.SetState(name, state, false, hold);
 }
 
 bool Saturn::Lua_GetPanelSwitchFlashing(const char *name) {
@@ -5542,7 +5542,8 @@ static int LuaCall_SetPanelSwitch(lua_State *L) {
 	const char *name = lua_tostring(L,2);
 	int state = lua_tointeger(L,3);
 
-	v->Lua_SetPanelSwitch(name, state);
+	// An optional third argument keeps a spring-loaded control held.
+	v->Lua_SetPanelSwitch(name, state, lua_toboolean(L, 4) != 0);
 	return 0;
 }
 
