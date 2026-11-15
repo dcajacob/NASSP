@@ -1927,6 +1927,7 @@ protected:
 class PanelSwitchCallbackInterface
 {
 public:
+	virtual ~PanelSwitchCallbackInterface() = default;
 	virtual void call(PanelSwitchItem* s) = 0;
 };
 
