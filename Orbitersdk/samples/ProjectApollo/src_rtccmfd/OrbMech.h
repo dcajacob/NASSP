@@ -180,6 +180,8 @@ private:
 
 namespace OrbMech {
 
+	int ReadEphemeris(OBJHANDLE handle, double mjd, int request, double* result);
+
 	//Constants
 	const double mu_Earth = 0.3986032e15;
 	const double R_Earth = 6.373338e6;//6378165.0; We use LC-39 launchpad radius, because Orbiter Earth is spherical
@@ -337,7 +339,9 @@ namespace OrbMech {
 	MATRIX3 inverse(MATRIX3 a);
 	double determinant(MATRIX3 a);
 	MATRIX3 tmat(MATRIX3 a);
-	template <typename T> int sign(T val);
+	template <typename T> int sign(T val) {
+		return (T(0) < val) - (val < T(0));
+	}
 	int DoubleToBuffer(double x, double q, int m);
 	void AGCSignedValue(int &val);
 	void DoubleToAGCTriple(double val, int* oct);

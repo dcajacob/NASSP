@@ -23,7 +23,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "soundlib.h"
 #include "apolloguidance.h"
 #include "CSMcomputer.h"
@@ -48,6 +48,8 @@
 #include "iu.h"
 #include "nassputils.h"
 #include "Mission.h"
+#include <chrono>
+#include <thread>
 
 using namespace nassp;
 
@@ -615,7 +617,18 @@ void MCC::setSubState(int newState){
 	SubStateTime = 0;
 }
 
+MCC::~MCC()
+{
+	if (subThreadWorker.joinable()) subThreadWorker.join();
+	freePad();
+}
+
 void MCC::TimeStep(double simdt){
+	if (subThreadWorker.joinable() && IsReady(subThreadStatus.load())) {
+		subThreadWorker.join();
+		addMessage("Thread Completed");
+	}
+
 	int x=0,y=0,z=0;				// Scratch
 
 	/* AOS DETERMINATION */
@@ -1133,7 +1146,11 @@ bool MCC::UpdateGroundStationPosition(unsigned int i, VECTOR3 &LocalPos, VECTOR3
 			sin(GroundStations[i].Position[0] * RAD),
 			sin(GroundStations[i].Position[1] * RAD) * cos(GroundStations[i].Position[0] * RAD)) * R_E;
 
-		oapiLocalToGlobal(Earth, &LocalPos, &GlobalPos);
+		MATRIX3 localToGlobal;
+		VECTOR3 centre;
+		oapiGetRotationMatrix(Earth, &localToGlobal);
+		oapiGetGlobalPos(Earth, &centre);
+		GlobalPos = centre + mul(localToGlobal, LocalPos);
 	}
 	return true;
 }
@@ -1401,7 +1418,7 @@ int MCC::subThread(){
 	
 	if (subThreadMode == 0)
 	{
-		Sleep(5000); // Waste 5 seconds
+		std::this_thread::sleep_for(std::chrono::seconds(5));
 		Result = DONE;  // Success (negative = error)
 	}
 	else if (MissionType == MTP_B)
@@ -1441,20 +1458,22 @@ int MCC::subThread(){
 		Result = DONE; // Done
 	}
 	subThreadStatus = Result;
-	// Printing messages from the subthread is not safe, but this is just for testing.
-	addMessage("Thread Completed");
 	return(0);
 }
 
 // Subthread initiation
 int MCC::startSubthread(int fcn, int type){
 	if(IsReady(subThreadStatus)){
-		// Punt thread
+		if (subThreadWorker.joinable()) subThreadWorker.join();
 		subThreadMode = fcn;
 		subThreadType = type;
 		subThreadStatus = SCHEDULED;
-		std::thread t(&MCC::subThread, this);
-		t.detach();
+		try {
+			subThreadWorker = std::thread(&MCC::subThread, this);
+		} catch (...) {
+			subThreadStatus = DONE;
+			throw;
+		}
 		addMessage("Thread Started");
 	}else{
 		addMessage("Thread Busy");

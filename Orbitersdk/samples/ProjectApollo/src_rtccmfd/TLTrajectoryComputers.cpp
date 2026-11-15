@@ -21,6 +21,8 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
+#include <algorithm>
+
 #include "OrbMech.h"
 #include "rtcc.h"
 #include "TLTrajectoryComputers.h"
@@ -412,41 +414,43 @@ TLMCC_Conic_A1:
 		}
 	}
 
-	VECTOR3 Rtemp = vars->SGSLOI.R;
-	VECTOR3 Vtemp = vars->SGSLOI.V;
-	LIBRAT(Rtemp, Vtemp, vars->GMT_nd, 6);
-	U_DS = unit(crossp(Rtemp, Vtemp));
-
-	VECTOR3 U_PJ, gamma_vec;
-	double R_NL, V1;
-
-	U_PJ = unit(U_DS - R_N * dotp(U_DS, R_N));
-	gamma_vec = unit(crossp(U_H, R_N));
-	vars->theta = length(crossp(U_DS, U_PJ))*OrbMech::sign(dotp(crossp(U_DS, U_PJ), gamma_vec));
-
-	R_NL = vars->A1 * (1.0 - vars->E1 * vars->E1) / (1.0 + vars->E1 * cos(vars->TA_LOI));
-	vars->DH_Node = R_NL - r_N;
-	V1 = sqrt(mu_M*(2.0 / r_N - 2.0 / (r_N + vars->RA_LPO1)));
-	DV_LOI = sqrt(v_H*v_H + V1 * V1 - 2.0*v_H*V1*(cos(gamma_H)*dotp(U_DS, U_H))) + 10.0*0.3048; //10 ft/s calibration DV to account for finite burn loss
-	vars->dpsi_loi = acos(dotp(U_DS, U_H));
-
-	outarray.M_loi = MCOMP(DV_LOI, vars->Config, vars->useSPS, outarray.M_mcc);
-
-	gamma = vars->gamma_L - vars->gamma1;
-	double DV_DOI = sqrt(vars->V2*vars->V2 + vars->V_L * vars->V_L - 2.0*vars->V_L*vars->V2*cos(gamma));
-	outarray.M_cir = MCOMP(DV_DOI, vars->Config, vars->useSPS, outarray.M_loi);
-
-	LIBRAT(vars->sv_lls1.R, vars->sv_lls1.V, vars->sv_lls1.GMT, 5);
-	vars->sv_lls1.GMT = vars->GMT_nd + vars->dt_lls;
-	LIBRAT(vars->sv_lls1.R, vars->sv_lls1.V, vars->sv_lls1.GMT, 6);
-
-	if (vars->LLSStopIndicator)
 	{
-		goto TLMCC_Conic_Out;
+		VECTOR3 Rtemp = vars->SGSLOI.R;
+		VECTOR3 Vtemp = vars->SGSLOI.V;
+		LIBRAT(Rtemp, Vtemp, vars->GMT_nd, 6);
+		U_DS = unit(crossp(Rtemp, Vtemp));
+
+		VECTOR3 U_PJ, gamma_vec;
+		double R_NL, V1;
+
+		U_PJ = unit(U_DS - R_N * dotp(U_DS, R_N));
+		gamma_vec = unit(crossp(U_H, R_N));
+		vars->theta = length(crossp(U_DS, U_PJ))*OrbMech::sign(dotp(crossp(U_DS, U_PJ), gamma_vec));
+
+		R_NL = vars->A1 * (1.0 - vars->E1 * vars->E1) / (1.0 + vars->E1 * cos(vars->TA_LOI));
+		vars->DH_Node = R_NL - r_N;
+		V1 = sqrt(mu_M*(2.0 / r_N - 2.0 / (r_N + vars->RA_LPO1)));
+		DV_LOI = sqrt(v_H*v_H + V1 * V1 - 2.0*v_H*V1*(cos(gamma_H)*dotp(U_DS, U_H))) + 10.0*0.3048; //10 ft/s calibration DV to account for finite burn loss
+		vars->dpsi_loi = acos(dotp(U_DS, U_H));
+
+		outarray.M_loi = MCOMP(DV_LOI, vars->Config, vars->useSPS, outarray.M_mcc);
+
+		gamma = vars->gamma_L - vars->gamma1;
+		double DV_DOI = sqrt(vars->V2*vars->V2 + vars->V_L * vars->V_L - 2.0*vars->V_L*vars->V2*cos(gamma));
+		outarray.M_cir = MCOMP(DV_DOI, vars->Config, vars->useSPS, outarray.M_loi);
+
+		LIBRAT(vars->sv_lls1.R, vars->sv_lls1.V, vars->sv_lls1.GMT, 5);
+		vars->sv_lls1.GMT = vars->GMT_nd + vars->dt_lls;
+		LIBRAT(vars->sv_lls1.R, vars->sv_lls1.V, vars->sv_lls1.GMT, 6);
+
+		if (vars->LLSStopIndicator)
+		{
+			goto TLMCC_Conic_Out;
+		}
+
+		outarray.M_lopc = outarray.M_cir - vars->LMMass;
+
 	}
-
-	outarray.M_lopc = outarray.M_cir - vars->LMMass;
-
 	goto TLMCC_Conic_F5;
 TLMCC_Conic_C4:
 
@@ -560,7 +564,7 @@ bool TLTrajectoryComputers::IntegratedTrajectoryComputer(std::vector<double> &va
 	EphemerisData sv0, sv0_apo, sv_nd;
 	VECTOR3 H_pg;
 	double dv_mcc, dgamma_mcc, dpsi_mcc, mfm0, R_nd, lat_nd, lng_nd, inc_pg, dt_node;
-	INT ITS;
+	int ITS;
 
 	if (vars->TLIIndicator)
 	{
@@ -1468,7 +1472,7 @@ bool TLTrajectoryComputers::RBETA(VECTOR3 R0, VECTOR3 V0, double r, int Q, doubl
 	{
 		double cos_E0 = 1.0 / e * (1.0 - r0 * ainv);
 		double cos_E = 1.0 / e * (1.0 - r * ainv);
-		temp = max(0.0, 1.0 - cos_E0 * cos_E0);
+		temp = (std::max)(0.0, 1.0 - cos_E0 * cos_E0);
 		if (temp < 0)
 		{
 			return true;

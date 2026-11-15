@@ -21,6 +21,8 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
+#include <algorithm>
+
 #include "EnckeIntegrator.h"
 #include "OrbMech.h"
 #include "rtcc.h"
@@ -228,7 +230,7 @@ EMMENI_Edit_3B:
 		}
 		else
 		{
-			dt_max = min(dt_lim, K*OrbMech::power(rr, 1.5) / sqrt(mu));
+			dt_max = (std::min)(dt_lim, K*OrbMech::power(rr, 1.5) / sqrt(mu));
 		}
 	}
 
@@ -347,7 +349,7 @@ EMMENI_Edit_3B:
 	//Special time logic
 	if (ISTOPS == 1)
 	{
-		dt = HMULT * min(abs(RCALC), dt_max);
+		dt = HMULT * (std::min)(std::abs(RCALC), dt_max);
 		if (abs(dt) > 1e-6)
 		{
 			IEND = 0;

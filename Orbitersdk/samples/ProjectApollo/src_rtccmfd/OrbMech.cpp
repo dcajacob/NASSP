@@ -7,7 +7,7 @@
 #include "Production/CelestialServices.h"
 #endif
 
-namespace {
+namespace OrbMech {
 int ReadEphemeris(OBJHANDLE handle, double mjd, int request, double* result)
 {
 	if (!handle)
@@ -2982,7 +2982,7 @@ double sunrise(MATRIX3 Rot_J_B, VECTOR3 R, VECTOR3 V, double MJD, OBJHANDLE plan
 	{
 		if (planet == hMoon && planet2 == hSun)
 		{
-			options = ReadEphemeris(planet, MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
+			options = OrbMech::ReadEphemeris(planet, MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
 			if (options & EPHEM_POLAR)
 			{
 				R_EM = Polar2Cartesian(PlanPos[2] * AU, PlanPos[1], PlanPos[0]);
@@ -2991,7 +2991,7 @@ double sunrise(MATRIX3 Rot_J_B, VECTOR3 R, VECTOR3 V, double MJD, OBJHANDLE plan
 			{
 				R_EM = _V(PlanPos[0], PlanPos[2], PlanPos[1]);
 			}
-			options = ReadEphemeris(hEarth, MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
+			options = OrbMech::ReadEphemeris(hEarth, MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
 			if (options & EPHEM_POLAR)
 			{
 				R_SE = Polar2Cartesian(PlanPos[2] * AU, PlanPos[1], PlanPos[0]);
@@ -3004,7 +3004,7 @@ double sunrise(MATRIX3 Rot_J_B, VECTOR3 R, VECTOR3 V, double MJD, OBJHANDLE plan
 		}
 		else
 		{
-			options = ReadEphemeris(planet, MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
+			options = OrbMech::ReadEphemeris(planet, MJD + dt / 24.0 / 3600.0, EPHEM_TRUEPOS, PlanPos);
 
 			if (options & EPHEM_POLAR)
 			{
@@ -3528,10 +3528,6 @@ double QuadSum(double *x, int N)
 {
 	double a = Sum(x, N);
 	return a * a;
-}
-
-template <typename T> int sign(T val) {
-	return (T(0) < val) - (val < T(0));
 }
 
 void AGCSignedValue(int &val)
@@ -6485,7 +6481,7 @@ bool CoastIntegrator::iteration(bool allow_stop)
 				VECTOR3 R_EM, V_PQ;
 
 				MJD = mjd0 + t / 86400.0;
-				ReadEphemeris(moon, MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
+				OrbMech::ReadEphemeris(moon, MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
 
 				if (B == 1)
 				{
@@ -6522,7 +6518,7 @@ bool CoastIntegrator::iteration(bool allow_stop)
 			VECTOR3 R_EM, V_PQ;
 
 			MJD = mjd0 + t / 86400.0;
-			ReadEphemeris(moon, MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
+			OrbMech::ReadEphemeris(moon, MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
 
 			if (B == 1)
 			{
@@ -6610,7 +6606,7 @@ bool CoastIntegrator::iteration(bool allow_stop)
 			VECTOR3 R_EM, V_PQ, V_EM;
 
 			MJD = mjd0 + t / 86400.0;
-			ReadEphemeris(moon, MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
+			OrbMech::ReadEphemeris(moon, MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
 
 			R_EM = mul(Rot, _V(MoonPos[0], MoonPos[2], MoonPos[1]));
 			V_EM = mul(Rot, _V(MoonPos[3], MoonPos[5], MoonPos[4]));
@@ -6642,7 +6638,7 @@ void CoastIntegrator::SolarEphemeris(double t, VECTOR3 &R_ES, VECTOR3 &V_ES)
 		double EarthPos[12];
 		VECTOR3 EarthVec, EarthVecVel;
 
-		ReadEphemeris(earth, mjd0 + t_F / 2.0 / 24.0 / 3600.0, EPHEM_TRUEPOS | EPHEM_TRUEVEL, EarthPos);
+		OrbMech::ReadEphemeris(earth, mjd0 + t_F / 2.0 / 24.0 / 3600.0, EPHEM_TRUEPOS | EPHEM_TRUEVEL, EarthPos);
 
 		EarthVec = OrbMech::Polar2Cartesian(EarthPos[2] * AU, EarthPos[1], EarthPos[0]);
 		EarthVecVel = OrbMech::Polar2CartesianVel(EarthPos[2] * AU, EarthPos[1], EarthPos[0], EarthPos[5] * AU, EarthPos[4], EarthPos[3]);
@@ -6717,7 +6713,7 @@ VECTOR3 CoastIntegrator::adfunc(VECTOR3 R)
 
 		MJD = mjd0 + t / 86400.0;
 
-		ReadEphemeris(moon, MJD, EPHEM_TRUEPOS, MoonPos);
+		OrbMech::ReadEphemeris(moon, MJD, EPHEM_TRUEPOS, MoonPos);
 		SolarEphemeris(t - t_F/2.0, R_ES, V_ES);
 		R_EM = mul(Rot, _V(MoonPos[0], MoonPos[2], MoonPos[1]));
 

@@ -18,7 +18,7 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
   **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "AnalyticEphemerisGenerator.h"
 #include "rtcc.h"
 #include "LWP.h"

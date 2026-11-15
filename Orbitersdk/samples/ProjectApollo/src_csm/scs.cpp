@@ -5484,7 +5484,7 @@ bool EMS::WriteScrollToFile()
 		oapiDestroySurface(canvas);
 		return false;
 	}
-	auto* pen = oapiCreatePen(1, 1, oapiGetColour(255, 0, 0));
+	auto* pen = oapiCreatePen(1, 1, 0x0000ff); // Sketchpad colours use 0xBBGGRR
 	sketch->SetPen(pen);
 	sketch->SetBackgroundMode(oapi::Sketchpad::BK_TRANSPARENT);
 	const int points = std::clamp(ScribePntCnt, 0, EMS_SCROLL_LENGTH_PX * 3);

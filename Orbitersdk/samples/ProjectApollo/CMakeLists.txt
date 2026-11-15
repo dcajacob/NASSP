@@ -204,19 +204,67 @@ if(NASSP_BUILD_NATIVE_LINUX)
     )
     target_link_options(NasspSaturn1B PRIVATE "-Wl,--no-undefined")
 
-    add_library(NasspMCCVessel OBJECT
+    add_library(NasspMCCVessel MODULE
+        src_launch/mcc.cpp
+        src_launch/rtcc.cpp
         src_launch/mccvessel.cpp
         src_launch/mccvc.cpp
+        src_launch/MCC_Calculations.cpp
+        src_launch/MCC_Mission_B.cpp
+        src_launch/MCC_Mission_C.cpp
+        src_launch/MCC_Mission_C_PRIME.cpp
+        src_launch/MCC_Mission_D.cpp
+        src_launch/MCC_Mission_F.cpp
+        src_launch/MCC_Mission_G.cpp
+        src_launch/MCC_Mission_H1.cpp
+        src_launch/MCC_Mission_SL.cpp
+        src_launch/RTCC_Mission_B.cpp
+        src_launch/RTCC_Mission_C.cpp
+        src_launch/RTCC_Mission_Calculations.cpp
+        src_launch/RTCC_Mission_C_PRIME.cpp
+        src_launch/RTCC_Mission_D.cpp
+        src_launch/RTCC_Mission_F.cpp
+        src_launch/RTCC_Mission_G.cpp
+        src_launch/RTCC_Mission_H1.cpp
+        src_launch/RTCC_Mission_SL.cpp
         src_rtccmfd/AnalyticEphemerisGenerator.cpp
+        src_rtccmfd/ApolloGeneralizedOpticsProgram.cpp
         src_rtccmfd/AscentRendezvousMonitor.cpp
+        src_rtccmfd/CoastNumericalIntegrator.cpp
+        src_rtccmfd/CSMLMGuidanceSim.cpp
+        src_rtccmfd/EnckeIntegrator.cpp
+        src_rtccmfd/EntryCalculations.cpp
         src_rtccmfd/GeneralizedIterator.cpp
+        src_rtccmfd/GeneralPurposeManeuver.cpp
+        src_rtccmfd/LDPP.cpp
+        src_rtccmfd/LMGuidanceSim.cpp
+        src_rtccmfd/LOITargeting.cpp
+        src_rtccmfd/LunarTargetingProgram.cpp
+        src_rtccmfd/LWP.cpp
+        src_rtccmfd/ReentryNumericalIntegrator.cpp
         src_rtccmfd/RTCCDisplayFormatting.cpp
+        src_rtccmfd/RTCC_EMSMISS.cpp
+        src_rtccmfd/rtcc_intermediate_library_programs.cpp
+        src_rtccmfd/rtcc_library_programs.cpp
         src_rtccmfd/RTCCModule.cpp
+        src_rtccmfd/TLIGuidanceSim.cpp
+        src_rtccmfd/TLIProcessor.cpp
+        src_rtccmfd/TLMCC.cpp
+        src_rtccmfd/TLTrajectoryComputers.cpp
         src_rtccmfd/TwoImpulseProcessor.cpp
     )
-    set_target_properties(NasspMCCVessel PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    target_include_directories(NasspMCCVessel PRIVATE src_aux src_launch src_rtccmfd)
-    target_link_libraries(NasspMCCVessel PRIVATE NasspNativeOrbiterSdk)
+    set_target_properties(NasspMCCVessel PROPERTIES
+        PREFIX "" OUTPUT_NAME MCC
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+    )
+    target_include_directories(NasspMCCVessel PRIVATE
+        src_aux src_csm src_landing src_launch src_lm src_mfd src_moon
+        src_rtccmfd src_saturn src_sys/PanelSDK/Internals
+    )
+    target_link_libraries(NasspMCCVessel PRIVATE
+        NasspNativeOrbiterSdk NasspMission NasspOrbMech NasspVesselSystems Threads::Threads
+    )
+    target_link_options(NasspMCCVessel PRIVATE "-Wl,--no-undefined")
     return()
 endif()
 

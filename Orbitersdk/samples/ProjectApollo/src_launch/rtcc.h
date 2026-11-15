@@ -48,6 +48,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 #include "../src_rtccmfd/RTCCDisplayFormatting.h"
 #include "../src_rtccmfd/TwoImpulseProcessor.h"
 #include "MCCPADForms.h"
+#include "NasspRtccFormat.h"
 
 class Saturn;
 class MCC;

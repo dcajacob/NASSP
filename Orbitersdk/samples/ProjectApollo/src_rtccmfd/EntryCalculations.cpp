@@ -22,7 +22,9 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include <algorithm>
+
+#include "NasspOrbiterSdk.h"
 #include "nasspdefs.h"
 #include "OrbMech.h"
 #include "EntryCalculations.h"
@@ -89,7 +91,7 @@ namespace EntryCalculations
 				K2 = 2.4 + 0.000285*(vefps - 33625.0);
 			}
 		}
-		phie = min(2000.0, K1 / (abs(abs(gammaedeg) - K2)));
+		phie = (std::min)(2000.0, K1 / (abs(abs(gammaedeg) - K2)));
 		if (vefps < 26000.0)
 		{
 			Te = 8660.0 * phie / vefps;
@@ -4655,7 +4657,7 @@ bool RTEEarth::EntryIter()
 			dx = (x - xapo) / (theta_long - dlngapo)*dlng;
 			if (length(V2 - sv_ig.V) > dv_max && dx < 0)
 			{
-				dx = 0.5*max(1.0, revcor);
+				dx = 0.5*(std::max)(1, revcor);
 				revcor++;
 			}
 			else if (abs(dx) > dxmax)
@@ -4934,6 +4936,7 @@ void ConicRTEEarthNew::StoreSolution(VECTOR3 dv, double lat, double t0, double t
 
 void ConicRTEEarthNew::INITAL()
 {
+	constexpr double eps = 0.005; //TBD
 	VECTOR3 R4, R5, R_p, U0_apo;
 	double SAZ, CAZ, T1, T2, A_m, beta_r, p, R_a, AINV, DV, e, V_a, beta_a, T_1i, T_s, delta_0, Am1, Am2, beta_r_apo, A_Z;
 	double theta_mu, theta_md, K1, K2, U_rmin, T_apo, DNDT, I_0, T, delta, U_r, VR_a, VT_a, eta_ar;
@@ -5087,7 +5090,7 @@ RTEEarth_INITAL_B:
 		goto RTEEarth_INITAL_End;
 	}
 
-	TSW6 = max(2.0, T_min);
+	TSW6 = (std::max)(2.0, T_min);
 	T = TSW6;
 	VELCOM(TSW6, r0, beta_r, DT, p, QA, SW6, U_r, VR_a, VT_a, beta_a, eta_ar, DV);
 	if (T > T_apo)
@@ -5128,7 +5131,6 @@ RTEEarth_INITAL_C:
 
 	DNDT = PRTIAL(FLAG, r0, U_rmax);
 	delta = asin(cos(eta_ar + eta_rz_avg))*dotp(R0, _V(0, 0, 1)) + sin(eta_ar + eta_rz_avg)*dotp(R2, _V(0, 0, 1));
-	double eps = 0.005; //TBD
 	if (DNDT > w_E*pow(cos(delta), 2) / cos(I_0) + eps)
 	{
 		T1 = TSW6;
@@ -5405,7 +5407,7 @@ ConicRTE_FCUA_B:
 			}
 			else
 			{
-				U_rmax_apo = min(U_rmax, 36323.0*0.3048);
+				U_rmax_apo = (std::min)(U_rmax, 36323.0*0.3048);
 			}
 			beta_r = EntryCalculations::ReentryTargetLine(U_rmax_apo*KMPER*1000.0 / SCPHR, false);
 			RUBR(QA, 0, r_a, u0, U_r, beta_r, AINV, DV, e, T, V_a, beta_a);
@@ -7136,7 +7138,7 @@ RTEMoon_MCUA_1_A:
 						continue;
 					}
 				}
-				TOL = min(0.017, 0.5*Di_r);
+				TOL = (std::min)(0.017, 0.5*Di_r);
 				if (LOOP > 20 || abs(i_r) < 0.001 || abs(dv - DV_est1) < eps_dv || (ISUB != 0 && dv > DVTAB.data[ISUB - 1]))
 				{
 					break;
@@ -7240,8 +7242,8 @@ RTEMoon_MCUA_1_A:
 			if (Di_r > 0.17453293)
 			{
 				IRSCAN = 1;
-				i_rmin = max(i_rmins, SSi_r);
-				i_rmax = min(i_rmax, i_rmin + 2.0*Di_r);
+				i_rmin = (std::max)(i_rmins, SSi_r);
+				i_rmax = (std::min)(i_rmax, i_rmin + 2.0*Di_r);
 			}
 		}
 

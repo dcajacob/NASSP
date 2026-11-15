@@ -22,7 +22,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "soundlib.h"
 #include "apolloguidance.h"
 #include "saturn.h"
@@ -33,7 +33,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 #include "../src_rtccmfd/OrbMech.h"
 #include "mcc.h"
 #include "rtcc.h"
-#include "imu.h"
+#include "IMU.h"
 
 bool RTCC::CalculationMTP_D(int fcn, void*&pad, char * upString, char * upDesc, char * upMessage)
 {

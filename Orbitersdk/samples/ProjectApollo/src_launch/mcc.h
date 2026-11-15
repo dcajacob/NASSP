@@ -33,6 +33,7 @@
 #include <atomic>
 #include "thread.h"
 #include "MCC_Calculations.h"
+#include "NasspRtccFormat.h"
 
 // Save file strings
 #define MCC_START_STRING	"MCC_BEGIN"
@@ -251,7 +252,8 @@ class RTCC;
 // Mission Control Center class
 class MCC {
 public:
-	MCC(RTCC *rtc);											// Cons
+	MCC(RTCC *rtc);
+	~MCC();											// Cons
 
 	char CSMName[64];
 	char LEMName[64];
@@ -325,6 +327,7 @@ public:
 	int subThreadMode;										// What should the subthread do?
 	int subThreadType;										// What type of subthread?
 	std::atomic<ThreadStatus> subThreadStatus;
+	std::thread subThreadWorker;
 
 	// GROUND TRACKING NETWORK
 	std::vector<GroundStation> GroundStations;				// Ground Station Array

@@ -18,7 +18,9 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
   **************************************************************************/
 
-#include "Orbitersdk.h"
+#include <algorithm>
+
+#include "NasspOrbiterSdk.h"
 #include "OrbMech.h"
 #include "LMGuidanceSim.h"
 #include "rtcc.h"
@@ -192,7 +194,7 @@ void LDPP::Mode1_1()
 		if (opt.IDO == 1)
 		{
 			//Circularization at an apsis maneuver
-			dt = max(0.0, opt.TH[1] - sv_CSM.GMT);
+			dt = (std::max)(0.0, opt.TH[1] - sv_CSM.GMT);
 			sv_CSM = coast(sv_CSM, dt);
 			for (int iii = 0; iii < 2; iii++)
 			{
@@ -507,7 +509,7 @@ void LDPP::Mode3()
 	//Save maneuver
 	sv_CSM = SaveElements(sv_CSM, 0, DV);
 	//Advance to next threshold time
-	dt = max(0.0, opt.TH[1] - sv_CSM.GMT);
+	dt = (std::max)(0.0, opt.TH[1] - sv_CSM.GMT);
 	sv_CSM = coast(sv_CSM, dt);
 
 	//Advance to desired apsis
@@ -675,7 +677,7 @@ void LDPP::Mode5()
 		sv_CSM = SaveElements(sv_CSM, 0, DV);
 
 		//Maneuver 2
-		dt = max(0.0, opt.TH[1] - sv_CSM.GMT);
+		dt = (std::max)(0.0, opt.TH[1] - sv_CSM.GMT);
 		sv_CSM = coast(sv_CSM, dt);
 		if (opt.IDO == -1)
 		{
@@ -716,7 +718,7 @@ void LDPP::Mode5()
 		sv_CSM = SaveElements(sv_CSM, 1, DV);
 
 		//Maneuver 3
-		dt = max(0.0, opt.TH[2] - sv_CSM.GMT);
+		dt = (std::max)(0.0, opt.TH[2] - sv_CSM.GMT);
 		sv_CSM = coast(sv_CSM, dt);
 		if (opt.IDO == 1)
 		{
@@ -1719,7 +1721,7 @@ int LDPP::DOIManeuver(int i_DOI, bool Integrated)
 
 	//DOI
 	//Advance to threshold
-	dt = max(0.0, opt.TH[3] - sv_CSM.GMT);
+	dt = (std::max)(0.0, opt.TH[3] - sv_CSM.GMT);
 	sv_CSM = coast(sv_CSM, dt, Integrated);
 	//Calculate DOI time
 	LLTPR(sv_CSM.GMT, sv_CSM, sv_DOI, DV_apo, t_IGN, t_TD, Integrated);

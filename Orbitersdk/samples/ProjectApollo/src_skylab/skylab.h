@@ -25,7 +25,7 @@
 #if !defined(_PA_SKYLAB_H)
 #define _PA_SKYLAB_H
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "PanelSDK/PanelSDK.h"
 #include "powersource.h"
 #include "soundlib.h"

@@ -22,7 +22,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "soundlib.h"
 #include "apolloguidance.h"
 #include "saturn.h"

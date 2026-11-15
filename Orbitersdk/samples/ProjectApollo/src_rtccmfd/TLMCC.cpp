@@ -393,7 +393,7 @@ void TLMCCProcessor::Option2()
 
 	double dt = -OrbMech::period(outarray.sv_lls1.R, outarray.sv_lls1.V, mu_M)*(double)(MEDQuantities.Revs_circ + 1);
 	EphemerisData sv_circ;
-	INT ITS;
+	int ITS;
 	pRTCC->PMMCEN(outarray.sv_lls1, 0.0, 10.0*24.0*3600.0, 1, dt, 1.0, sv_circ, ITS);
 	dt = OrbMech::time_radius(sv_circ.R, sv_circ.V, DataTable.rad_lls+MEDQuantities.H_T_circ, 1.0, mu_M);
 	pRTCC->PMMCEN(sv_circ, 0.0, 10.0*24.0*3600.0, 1, dt, 1.0, sv_circ, ITS);
@@ -495,7 +495,8 @@ TLMCC_Option_2_E:
 	S2C.V = VF;
 	DV_temp = S2C.V - S_apo.V;
 	RVIO(true, S_apo.R, S1.V, r, v1, theta, phi, gamma1, psi1);
-	RVIO(true, S1.R, S1.V + DV_temp, r, v2, theta, phi, gamma2, psi2);
+	VECTOR3 correctedVelocity = S1.V + DV_temp;
+	RVIO(true, S1.R, correctedVelocity, r, v2, theta, phi, gamma2, psi2);
 	NewGuess = _V((v2 - v1)*3600.0 / R_E, gamma2 - gamma1, psi2 - psi1);
 
 	outtab.GMT_pc1 = outtab.GMT_pc2 = outarray.GMT_pl;
@@ -574,7 +575,7 @@ void TLMCCProcessor::Option3()
 	double lat_TEI, lng_TEI, GMT_TEI, dlng, dt;
 	EphemerisData sv_TEI1, sv_TEI2;
 	VECTOR3 R_TEI_EMP, V_TEI_EMP;
-	INT ITS;
+	int ITS;
 
 	GMT_TEI = outarray.GMT_nd + DataTable.T_lo;
 	pRTCC->PMMCEN(outarray.sv_lls2, 0.0, 10.0*24.0*3600.0, 1, GMT_TEI - outarray.sv_lls2.GMT, 1.0, sv_TEI1, ITS);
@@ -661,7 +662,10 @@ TLMCC_Option_3_E:
 	S2C.V = VF;
 	DV_temp = S2C.V - S_apo.V;
 	RVIO(true, S_apo.R, S1.V, r, v1, theta, phi, gamma1, psi1);
-	RVIO(true, S1.R, S1.V + DV_temp, r, v2, theta, phi, gamma2, psi2);
+	{
+		VECTOR3 correctedVelocity = S1.V + DV_temp;
+		RVIO(true, S1.R, correctedVelocity, r, v2, theta, phi, gamma2, psi2);
+	}
 	NewGuess = _V((v2 - v1)*3600.0 / R_E, gamma2 - gamma1, psi2 - psi1);
 
 	outtab.GMT_pc1 = outtab.GMT_pc2 = outarray.GMT_pl;
@@ -880,7 +884,10 @@ TLMCC_Option_4_D:
 	S_apo = S2C;
 	S_apo.V = S2C.V - DV_temp;
 	RVIO(true, S_apo.R, S1.V, r, v1, theta, phi, gamma1, psi1);
-	RVIO(true, S1.R, S1.V + DV_temp, r, v2, theta, phi, gamma2, psi2);
+	{
+		VECTOR3 correctedVelocity = S1.V + DV_temp;
+		RVIO(true, S1.R, correctedVelocity, r, v2, theta, phi, gamma2, psi2);
+	}
 	NewGuess = _V((v2 - v1)*3600.0 / R_E, gamma2 - gamma1, psi2 - psi1);
 	outarray.LOIOffset = S3I.V - S3C.V;
 
@@ -893,7 +900,10 @@ TLMCC_Option_4_D:
 	S2C.V = VF;
 	DV_temp = S2C.V - S_apo.V;
 	RVIO(true, S_apo.R, S1.V, r, v1, theta, phi, gamma1, psi1);
-	RVIO(true, S1.R, S1.V + DV_temp, r, v2, theta, phi, gamma2, psi2);
+	{
+		VECTOR3 correctedVelocity = S1.V + DV_temp;
+		RVIO(true, S1.R, correctedVelocity, r, v2, theta, phi, gamma2, psi2);
+	}
 	NewGuess = _V((v2 - v1)*3600.0 / R_E, gamma2 - gamma1, psi2 - psi1);
 
 	//Step 6
@@ -1030,7 +1040,7 @@ void TLMCCProcessor::Option5()
 	double lat_TEI, lng_TEI, GMT_TEI, dlng, dt;
 	EphemerisData sv_TEI1, sv_TEI2;
 	VECTOR3 R_TEI_EMP, V_TEI_EMP;
-	INT ITS;
+	int ITS;
 
 	GMT_TEI = outarray.GMT_nd + DataTable.T_lo;
 	pRTCC->PMMCEN(outarray.sv_lls2, 0.0, 10.0*24.0*3600.0, 1, GMT_TEI - outarray.sv_lls2.GMT, 1.0, sv_TEI1, ITS);
@@ -1104,7 +1114,10 @@ TLMCC_Option_5_D:
 	S_apo = S2C;
 	S_apo.V = S2C.V - DV_temp;
 	RVIO(true, S_apo.R, S1.V, r, v1, theta, phi, gamma1, psi1);
-	RVIO(true, S1.R, S1.V + DV_temp, r, v2, theta, phi, gamma2, psi2);
+	{
+		VECTOR3 correctedVelocity = S1.V + DV_temp;
+		RVIO(true, S1.R, correctedVelocity, r, v2, theta, phi, gamma2, psi2);
+	}
 	NewGuess = _V((v2 - v1)*3600.0 / R_E, gamma2 - gamma1, psi2 - psi1);
 	outarray.LOIOffset = S3I.V - S3C.V;
 
@@ -1117,7 +1130,10 @@ TLMCC_Option_5_D:
 	S2C.V = VF;
 	DV_temp = S2C.V - S_apo.V;
 	RVIO(true, S_apo.R, S1.V, r, v1, theta, phi, gamma1, psi1);
-	RVIO(true, S1.R, S1.V + DV_temp, r, v2, theta, phi, gamma2, psi2);
+	{
+		VECTOR3 correctedVelocity = S1.V + DV_temp;
+		RVIO(true, S1.R, correctedVelocity, r, v2, theta, phi, gamma2, psi2);
+	}
 	NewGuess = _V((v2 - v1)*3600.0 / R_E, gamma2 - gamma1, psi2 - psi1);
 
 	//Step 6
@@ -1418,7 +1434,10 @@ TLMCC_Option_9A_C:
 	S2C.V = VF;
 	DV_temp = S2C.V - S_apo.V;
 	RVIO(true, S_apo.R, S1.V, r, v1, theta, phi, gamma1, psi1);
-	RVIO(true, S1.R, S1.V + DV_temp, r, v2, theta, phi, gamma2, psi2);
+	{
+		VECTOR3 correctedVelocity = S1.V + DV_temp;
+		RVIO(true, S1.R, correctedVelocity, r, v2, theta, phi, gamma2, psi2);
+	}
 	NewGuess = _V((v2 - v1)*3600.0 / R_E, gamma2 - gamma1, psi2 - psi1);
 
 	//Step 9
@@ -1553,7 +1572,10 @@ TLMCC_Option_9B_C:
 	S2C.V = VF;
 	DV_temp = S2C.V - S_apo.V;
 	RVIO(true, S_apo.R, S1.V, r, v1, theta, phi, gamma1, psi1);
-	RVIO(true, S1.R, S1.V + DV_temp, r, v2, theta, phi, gamma2, psi2);
+	{
+		VECTOR3 correctedVelocity = S1.V + DV_temp;
+		RVIO(true, S1.R, correctedVelocity, r, v2, theta, phi, gamma2, psi2);
+	}
 	NewGuess = _V((v2 - v1)*3600.0 / R_E, gamma2 - gamma1, psi2 - psi1);
 
 	//Step 8

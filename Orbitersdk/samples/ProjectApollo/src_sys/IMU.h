@@ -31,6 +31,7 @@
 #include "inertial.h"
 
 #include "powersource.h"
+#include "toggleswitch.h"
 
 class IMU {
 
@@ -65,7 +66,16 @@ public:
 	void InitThermals(h_HeatLoad *imuht, h_Radiator *cas, h_HeatLoad *ptaht, h_HeatLoad *psaht, h_HeatLoad *cduht);
 
 	bool IsCaged();
-	virtual bool IsPowered();
+	virtual bool IsPowered()
+	{
+		if (DCPower.Voltage() < SP_MIN_DCVOLTAGE) { return false; }
+		//TBD: Implement IMU failure logic for very off nominal temperatures
+		//if (IMUHeater && !IMUHeater->pumping) { return false; }
+		if (PowerSwitch) {
+			if (PowerSwitch->IsDown()) { return false; }
+		}
+		return true;
+	}
 	void SetCaged(bool val);
 	Boiler *GetHeater() { return IMUHeater; };
 	double GetPIPATempF();

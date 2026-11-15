@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
 class ATMDC
 {

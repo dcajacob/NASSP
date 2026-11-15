@@ -1102,8 +1102,7 @@ PCRDD_LABEL_3C:
 			TPREV = T;
 		}
 	}
-	double a_T = THRUST / WT;
-	RDDT = A_T * a_T;
+	RDDT = A_T * (THRUST / WT);
 	if (KTHSWT > 0)
 	{
 		KTHSWT = -KTHSWT;
@@ -1145,9 +1144,11 @@ PCRDD_LABEL_6A:
 	}
 	goto PCRDD_LABEL_7B;
 PCRDD_LABEL_7A:
+{
 	MATRIX3 MATTEMP = mul(OrbMech::_MRz(Y_G), mul(OrbMech::_MRy(P_G), _M(X_B.x, X_B.y, X_B.z, Y_B.x, Y_B.y, Y_B.z, Z_B.x, Z_B.y, Z_B.z)));
 	A_T = _V(MATTEMP.m11, MATTEMP.m12, MATTEMP.m13);
 	goto PCRDD_LABEL_3C;
+}
 PCRDD_LABEL_7B:
 	if (TCO != 0.0)
 	{

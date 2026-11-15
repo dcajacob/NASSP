@@ -765,7 +765,7 @@ namespace rtcc
 	void LOITargeting::INTER(VECTOR3 R_N, VECTOR3 V_N, double T_N, VECTOR3 U_L, VECTOR3 U_S, bool soln)
 	{
 		VECTOR3 R_N_u;
-		double r_N, dw_a, R_p, dw, dh, SGN;
+		double r_N, dw_a, R_p, dw, dh, dh2, SGN;
 
 		if (soln)
 		{
@@ -852,7 +852,7 @@ namespace rtcc
 			goto LOI_INTER_B3;
 		}
 		R_p = (R[2] + R[3]) / 2.0;
-		double dh2 = DELTAH(R_p, r_N, dw_a, U_L, R_N_u, U_S, SGN);
+		dh2 = DELTAH(R_p, r_N, dw_a, U_L, R_N_u, U_S, SGN);
 		if (abs(dh2 - opt.dh_bias) < 0.1)
 		{
 			goto LOI_INTER_B3;

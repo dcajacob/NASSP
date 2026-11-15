@@ -318,18 +318,6 @@ void IMU::ChannelOutput(int address, ChannelValue value)
 
 }
 
-bool IMU::IsPowered()
-
-{
-	if (DCPower.Voltage() < SP_MIN_DCVOLTAGE) { return false; }
-	//TBD: Implement IMU failure logic for very off nominal temperatures
-	//if (IMUHeater && !IMUHeater->pumping) { return false; }
-	if (PowerSwitch) {
-		if (PowerSwitch->IsDown()) { return false; }
-	}
-	return true;
-}
-
 VECTOR3 IMU::getPlatformEulerAnglesZYX()
 {
 	VECTOR3 RotationDeviation = getRotationAnglesZYX(Orbiter.AttitudeReference);

@@ -23,7 +23,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 //#pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "soundlib.h"
 #include "ioChannels.h"
 #include "apolloguidance.h"
@@ -1759,9 +1759,8 @@ void RTCC::GMEDSaveTable::LoadState(FILEHANDLE scn, char* end_str)
 			break;
 		}
 
-		if (!_strnicmp(line, "G41_Instrument", 14)) {
-			sscanf_s(line + 14, "%d %s %lf %lf", &iTemp, inst_temp.ID, (unsigned)_countof(inst_temp.ID), &inst_temp.RX, &inst_temp.RY);
-			if (iTemp >= 0 && iTemp <= 11)
+		if (!strnicmp(line, "G41_Instrument", 14)) {
+			if (sscanf(line + 14, "%d %6s %lf %lf", &iTemp, inst_temp.ID, &inst_temp.RX, &inst_temp.RY) == 4 && iTemp >= 0 && iTemp <= 11)
 			{
 				G41_Instruments[iTemp] = inst_temp;
 			}
@@ -1793,7 +1792,7 @@ void RTCC::ExpendableWeightsTable::LoadState(FILEHANDLE scn, char* end_str)
 		if (!strnicmp(line, end_str, sizeof(end_str))) {
 			break;
 		}
-		if (sscanf_s(line + 5, "%lf %lf %d", &temp.GET, &temp.WeightLoss, &temp.Veh) == 3)
+		if (sscanf(line + 5, "%lf %lf %d", &temp.GET, &temp.WeightLoss, &temp.Veh) == 3)
 		{
 			data.push_back(temp);
 		}
@@ -4674,9 +4673,7 @@ MATRIX3 RTCC::REFSMMATCalc(REFSMMATOpt *opt)
 		double MoonPos[12];
 		VECTOR3 R_ME;
 
-		CELBODY *cMoon = oapiGetCelbodyInterface(hMoon);
-
-		cMoon->clbkEphemeris(opt->REFSMMATTime, EPHEM_TRUEPOS, MoonPos);
+		OrbMech::ReadEphemeris(hMoon, opt->REFSMMATTime, EPHEM_TRUEPOS, MoonPos);
 
 		R_ME = -_V(MoonPos[0], MoonPos[1], MoonPos[2]);
 
@@ -17697,8 +17694,7 @@ RTCC_PMMMPT_6_A:
 	}
 	MASS = in.VehicleWeight;
 	DELVB = dv - SystemParameters.MCTAK4 / MASS;
-	double TG = (DELVB / SystemParameters.MCTLT2)*MASS;
-	if (TG <= SystemParameters.MCTDD6)
+	if ((DELVB / SystemParameters.MCTLT2) * MASS <= SystemParameters.MCTDD6)
 	{
 		NPHASE = 4;
 		goto RTCC_PMMMPT_7_B;
@@ -19763,8 +19759,7 @@ int RTCC::PMMWTC(int med)
 		RTCC_PMMWTC_17A:
 			goto RTCC_PMMWTC_17B;
 		}
-		double t_aw = table->SIVBVentingBeginGET;
-		if (t_aw >= med_m50.WeightGET)
+		if (table->SIVBVentingBeginGET >= med_m50.WeightGET)
 		{
 			goto RTCC_PMMWTC_19;
 		}
@@ -19816,19 +19811,21 @@ int RTCC::PMMWTC(int med)
 		{
 			goto RTCC_PMMWTC_19;
 		}
-		int I = MPTGetPrimaryThruster(table->mantable[IBLK - 2].Thruster);
-		FuelR[0] = CommonBlock.CSMRCSFuelRemaining;
-		FuelR[1] = CommonBlock.SPSFuelRemaining;
-		FuelR[2] = CommonBlock.SIVBFuelRemaining;
-		FuelR[3] = CommonBlock.LMRCSFuelRemaining;
-		FuelR[4] = CommonBlock.LMAPSFuelRemaining;
-		FuelR[5] = CommonBlock.LMDPSFuelRemaining;
-		DVREM = TL[I] / WDOT[I] * log(table->mantable[IBLK - 2].TotalMassAfter/(table->mantable[IBLK - 2].TotalMassAfter- FuelR[I]));
-		//DTWRITE: IBLK of MPT
-		table->mantable[IBLK - 2].CommonBlock = CommonBlock;
-		table->mantable[IBLK - 2].DVREM = DVREM;
-		//DTREAD: MPT Header
-		CommonBlock = table->CommonBlock;
+		{
+			int I = MPTGetPrimaryThruster(table->mantable[IBLK - 2].Thruster);
+			FuelR[0] = CommonBlock.CSMRCSFuelRemaining;
+			FuelR[1] = CommonBlock.SPSFuelRemaining;
+			FuelR[2] = CommonBlock.SIVBFuelRemaining;
+			FuelR[3] = CommonBlock.LMRCSFuelRemaining;
+			FuelR[4] = CommonBlock.LMAPSFuelRemaining;
+			FuelR[5] = CommonBlock.LMDPSFuelRemaining;
+			DVREM = TL[I] / WDOT[I] * log(table->mantable[IBLK - 2].TotalMassAfter/(table->mantable[IBLK - 2].TotalMassAfter- FuelR[I]));
+			//DTWRITE: IBLK of MPT
+			table->mantable[IBLK - 2].CommonBlock = CommonBlock;
+			table->mantable[IBLK - 2].DVREM = DVREM;
+			//DTREAD: MPT Header
+			CommonBlock = table->CommonBlock;
+		}
 	RTCC_PMMWTC_19:
 		if (IBLK == 1)
 		{
@@ -35708,7 +35705,8 @@ void RTCC::PMMDAB(EphemerisData2 XIN, ASTInput ARIN, ASTSettings IRIN, ASTData &
 	err = GenIterator::GeneralizedIterator(fptr, block, constPtr, (void*)this, result, y_vals);
 	if (err)
 	{
-		goto RTCC_PMMDAB_3B;
+		IER = 1;
+		return;
 	}
 
 	//TBD: Off target line?
@@ -35758,9 +35756,6 @@ void RTCC::PMMDAB(EphemerisData2 XIN, ASTInput ARIN, ASTSettings IRIN, ASTData &
 	{
 
 	}
-	return;
-RTCC_PMMDAB_3B:
-	IER = 1;
 }
 
 bool PCMATCPointer(void *data, std::vector<double> &var, void *varPtr, std::vector<double>& arr, bool mode)
@@ -35789,6 +35784,8 @@ bool RTCC::PCMATC(std::vector<double> &var, void *varPtr, std::vector<double>& a
 	OELEMENTS coe;
 	double gamma_p, T_min, h_p = 0.0, m_cut, dt_ar, t_a;
 	int stop_ind;
+	double a, E, h_r, T_ar;
+	VECTOR3 R_r_equ, V_r_equ;
 	//Pre abort
 	EphemerisData sv0;
 	//Actual abort time
@@ -35855,7 +35852,7 @@ PCMATC_1A:
 		goto PCMATC_3A;
 	}
 	coe = OrbMech::coe_from_sv(sv2.R, sv2.V, OrbMech::mu_Earth);
-	double a = OrbMech::GetSemiMajorAxis(sv2.R, sv2.V, OrbMech::mu_Earth);
+	a = OrbMech::GetSemiMajorAxis(sv2.R, sv2.V, OrbMech::mu_Earth);
 	double gamma_min;
 	if (coe.e > 1.0)
 	{
@@ -35874,7 +35871,7 @@ PCMATC_1A:
 	{
 		goto PCMATC_4C;
 	}
-	double E = OrbMech::TrueToEccentricAnomaly(coe.TA, coe.e);
+	E = OrbMech::TrueToEccentricAnomaly(coe.TA, coe.e);
 	if (E >= 3.0*PI05)
 	{
 		if (gamma_p > vars->gamma_stop)
@@ -35951,12 +35948,12 @@ PCMATC_3A:
 	MATRIX3 Rot;
 	ELVCNV(sv_r.GMT, 1, 0, Rot);
 
-	VECTOR3 R_r_equ = tmul(Rot, sv_r.R);
-	VECTOR3 V_r_equ = tmul(Rot, sv_r.V);
-	double h_r = length(sv_r.R) - OrbMech::R_Earth;
+	R_r_equ = tmul(Rot, sv_r.R);
+	V_r_equ = tmul(Rot, sv_r.V);
+	h_r = length(sv_r.R) - OrbMech::R_Earth;
 	double r_r, v_r, lat_r, ra_r, gamma_r, azi_r, lng_r, lambda_G;
 	PICSSC(true, R_r_equ, V_r_equ, r_r, v_r, lat_r, ra_r, gamma_r, azi_r);
-	double T_ar = sv_r.GMT - t_a;
+	T_ar = sv_r.GMT - t_a;
 
 	lambda_G = PIBSHA(sv_r.GMT / 3600.0);
 	lng_r = ra_r - lambda_G;
@@ -41101,11 +41098,6 @@ bool RTCC::QMGEPH(int epoch, double gmtbase, double HOURS)
 	MATRIX3 Rot_J_B, Rot_SG_ECL, R_LIB;
 	VECTOR3 R_EM, R_ES, V_EM;
 	double MJD, MoonPos[12], EarthPos[12];
-	CELBODY *cMoon, *cEarth;
-
-	cMoon = oapiGetCelbodyInterface(hMoon);
-	cEarth = oapiGetCelbodyInterface(hEarth);
-
 	//Store beginning time of ephemeris
 	MDGSUN.MJD = gmtbase - 5.0;
 
@@ -41117,14 +41109,14 @@ bool RTCC::QMGEPH(int epoch, double gmtbase, double HOURS)
 		MJD = MDGSUN.MJD + 0.5*(double)(i);
 
 		//Moon Ephemeris
-		cMoon->clbkEphemeris(MJD, EPHEM_TRUEPOS, MoonPos);
+		OrbMech::ReadEphemeris(hMoon, MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, MoonPos);
 		R_EM = _V(MoonPos[0], MoonPos[2], MoonPos[1]) / SystemParameters.MCCMCU;
 		V_EM = _V(MoonPos[3], MoonPos[5], MoonPos[4]) / SystemParameters.MCCMCU*3600.0;
 		R_EM = mul(Rot_J_B, R_EM);
 		V_EM = mul(Rot_J_B, V_EM);
 
 		//Sun Ephemeris
-		cEarth->clbkEphemeris(MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, EarthPos);
+		OrbMech::ReadEphemeris(hEarth, MJD, EPHEM_TRUEPOS | EPHEM_TRUEVEL, EarthPos);
 		R_ES = -OrbMech::Polar2Cartesian(EarthPos[2] * AU, EarthPos[1], EarthPos[0]) / SystemParameters.MCCMCU;
 		R_ES = mul(Rot_J_B, R_ES);
 
@@ -41635,7 +41627,7 @@ void RTCC::RMDREC()
 		int Zone;
 		double Range;
 
-		bool TempZoneData::operator<(const TempZoneData& rhs) const
+		bool operator<(const TempZoneData& rhs) const
 		{
 			if (Range == rhs.Range)
 			{

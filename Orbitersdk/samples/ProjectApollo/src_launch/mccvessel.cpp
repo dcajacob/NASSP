@@ -105,15 +105,15 @@ MCCVessel::~MCCVessel()
 #if defined(NASSP_NATIVE_LINUX)
 	if (mfdButtonFont) oapiReleaseFont(mfdButtonFont);
 #endif
-	if (rtcc)
-	{
-		delete rtcc;
-		rtcc = NULL;
-	}
 	if (mcc)
 	{
 		delete mcc;
 		mcc = NULL;
+	}
+	if (rtcc)
+	{
+		delete rtcc;
+		rtcc = NULL;
 	}
 }
 
