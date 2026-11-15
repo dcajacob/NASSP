@@ -25,7 +25,11 @@
 #define ORBITER_MODULE
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>,<fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
+#include <algorithm>
 //############################################################################//
 #include "stdio.h"
 #include "math.h"
@@ -50,9 +54,43 @@ const double timprc[3]={1,6,5};
 #define CH_MAIN   1
 #define CH_DROGUE 2
 //############################################################################//
-DLLCLBK void InitModule(HINSTANCE hModule)               {}
-DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel,int flightmodel){return new CMChute(hvessel,flightmodel);}
-DLLCLBK void    ovcExit(VESSEL *vessel)                  {if(vessel)delete(CMChute*)vessel;}
+#if defined(NASSP_NATIVE_LINUX)
+#define CHUTE_VESSEL_CALLBACK static
+#else
+#define CHUTE_VESSEL_CALLBACK DLLCLBK
+DLLCLBK void InitModule(HINSTANCE hModule) {}
+#endif
+
+CHUTE_VESSEL_CALLBACK VESSEL* ovcInit(OBJHANDLE vessel, int flightmodel)
+{
+	return new CMChute(vessel, flightmodel);
+}
+
+CHUTE_VESSEL_CALLBACK void ovcExit(VESSEL* vessel)
+{
+	delete static_cast<CMChute*>(vessel);
+}
+
+#undef CHUTE_VESSEL_CALLBACK
+
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+using ChuteFactory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor chuteModule = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Command Module Parachutes",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI,
+	ChuteFactory::initialize, ChuteFactory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &chuteModule : nullptr;
+}
+#endif
+
 //############################################################################//
 CMChute::CMChute(OBJHANDLE hObj,int fmodel):VESSEL2(hObj,fmodel)
 {
@@ -170,13 +208,13 @@ void CMChute::clbkPreStep(double simt,double simdt,double mjd)
    for(int i=0;i<3;i++)if(i==state)SetMeshVisibilityMode(meshindex[i],MESHVIS_ALWAYS);
                               else SetMeshVisibilityMode(meshindex[i],MESHVIS_NEVER);
    if(proc[state]>0){
-    proc[state]=max(proc[state]-simdt/timprc[state],0);
+    proc[state]=(std::max)(proc[state]-simdt/timprc[state],0.0);
     SetAnimation(anim[state],proc[state]);
    }else state++;
   }else if(state==STATE_DEPLOYED){
    if(GetAltitude(ALTMODE_GROUND)<2.3){
     if(procLanding<1){
-     procLanding=min(procLanding+simdt/20,1);
+     procLanding=(std::min)(procLanding+simdt/20,1.0);
      SetAnimation(animLanding,procLanding);
     }else state=STATE_LANDED;
    }
@@ -186,7 +224,7 @@ void CMChute::clbkPreStep(double simt,double simdt,double mjd)
   }
  }else{
   if(proc[3]>0){
-   proc[3]=max(proc[3]-simdt/3.0,0);
+   proc[3]=(std::max)(proc[3]-simdt/3.0,0.0);
    SetAnimation(anim[3],proc[3]);
   }
  }

@@ -24,7 +24,11 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#include "Production/NativeInterpreterSdk.h"
+#endif
 
 #include "nasspdefs.h"
 #include "nasspsound.h"
@@ -33,6 +37,7 @@
 
 #include "sm.h"
 
+#include <algorithm>
 #include <stdio.h>
 #include <string.h>
 
@@ -401,7 +406,7 @@ void SM::clbkPreStep(double simt, double simdt, double mjd)
 	double da = simdt * UMBILICAL_SPEED;
 	if (umbilical_proc < 1.0)
 	{
-		umbilical_proc = min (1.0, umbilical_proc+da);
+		umbilical_proc = (std::min)(1.0, umbilical_proc+da);
 	}
     SetAnimation (anim_umbilical, umbilical_proc);
 
@@ -1290,9 +1295,15 @@ void SM::GetApolloName(char *s)
 	sprintf(s, "AS-%d", VehicleNo);
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+#define SM_VESSEL_CALLBACK static
+#else
+#define SM_VESSEL_CALLBACK DLLCLBK
+#endif
+
 static int refcount = 0;
 
-DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
+SM_VESSEL_CALLBACK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 
 {
 	VESSEL *v;
@@ -1307,7 +1318,7 @@ DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 }
 
 
-DLLCLBK void ovcExit (VESSEL *vessel)
+SM_VESSEL_CALLBACK void ovcExit (VESSEL *vessel)
 
 {
 	--refcount;
@@ -1324,3 +1335,23 @@ DLLCLBK void ovcExit (VESSEL *vessel)
 	if (vessel) 
 		delete (SM *)vessel;
 }
+
+#undef SM_VESSEL_CALLBACK
+
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+using SMFactory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor smModule = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Service Module",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI,
+	SMFactory::initialize, SMFactory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &smModule : nullptr;
+}
+#endif

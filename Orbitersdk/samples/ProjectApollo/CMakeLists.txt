@@ -265,6 +265,24 @@ if(NASSP_BUILD_NATIVE_LINUX)
         NasspNativeOrbiterSdk NasspMission NasspOrbMech NasspVesselSystems Threads::Threads
     )
     target_link_options(NasspMCCVessel PRIVATE "-Wl,--no-undefined")
+
+    add_library(NasspSM MODULE src_csm/sm.cpp src_csm/smjc.cpp)
+    set_target_properties(NasspSM PROPERTIES
+        PREFIX "" OUTPUT_NAME sM
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+    )
+    target_include_directories(NasspSM PRIVATE src_aux)
+    target_link_libraries(NasspSM PRIVATE NasspVesselSystems NasspAudio)
+    target_link_options(NasspSM PRIVATE "-Wl,--no-undefined")
+
+    add_library(NasspCMChute MODULE src_landing/CMChute.cpp)
+    set_target_properties(NasspCMChute PROPERTIES
+        PREFIX "" OUTPUT_NAME CMChute
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+    )
+    target_include_directories(NasspCMChute PRIVATE src_aux)
+    target_link_libraries(NasspCMChute PRIVATE NasspNativeOrbiterSdk)
+    target_link_options(NasspCMChute PRIVATE "-Wl,--no-undefined")
     return()
 endif()
 
