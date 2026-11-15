@@ -4927,7 +4927,9 @@ void PCM::ConsumeMccByte(double simt)
 		constexpr double betweenLoadSeconds = 12.0;
 		if (mccNextLoadTime < 0.0)
 			mccNextLoadTime = simt + betweenLoadSeconds;
-		if (simt < mccNextLoadTime)
+		// A state-vector load can leave the CMC integrating in P00.
+		// Wait for the activity light to go out before starting the next load.
+		if (simt < mccNextLoadTime || sat->agc.GetOutputChannelBit(011, LightComputerActivity))
 			return;
 		mccNextLoadTime = -1.0;
 		++mcc_offset;
