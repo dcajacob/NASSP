@@ -854,13 +854,18 @@ ChecklistContainer::ChecklistContainer(const ChecklistGroup &inprogram, Checklis
 	startTime = start;
 	initSet(inprogram,set,controller);
 	sequence = set.begin();
+	if (!dontspawn)
+		controller.groups[program.group].called = true;
+	if (set.empty())
+	{
+		program.group = -1;
+		return;
+	}
 	if (inprogram.soundFile[0])
 	{
 		controller.soundLib.LoadSound(controller.checkSound,program.soundFile);
 		controller.playSound = true;
 	}
-	if (!dontspawn)
-		controller.groups[program.group].called = true;
 }
 // Todo: Verify
 ChecklistContainer::ChecklistContainer(const ChecklistContainer & input)
@@ -888,6 +893,8 @@ void ChecklistContainer::initSet(const ChecklistGroup &program,vector<ChecklistI
 	BasicExcelWorksheet* sheet;
 	vector<BasicExcelCell> vec_temp;
 	sheet = controller.file.GetWorksheet(program.name);
+	if (!sheet)
+		return;
 	int rows = sheet->GetTotalRows();
 	ChecklistItem temp;
 	for (int i = 1; i < rows; i++)
@@ -924,47 +931,42 @@ void ChecklistContainer::save(FILEHANDLE scn)
 // Todo: Verify
 void ChecklistContainer::load(FILEHANDLE scn, ChecklistController &controller)
 {
-	char *line,buffer[100];
-	line = "";
-	buffer[0] = 0;
-	int integer;
-	float fcpt;
-
-	oapiReadScenario_nextline(scn,line);
-	if (!strnicmp(line,"INDEX",5))
+	char* line;
+	while (oapiReadScenario_nextline(scn, line))
 	{
-		sscanf (line+5,"%d",&integer);
-		if (integer < controller.groups.size()) { 
-			*this = ChecklistContainer(controller.groups[integer],controller,0);
-		} else
+		if (!strnicmp(line, ChecklistContainerEndString, strlen(ChecklistContainerEndString)))
 			return;
-	}
-	else
-		return;
-	while (strnicmp(line,ChecklistContainerEndString,strlen(ChecklistContainerEndString)))
-	{
-		bool found = false;
-		if (!found && !strnicmp(line,"SEQUENCE",8))
+
+		int index;
+		if (!strnicmp(line, "INDEX", 5) && sscanf(line + 5, "%d", &index) == 1)
 		{
-			sscanf(line+8,"%d",&integer);
-			if (integer < set.size())			
-				sequence+= integer;
-			found = true;
+			if (index >= 0 && static_cast<size_t>(index) < controller.groups.size())
+				*this = ChecklistContainer(controller.groups[index], controller, 0);
 		}
-		if (!found && !strnicmp(line,"TIME",4))
+		else if (!strnicmp(line, "SEQUENCE", 8) && sscanf(line + 8, "%d", &index) == 1)
 		{
-			sscanf(line+4,"%f",&fcpt);
-			startTime = fcpt;
-			found = true;
+			if (index >= 0 && static_cast<size_t>(index) < set.size())
+				sequence = set.begin() + index;
 		}
-		if (!found && !strnicmp(line,ChecklistItemStartString,strlen(ChecklistItemStartString)))
+		else if (!strnicmp(line, "TIME", 4))
 		{
-			oapiReadScenario_nextline(scn, line);
-			sscanf(line+5,"%d", &integer);
-			if (integer < set.size())
-				set[integer].load(scn);
+			sscanf(line + 4, "%lf", &startTime);
 		}
-		oapiReadScenario_nextline(scn,line);
+		else if (!strnicmp(line, ChecklistItemStartString, strlen(ChecklistItemStartString)))
+		{
+			if (!oapiReadScenario_nextline(scn, line))
+				return;
+			if (!strnicmp(line, "INDEX", 5) && sscanf(line + 5, "%d", &index) == 1 && index >= 0 && static_cast<size_t>(index) < set.size())
+				set[index].load(scn);
+			else
+			{
+				while (strnicmp(line, ChecklistItemEndString, strlen(ChecklistItemEndString)))
+				{
+					if (!oapiReadScenario_nextline(scn, line))
+						return;
+				}
+			}
+		}
 	}
 }
 //Saturn Events methods

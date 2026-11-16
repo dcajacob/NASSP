@@ -26,9 +26,13 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
 #include "stdio.h"
 #include "math.h"
+#include <algorithm>
 #include "nasspsound.h"
 #include "soundlib.h"
 #include "tracer.h"
@@ -41,15 +45,16 @@
 #include "nasspdefs.h"
 #include "toggleswitch.h"
 #include "apolloguidance.h"
-#include "LEMcomputer.h"
-#include "LEM.h"
 #include "sivbsystems.h"
+#include "connector.h"
 #include "s1b.h"
 #include "sivb.h"
 #include "papi.h"
 #include "RCA110A.h"
 
+#if !defined(NASSP_NATIVE_LINUX)
 HINSTANCE g_hDLL;
+#endif
 
 
 // States
@@ -76,22 +81,50 @@ PARTICLESTREAMSPEC liftoffStreamSpec = {
 };
 
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK void InitModule(HINSTANCE hModule) {
 
 	g_hDLL = hModule;
 }
+#endif
 
 
-DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
+#if defined(NASSP_NATIVE_LINUX)
+#define APOLLO_VESSEL_CALLBACK static
+#else
+#define APOLLO_VESSEL_CALLBACK DLLCLBK
+#endif
+
+APOLLO_VESSEL_CALLBACK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
 
 	return new LC37(hvessel, flightmodel);
 }
 
 
-DLLCLBK void ovcExit(VESSEL *vessel) {
+APOLLO_VESSEL_CALLBACK void ovcExit(VESSEL *vessel) {
 
 	if (vessel) delete (LC37*)vessel;
 }
+
+#undef APOLLO_VESSEL_CALLBACK
+
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+using LC37Factory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor nativeModule = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP LC-37 launch complex",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI,
+	LC37Factory::initialize, LC37Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &nativeModule : nullptr;
+}
+#endif
 
 
 LC37::LC37(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {
@@ -310,7 +343,7 @@ void LC37::clbkPreStep(double simt, double simdt, double mjd)
 
 		// Soft-Release Pin Dragging
 		if (MissionTime < 0.5) {
-			double PinDragFactor = min(1.0, 1.0 - (MissionTime * 2.0));
+			double PinDragFactor = (std::min)(1.0, 1.0 - (MissionTime * 2.0));
 			if (s1b) s1b->AddForce(_V(0, 0, -(8*1008000 * PinDragFactor)), _V(0, 0, 0));
 		}
 		if (s1b)

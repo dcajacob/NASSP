@@ -298,30 +298,32 @@ if(NASSP_BUILD_NATIVE_LINUX)
 
     add_library(NasspS1B MODULE src_saturn/s1b.cpp)
     add_library(NasspVAB MODULE src_launch/VAB.cpp src_launch/VABAnimations.cpp)
-    add_library(NasspLC34 MODULE
-        src_launch/LC34.cpp
-        src_launch/IU_ESE.cpp
-        src_launch/IUUmbilical.cpp
-        src_launch/IUUmbilicalInterface.cpp
-        src_launch/RCA110A.cpp
-        src_launch/SCMUmbilical.cpp
-        src_launch/SI_ESE.cpp
-        src_launch/SIB_ESE.cpp
-        src_launch/TailUmbilical.cpp
-    )
+    foreach(complex IN ITEMS LC34 LC37)
+        add_library(Nassp${complex} MODULE
+            src_launch/${complex}.cpp
+            src_launch/IU_ESE.cpp
+            src_launch/IUUmbilical.cpp
+            src_launch/IUUmbilicalInterface.cpp
+            src_launch/RCA110A.cpp
+            src_launch/SCMUmbilical.cpp
+            src_launch/SI_ESE.cpp
+            src_launch/SIB_ESE.cpp
+            src_launch/TailUmbilical.cpp
+        )
+        set_target_properties(Nassp${complex} PROPERTIES OUTPUT_NAME ${complex})
+        target_link_libraries(Nassp${complex} PRIVATE NasspInstrumentUnit)
+    endforeach()
     set_target_properties(NasspS1B PROPERTIES OUTPUT_NAME s1b)
     set_target_properties(NasspVAB PROPERTIES OUTPUT_NAME VAB)
-    set_target_properties(NasspLC34 PROPERTIES OUTPUT_NAME LC34)
-    set_target_properties(NasspS1B NasspVAB NasspLC34 PROPERTIES
+    set_target_properties(NasspS1B NasspVAB NasspLC34 NasspLC37 PROPERTIES
         PREFIX ""
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
     )
-    foreach(target IN ITEMS NasspS1B NasspVAB NasspLC34)
+    foreach(target IN ITEMS NasspS1B NasspVAB NasspLC34 NasspLC37)
         target_include_directories(${target} PRIVATE src_aux src_csm src_launch src_mfd src_saturn)
         target_link_libraries(${target} PRIVATE NasspVesselSystems NasspAudio)
         target_link_options(${target} PRIVATE "-Wl,--no-undefined")
     endforeach()
-    target_link_libraries(NasspLC34 PRIVATE NasspInstrumentUnit)
 
     add_library(NasspFloatBag MODULE src_landing/FloatBag.cpp)
     add_library(NasspLES MODULE src_saturn/LES.cpp)
@@ -483,6 +485,10 @@ if(NASSP_BUILD_NATIVE_LINUX)
         "${NASSP_SOURCE_ROOT}/../../../Doc/Project Apollo - NASSP/Checklists/Apollo 11 Checklists.xls"
         "${NASSP_SOURCE_ROOT}/../../../Doc/Project Apollo - NASSP/Checklists/Apollo 11 LM Checklists.xls"
         DESTINATION "Doc/Project Apollo - NASSP/Checklists" COMPONENT Apollo11Assets
+    )
+    install(DIRECTORY "${NASSP_SOURCE_ROOT}/../../../Doc/Project Apollo - NASSP/Checklists/"
+        DESTINATION "Doc/Project Apollo - NASSP/Checklists" COMPONENT ChecklistAssets
+        FILES_MATCHING PATTERN "*.xls"
     )
     add_library(NasspS1C MODULE src_saturn/s1c.cpp src_saturn/s1csystems.cpp)
     add_library(NasspSII MODULE src_saturn/sii.cpp src_saturn/siisystems.cpp src_saturn/j2engine.cpp)

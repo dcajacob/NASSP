@@ -21,11 +21,10 @@ The build writes the Apollo shared objects to
 `build-linux/NativeModules/Plugin`. Merge these directories into the matching
 Orbiter runtime's `NativeModules` tree. Include the NASSP configuration,
 meshes, textures, missions, sound, and scenarios in the launcher profile's
-asset directory. Install the generated panel and launch platform assets over
-those resources:
+asset directory. Install the generated panel and launch platform assets along with the checklist workbooks:
 
 ```sh
-for component in SaturnPanelAssets LunarPanelAssets Apollo11Assets; do
+for component in SaturnPanelAssets LunarPanelAssets Apollo11Assets ChecklistAssets; do
   cmake --install build-linux --prefix /path/to/profile/resources --component "$component"
 done
 ```

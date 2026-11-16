@@ -482,10 +482,13 @@ void ChecklistController::load(FILEHANDLE scn)
 		{
 			ChecklistContainer temp;
 			temp.load(scn,*this);
-			if (active.program.group == -1)
-				active = temp;
-			else
-				action.push_back(temp);
+			if (temp.program.group != -1)
+			{
+				if (active.program.group == -1)
+					active = temp;
+				else
+					action.push_back(temp);
+			}
 			found = true;
 		}
 		if (!found && !strnicmp(line,ChecklistGroupStartString,strlen(ChecklistGroupStartString)))
@@ -598,6 +601,9 @@ bool ChecklistController::doSpawnCheck(int group, bool failed, bool automagic)
 		temp = ChecklistContainer(groups[group],*this,lastMissionTime);
 	}
 
+	if (temp.program.group == -1)
+		return false;
+
 	// Use temp.
 	// Case 1: failed
 	if (failed)
@@ -698,6 +704,11 @@ void ChecklistController::iterate()
 		else {
 			active.sequence ++;
 			autoexecuteSlowDelay = active.sequence->getAutoexecuteSlowDelay(&conn);
+		}
+		if (active.program.group == -1)
+		{
+			waitForCompletion = false;
+			break;
 		}
 		// Check for vars here?
 		if (active.sequence->varlist[0] != 0 && active.sequence->varlist[0] == '$') {
@@ -836,7 +847,7 @@ bool ChecklistController::retrieveChecklistContainer(ChecklistContainer *input)
 	if (!groups[input->program.group].manualSelect) //Only manually selectable checklists should be reviewable.
 		return false;
 	*input = ChecklistContainer(groups[input->program.group],*this,lastMissionTime,true);
-	return true;
+	return input->program.group != -1;
 }
 
 #pragma warning ( pop )
