@@ -45,15 +45,16 @@ void KillableWorker::Start(std::function<void()>f) {
 // Unfortunately there's no standard way to do that so we have to revert to
 // native thread API to do it
 void KillableWorker::Kill() {
+#if defined(_WIN32)
     if (m_running) {
-#ifdef _WIN32
         DWORD exitcode = 0;
         TerminateThread(m_thread.native_handle(), exitcode);
-#else
-#error Need to implement KillableWorker::Kill for this platform
-#endif
         m_running = false;
     }
     if(m_thread.joinable())
         m_thread.detach();
+#else
+    // The calculation owns shared RTCC state until it returns.
+    if (m_thread.joinable()) m_thread.join();
+#endif
 }

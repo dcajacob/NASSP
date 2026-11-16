@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 #include "soundlib.h"
@@ -75,10 +75,8 @@ void LEMcomputer::SetMissionInfo(std::string ProgramName, char *OtherVessel)
 	// Pick the appropriate AGC binary file based on the mission number.
 	//
 
-	char Buffer[100];
-	sprintf(Buffer, "Config/ProjectApollo/%s.bin", ProgramName.c_str());
-
-	agc_load_binfile(&vagc, Buffer);
+	const std::string path = "Config/ProjectApollo/" + ProgramName + ".bin";
+	LoadProgram(path.c_str());
 }
 
 void LEMcomputer::agcTimestep(double simt, double simdt)
@@ -485,20 +483,20 @@ bool LMOptics::PaintReticleAngle(SURFHANDLE surf, SURFHANDLE digits, int TexMul)
 	digit[3] = x / 10000;
 	sry = (int)((beta * 1.2) *z);
 	srx = (8 *z) + ((digit[3] * 25) *z);
-	oapiBlt(surf, digits, 0, 0, srx * TexMul, 33 *z * TexMul, 9 *z * TexMul, 12 *z * TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, digits, 0, 0, srx * TexMul, 33 *z * TexMul, 9 *z * TexMul, 12 *z * TexMul, NasspPanelBlitKey);
 	srx = (8 *z) + ((digit[2] * 25) *z);
-	oapiBlt(surf, digits, 10 *z * TexMul, 0, srx * TexMul, 33 *z * TexMul, 9 *z * TexMul, 12 *z * TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, digits, 10 *z * TexMul, 0, srx * TexMul, 33 *z * TexMul, 9 *z * TexMul, 12 *z * TexMul, NasspPanelBlitKey);
 	srx = (8 *z) + ((digit[1] * 25) *z);
-	oapiBlt(surf, digits, 20 *z * TexMul, 0, srx * TexMul, 33 *z * TexMul, 9 *z * TexMul, 12 *z * TexMul, SURF_PREDEF_CK);
+	oapiBlt(surf, digits, 20 *z * TexMul, 0, srx * TexMul, 33 *z * TexMul, 9 *z * TexMul, 12 *z * TexMul, NasspPanelBlitKey);
 	srx = (8 *z) + ((digit[0] * 25) *z);
 	if (beta == 0) {
-		oapiBlt(surf, digits, 30 *z * TexMul, 0, srx * TexMul, 33 *z * TexMul, 9 *z * TexMul, 12 *z * TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, digits, 30 *z * TexMul, 0, srx * TexMul, 33 *z * TexMul, 9 *z * TexMul, 12 *z * TexMul, NasspPanelBlitKey);
 	}
 	else {
-		oapiBlt(surf, digits, 30 *z * TexMul, sry * TexMul, srx * TexMul, 33 *z * TexMul, 9 *z * TexMul, (12 *z * TexMul) - sry * TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, digits, 30 *z * TexMul, sry * TexMul, srx * TexMul, 33 *z * TexMul, 9 *z * TexMul, (12 *z * TexMul) - sry * TexMul, NasspPanelBlitKey);
 		if (digit[0] == 9) digit[0] = 0; else digit[0]++;
 		srx = (8 *z) + ((digit[0] * 25) *z);
-		oapiBlt(surf, digits, 30 *z * TexMul, 0, srx * TexMul, (45 *z * TexMul) - sry * TexMul, 9 *z * TexMul, sry * TexMul, SURF_PREDEF_CK);
+		oapiBlt(surf, digits, 30 *z * TexMul, 0, srx * TexMul, (45 *z * TexMul) - sry * TexMul, 9 *z * TexMul, sry * TexMul, NasspPanelBlitKey);
 	}
 	return true;
 }

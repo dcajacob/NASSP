@@ -25,7 +25,7 @@
 #ifndef MFDButtonPage_H
 #define MFDButtonPage_H
 
-#include <Orbitersdk.h>
+#include "NasspOrbiterSdk.h"
 #include <map>
 #include <vector>
 
@@ -274,7 +274,7 @@ void MFDButtonPage<MFDClass>::SelectPage( MFDClass * mfdInstance, int pageIndex 
         mfdInstance->InvalidateButtons(); // redraw buttons
     }
     else
-        sprintf_s(oapiDebugString(), 512, "MFDButtonPage::SwitchPage():"
+        snprintf(oapiDebugString(), 512, "MFDButtonPage::SwitchPage():"
                   " Page index %d is beyond pages size %d!", pageIndex, m_pages.size());
 }
 
@@ -397,7 +397,7 @@ int MFDButtonPage<MFDClass>::RegisterPage( const MFDBUTTONMENU * menu, int size 
 template <class MFDClass>
 bool MFDButtonPage<MFDClass>::PressKey( MFDClass * mfdInstance, DWORD key ) const
 {
-    typedef std::map<DWORD, MFDFunctionPtr>::const_iterator MapFuncIterator;
+    typedef typename std::map<DWORD, MFDFunctionPtr>::const_iterator MapFuncIterator;
     // First search for the key on this page
     MapFuncIterator it = m_pages.at(m_i).m_keys.find(key);
     if (it != m_pages.at(m_i).m_keys.end() )
@@ -430,7 +430,7 @@ void MFDButtonPage<MFDClass>::RegisterFuncPriv( bool continuous, const std::stri
 {
     if ( m_pages.empty() )
     {
-        sprintf_s(oapiDebugString(), 512, "MFDButtonPage::RegisterFuncPriv(): No pages registered yet!");
+        snprintf(oapiDebugString(), 512, "MFDButtonPage::RegisterFuncPriv(): No pages registered yet!");
         return;
     }
     Page & p = m_pages.back();

@@ -22,7 +22,7 @@
 
   **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "LM_AscentStageResource.h"
 #include "LM_VC_Resource.h"
 #include "soundlib.h"

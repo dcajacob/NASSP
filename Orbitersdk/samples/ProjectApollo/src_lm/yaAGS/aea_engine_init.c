@@ -55,7 +55,7 @@ aea_engine_init (ags_t * State, const char *RomImage, const char *CoreDump)
   FILE *cd = NULL;
   int m, n;
 
-#ifndef WIN32
+#if !defined(WIN32) && !defined(NASSP_NATIVE_LINUX)
   // The purpose of this is to make sure that getchar doesn't halt the program
   // when there's no keystroke immediately available.
   UnblockSocket (fileno (stdin));

@@ -2419,6 +2419,7 @@ struct TLITargetingParametersTable
 class RTCC {
 
 	friend class MCC;
+	friend class MCCVessel;
 
 public:
 	RTCC();

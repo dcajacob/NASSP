@@ -21,6 +21,10 @@
 #include "ARoapiModule.h"
 #include "TLMCC.h"
 #include "nassputils.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include <codecvt>
+#include <locale>
+#endif
 
 using namespace nassp;
 
@@ -276,9 +280,14 @@ void ApolloRTCCMFD::Text(oapi::Sketchpad *skp, int x, int y, std::string message
 	skp->Text(CW * x / xmax + WOFF, CH * y / ymax + HOFF, message.c_str(), message.size());
 }
 
-void ApolloRTCCMFD::TextW(oapi::Sketchpad *skp, int x, int y, LPWSTR message)
+void ApolloRTCCMFD::TextW(oapi::Sketchpad *skp, int x, int y, const wchar_t *message)
 {
-	skp->TextW(CW * x + WOFF, CH * y + HOFF, message, wcslen(message));
+	#if defined(NASSP_NATIVE_LINUX)
+    const std::string utf8 = std::wstring_convert<std::codecvt_utf8<wchar_t>>{}.to_bytes(message);
+    skp->Text(CW * x + WOFF, CH * y + HOFF, utf8.c_str(), utf8.size());
+#else
+    skp->TextW(CW * x + WOFF, CH * y + HOFF, const_cast<wchar_t *>(message), wcslen(message));
+#endif
 }
 
 void ApolloRTCCMFD::Text(oapi::Sketchpad *skp, int x, int y, char *format, double val)
@@ -479,11 +488,11 @@ void ApolloRTCCMFD::FormatDeclination(char *Buff, double angle)
 	double angle2 = abs(round(angle));
 	if (angle >= 0)
 	{
-		sprintf_s(Buff, 32, "+%.0f:%02.0f:%02.0f", floor(angle2 / 3600.0), floor(fmod(angle2, 3600.0) / 60.0), fmod(angle2, 60.0));
+		snprintf(Buff, 32, "+%.0f:%02.0f:%02.0f", floor(angle2 / 3600.0), floor(fmod(angle2, 3600.0) / 60.0), fmod(angle2, 60.0));
 	}
 	else
 	{
-		sprintf_s(Buff, 32, "-%.0f:%02.0f:%02.0f", floor(angle2 / 3600.0), floor(fmod(angle2, 3600.0) / 60.0), fmod(angle2, 60.0));
+		snprintf(Buff, 32, "-%.0f:%02.0f:%02.0f", floor(angle2 / 3600.0), floor(fmod(angle2, 3600.0) / 60.0), fmod(angle2, 60.0));
 	}
 }
 
@@ -559,11 +568,11 @@ void ApolloRTCCMFD::FormatLatitude(char * Buff, double lat)
 
 	if (lat >= 0)
 	{
-		sprintf_s(Buff, 64, "%02.0lf:%02.0lfN", iPart, fPart*60.0);
+		snprintf(Buff, 64, "%02.0lf:%02.0lfN", iPart, fPart*60.0);
 	}
 	else
 	{
-		sprintf_s(Buff, 64, "%02.0lf:%02.0lfS", iPart, fPart*60.0);
+		snprintf(Buff, 64, "%02.0lf:%02.0lfS", iPart, fPart*60.0);
 	}
 }
 
@@ -590,11 +599,11 @@ void ApolloRTCCMFD::FormatLongitude(char * Buff, double lng, int precision)
 
 	if (lng >= 0)
 	{
-		sprintf_s(Buff, 64, "%03.0lf:%0*.0lfE", iPart, precision, fPart*60.0);
+		snprintf(Buff, 64, "%03.0lf:%0*.0lfE", iPart, precision, fPart*60.0);
 	}
 	else
 	{
-		sprintf_s(Buff, 64, "%03.0lf:%0*.0lfW", iPart, precision, fPart*60.0);
+		snprintf(Buff, 64, "%03.0lf:%0*.0lfW", iPart, precision, fPart*60.0);
 	}
 }
 
@@ -605,7 +614,7 @@ void ApolloRTCCMFD::FormatIMUAngle0(char *Buff, double ang)
 	{
 		ang = 0.0;
 	}
-	sprintf_s(Buff, 16, "%.0lf", ang);
+	snprintf(Buff, 16, "%.0lf", ang);
 }
 
 void ApolloRTCCMFD::FormatIMUAngle1(char *Buff, double ang)
@@ -615,7 +624,7 @@ void ApolloRTCCMFD::FormatIMUAngle1(char *Buff, double ang)
 	{
 		ang = 0.0;
 	}
-	sprintf_s(Buff, 16, "%.1lf", ang);
+	snprintf(Buff, 16, "%.1lf", ang);
 }
 
 void ApolloRTCCMFD::FormatIMUAngle2(char *Buff, double ang)
@@ -625,7 +634,7 @@ void ApolloRTCCMFD::FormatIMUAngle2(char *Buff, double ang)
 	{
 		ang = 0.0;
 	}
-	sprintf_s(Buff, 16, "%.2lf", ang);
+	snprintf(Buff, 16, "%.2lf", ang);
 }
 
 void ApolloRTCCMFD::ThrusterName(char *Buff, int n)
@@ -699,27 +708,27 @@ void ApolloRTCCMFD::MPTAttitudeName(char *Buff, int n)
 {
 	if (n == RTCC_ATTITUDE_INERTIAL)
 	{
-		sprintf_s(Buff, 100, "Inertial");
+		snprintf(Buff, 100, "Inertial");
 	}
 	else if (n == RTCC_ATTITUDE_MANUAL)
 	{
-		sprintf_s(Buff, 100, "Manual");
+		snprintf(Buff, 100, "Manual");
 	}
 	else if (n == RTCC_ATTITUDE_LAMBERT)
 	{
-		sprintf_s(Buff, 100, "Lambert (N/A)");
+		snprintf(Buff, 100, "Lambert (N/A)");
 	}
 	else if (n == RTCC_ATTITUDE_PGNS_EXDV)
 	{
-		sprintf_s(Buff, 100, "PGNS External DV");
+		snprintf(Buff, 100, "PGNS External DV");
 	}
 	else if (n == RTCC_ATTITUDE_AGS_EXDV)
 	{
-		sprintf_s(Buff, 100, "AGS External DV");
+		snprintf(Buff, 100, "AGS External DV");
 	}
 	else
 	{
-		sprintf_s(Buff, 100, "");
+		snprintf(Buff, 100, "");
 	}
 }
 
@@ -2711,7 +2720,7 @@ void ApolloRTCCMFD::menuSpacecraftPointingDisplayCalc()
 	GET_Display(Buff1, GC->rtcc->EZGSTMED.G42_GET1, false);
 	GET_Display(Buff2, GC->rtcc->EZGSTMED.G42_GET5, false);
 	GET_Display(Buff3, GC->rtcc->EZGSTMED.G42_GETT, false);
-	sprintf_s(Buffer, "G42,%s,%s,%s;", Buff1, Buff2, Buff3);
+	snprintf(Buffer, sizeof(Buffer), "G42,%s,%s,%s;", Buff1, Buff2, Buff3);
 
 	menuGeneralMEDRequest("Queue S/C point display. Format: G42, GET1, GET5, GETT;", Buffer);
 }
@@ -3218,7 +3227,7 @@ void ApolloRTCCMFD::menuDeleteASTRow()
 bool DeleteASTRowInput(void *id, char *str, void *data)
 {
 	char Buff[128];
-	sprintf_s(Buff, "F79,%s;", str);
+	snprintf(Buff, sizeof(Buff), "F79,%s;", str);
 	((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 	return true;
 }
@@ -3499,7 +3508,7 @@ bool ApolloRTCCMFD::set_MPTDirectInputM40Data(char *str)
 		return true;
 	}
 
-	sprintf_s(GC->rtcc->RTCCMEDBUFFER, 256, str);
+	snprintf(GC->rtcc->RTCCMEDBUFFER, sizeof(GC->rtcc->RTCCMEDBUFFER), "%s", str);
 	G->GeneralMEDRequest();
 	return true;
 }
@@ -5589,7 +5598,7 @@ void ApolloRTCCMFD::set_AGSKFactor(char *str)
 {
 	char Buff[128];
 
-	sprintf_s(Buff, "P15,AGS,,%s;", str);
+	snprintf(Buff, sizeof(Buff), "P15,AGS,,%s;", str);
 	GeneralMEDRequest(Buff);
 }
 
@@ -6187,7 +6196,7 @@ bool GeneralMEDRequestInput(void *id, char *str, void *data)
 
 void ApolloRTCCMFD::GeneralMEDRequest(char *str)
 {
-	sprintf_s(GC->rtcc->RTCCMEDBUFFER, 256, str);
+	snprintf(GC->rtcc->RTCCMEDBUFFER, sizeof(GC->rtcc->RTCCMEDBUFFER), "%s", str);
 	G->GeneralMEDRequest();
 }
 
@@ -6206,7 +6215,7 @@ bool MEDInputFromFileInput(void *id, char *str, void *data)
 void ApolloRTCCMFD::ProcessMEDInputFromFile(char *str)
 {
 	//Temporarily store file name in MED buffer
-	sprintf_s(GC->rtcc->RTCCMEDBUFFER, 256, str);
+	snprintf(GC->rtcc->RTCCMEDBUFFER, sizeof(GC->rtcc->RTCCMEDBUFFER), "%s", str);
 	//Start thread
 	G->startSubthread(64);
 }
@@ -6305,7 +6314,7 @@ bool ApolloRTCCMFD::REFSMMATUplinkCalc(char *str)
 {
 	char Buff1[4];
 	int type;
-	if (sscanf_s(str, "%s %d", Buff1, 4, &type) == 2)
+	if (sscanf(str, "%3s %d", Buff1, &type) == 2)
 	{
 		if (type >= 1 && type <= 2)
 		{
@@ -6313,13 +6322,13 @@ bool ApolloRTCCMFD::REFSMMATUplinkCalc(char *str)
 			char str2[32];
 			if (screen == 53)
 			{
-				sprintf_s(veh, "CMC");
+				snprintf(veh, sizeof(veh), "CMC");
 			}
 			else
 			{
-				sprintf_s(veh, "LGC");
+				snprintf(veh, sizeof(veh), "LGC");
 			}
-			sprintf_s(str2, 32, "C12,%s,%s,%d;", veh, Buff1, type);
+			snprintf(str2, 32, "C12,%s,%s,%d;", veh, Buff1, type);
 			GeneralMEDRequest(str2);
 			return true;
 		}
@@ -6609,7 +6618,7 @@ bool LaunchDateInput(void *id, char *str, void *data)
 void ApolloRTCCMFD::set_launchdate(int year, int month, int day)
 {
 	char Buff[128];
-	sprintf_s(Buff, "P80,1,CSM,%d,%d,%d;", month, day, year);
+	snprintf(Buff, sizeof(Buff), "P80,1,CSM,%d,%d,%d;", month, day, year);
 	GC->rtcc->GMGMED(Buff);
 }
 
@@ -6638,42 +6647,42 @@ void ApolloRTCCMFD::menuRTCCTimesInput()
 	{
 	case 0:
 		GET_Display2(Buff2, GC->rtcc->SystemParameters.MCGMTL*3600.0);
-		sprintf_s(Buff, "P10,CSM,%s,NOTRAJ;", Buff2);
+		snprintf(Buff, sizeof(Buff), "P10,CSM,%s,NOTRAJ;", Buff2);
 		menuGeneralMEDRequest("Planned or actual liftoff time. Format: P10,VEH,GMTLO,TRAJ/NOTRAJ IND;", Buff);
 		break;
 	case 1:
 		GET_Display2(Buff2, GC->rtcc->SystemParameters.MCGRAG*3600.0);
-		sprintf_s(Buff, "P12,CSM,%s,%.2lf;", Buff2, GC->rtcc->SystemParameters.MCLABN*DEG);
+		snprintf(Buff, sizeof(Buff), "P12,CSM,%s,%.2lf;", Buff2, GC->rtcc->SystemParameters.MCLABN*DEG);
 		menuGeneralMEDRequest("Planned or actual GRR time. Format: P12,VEH,GMTGRR,LAUNCH AZIMUTH;", Buff);
 		break;
 	case 2:
 		GET_Display2(Buff2, GC->rtcc->SystemParameters.MCGZSA*3600.0);
-		sprintf_s(Buff, "P15,AGC,%s;", Buff2);
+		snprintf(Buff, sizeof(Buff), "P15,AGC,%s;", Buff2);
 		menuGeneralMEDRequest("GMT of zeroing AGC/LGC registers and fixing AGS platform. Format: P15,VEH,GMTZS;", Buff);
 		break;
 	case 3:
 		GET_Display2(Buff2, GC->rtcc->SystemParameters.MCGRIC*3600.0);
-		sprintf_s(Buff, "P12,IU1,%s,%.2lf;", Buff2, GC->rtcc->SystemParameters.MCLABN*DEG);
+		snprintf(Buff, sizeof(Buff), "P12,IU1,%s,%.2lf;", Buff2, GC->rtcc->SystemParameters.MCLABN*DEG);
 		menuGeneralMEDRequest("Planned or actual GRR time. Format: P12,VEH,GMTGRR,LAUNCH AZIMUTH;", Buff);
 		break;
 	case 4:
 		GET_Display2(Buff2, GC->rtcc->SystemParameters.MCGMTS*3600.0);
-		sprintf_s(Buff, "P10,LEM,%s,NOTRAJ;", Buff2);
+		snprintf(Buff, sizeof(Buff), "P10,LEM,%s,NOTRAJ;", Buff2);
 		menuGeneralMEDRequest("Planned or actual liftoff time. Format: P10,VEH,GMTLO,TRAJ/NOTRAJ IND;", Buff);
 		break;
 	case 5:
 		GET_Display2(Buff2, GC->rtcc->SystemParameters.MCGZSL*3600.0);
-		sprintf_s(Buff, "P15,LGC,%s;", Buff2);
+		snprintf(Buff, sizeof(Buff), "P15,LGC,%s;", Buff2);
 		menuGeneralMEDRequest("GMT of zeroing AGC/LGC registers and fixing AGS platform. Format: P15,VEH,GMTZS;", Buff);
 		break;
 	case 6:
 		GET_Display2(Buff2, (GC->rtcc->SystemParameters.MCGZSS - GC->rtcc->SystemParameters.MCGZSL)*3600.0);
-		sprintf_s(Buff, "P15,AGS,,%s;", Buff2);
+		snprintf(Buff, sizeof(Buff), "P15,AGS,,%s;", Buff2);
 		menuGeneralMEDRequest("GMT or GET of fixing the AGS platform. Format: P15,VEH,GMTZS,DELTA TIME;", Buff);
 		break;
 	case 7:
 		GET_Display2(Buff2, GC->rtcc->SystemParameters.MCGRIL*3600.0);
-		sprintf_s(Buff, "P12,IU2,%s,%.2lf;", Buff2, GC->rtcc->SystemParameters.MCLABN*DEG);
+		snprintf(Buff, sizeof(Buff), "P12,IU2,%s,%.2lf;", Buff2, GC->rtcc->SystemParameters.MCLABN*DEG);
 		menuGeneralMEDRequest("Planned or actual GRR time. Format: P12,VEH,GMTGRR,LAUNCH AZIMUTH;", Buff);
 		break;
 	}
@@ -6730,13 +6739,13 @@ bool ApolloRTCCMFD::set_LiftoffTime(bool IsCMC)
 	OrbMech::SStoHHMMSS(LaunchMJD*3600.0, hh, mm, ss, 0.01);
 	char Buff[128];
 	//Update actual liftoff time
-	sprintf_s(Buff, "P10,CSM,%d:%d:%.2lf;", hh, mm, ss);
+	snprintf(Buff, sizeof(Buff), "P10,CSM,%d:%d:%.2lf;", hh, mm, ss);
 	GC->rtcc->GMGMED(Buff);
 	//Update GMT of zeroing CMC clock
-	sprintf_s(Buff, "P15,AGC,%d:%d:%.2lf;", hh, mm, ss);
+	snprintf(Buff, sizeof(Buff), "P15,AGC,%d:%d:%.2lf;", hh, mm, ss);
 	GC->rtcc->GMGMED(Buff);
 	//Update GMT of zeroing LGC clock
-	sprintf_s(Buff, "P15,LGC,%d:%d:%.2lf;", hh, mm, ss);
+	snprintf(Buff, sizeof(Buff), "P15,LGC,%d:%d:%.2lf;", hh, mm, ss);
 	GC->rtcc->GMGMED(Buff);
 
 	//Also update IU, if possible
@@ -7007,7 +7016,7 @@ void ApolloRTCCMFD::menuSetTLCCDesiredInclination()
 void ApolloRTCCMFD::menuSetTLMCCAzimuthConstraints()
 {
 	char Buff[128];
-	sprintf_s(Buff, "%.2lf,%.2lf", GC->rtcc->PZMCCPLN.AZ_min*DEG, GC->rtcc->PZMCCPLN.AZ_max*DEG);
+	snprintf(Buff, sizeof(Buff), "%.2lf,%.2lf", GC->rtcc->PZMCCPLN.AZ_min*DEG, GC->rtcc->PZMCCPLN.AZ_max*DEG);
 
 	bool TLMCCAzimuthConstraintsInput(void *id, char *str, void *data);
 	oapiOpenInputBox("Input Format: Minimum Azimuth,Maximum Azimuth (must be between -110 and -70°)", TLMCCAzimuthConstraintsInput, Buff, 20, (void*)this);
@@ -7016,7 +7025,7 @@ void ApolloRTCCMFD::menuSetTLMCCAzimuthConstraints()
 bool TLMCCAzimuthConstraintsInput(void *id, char *str, void *data)
 {
 	char Buff[128];
-	sprintf_s(Buff, "F22,%s;", str);
+	snprintf(Buff, sizeof(Buff), "F22,%s;", str);
 	((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 	return true;
 }
@@ -7030,7 +7039,7 @@ void ApolloRTCCMFD::menuSetTLMCCTLCTimesConstraints()
 	OrbMech::SStoHHMMSS(GC->rtcc->PZMCCPLN.TLMIN*3600.0, hh1, mm1, ss1);
 	OrbMech::SStoHHMMSS(GC->rtcc->PZMCCPLN.TLMAX*3600.0, hh2, mm2, ss2);
 
-	sprintf_s(Buff, "%d:%d:%.0lf,%d:%d:%.0lf", hh1, mm1, ss1, hh2, mm2, ss2);
+	snprintf(Buff, sizeof(Buff), "%d:%d:%.0lf,%d:%d:%.0lf", hh1, mm1, ss1, hh2, mm2, ss2);
 
 	bool TLMCCTLCTimesConstraintsInput(void *id, char *str, void *data);
 	oapiOpenInputBox("Input Format: TLMIN,TLMAX (GET in HH:MM:SS, for no constraint)", TLMCCTLCTimesConstraintsInput, Buff, 40, (void*)this);
@@ -7039,7 +7048,7 @@ void ApolloRTCCMFD::menuSetTLMCCTLCTimesConstraints()
 bool TLMCCTLCTimesConstraintsInput(void *id, char *str, void *data)
 {
 	char Buff[128];
-	sprintf_s(Buff, "F23,%s;", str);
+	snprintf(Buff, sizeof(Buff), "F23,%s;", str);
 	((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 	return true;
 }
@@ -7053,7 +7062,7 @@ void ApolloRTCCMFD::menuSetTLMCCReentryContraints()
 bool TLMCCReentryContraintsInput(void *id, char *str, void *data)
 {
 	char Buff[128];
-	sprintf_s(Buff, "F24,%s;", str);
+	snprintf(Buff, sizeof(Buff), "F24,%s;", str);
 	((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 	return true;
 }
@@ -7067,7 +7076,7 @@ void ApolloRTCCMFD::menuSetTLMCCPericynthionHeightLimits()
 bool TLMCCPericynthionHeightLimitsInput(void *id, char *str, void *data)
 {
 	char Buff[128];
-	sprintf_s(Buff, "F29,%s;", str);
+	snprintf(Buff, sizeof(Buff), "F29,%s;", str);
 	((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 	return true;
 }
@@ -9003,7 +9012,7 @@ bool GOSTDisplayREFSMMATInput(void* id, char *str, void *data)
 	mat.assign(str);
 	med = "G10,CSM,,,,," + mat + ";";
 	char Buff[64];
-	sprintf_s(Buff, 64, med.c_str());
+	snprintf(Buff, 64, med.c_str());
 
 	((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 	return true;
@@ -9028,7 +9037,7 @@ bool GOSTBoresightSCTCalcInput(void* id, char *str, void *data)
 
 		med = "G10,CSM," + std::to_string(hh) + ":" + std::to_string(mm) + ":" + std::to_string(ss) + "," + std::to_string(star) + "," + med2 + ",,;";
 		char Buff[64];
-		sprintf_s(Buff, 64, med.c_str());
+		snprintf(Buff, 64, med.c_str());
 		((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 		return true;
 	}
@@ -9054,7 +9063,7 @@ bool GOSTSXTCalcInput(void* id, char *str, void *data)
 
 		med = "G10,CSM," + std::to_string(hh) + ":" + std::to_string(mm) + ":" + std::to_string(ss) + "," + std::to_string(star) + ",," + med2 + ",;";
 		char Buff[64];
-		sprintf_s(Buff, 64, med.c_str());
+		snprintf(Buff, 64, med.c_str());
 		((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 		return true;
 	}
@@ -9088,7 +9097,7 @@ bool GOSTEnterAttitudeInput(void* id, char *str, void *data)
 		med += ";";
 
 		char Buff[64];
-		sprintf_s(Buff, 64, med.c_str());
+		snprintf(Buff, 64, med.c_str());
 
 		((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 		return true;
@@ -9124,7 +9133,7 @@ bool GOSTEnterSXTDataInput(void* id, char *str, void *data)
 		med += ";";
 
 		char Buff[64];
-		sprintf_s(Buff, 64, med.c_str());
+		snprintf(Buff, 64, med.c_str());
 
 		((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 		return true;
@@ -9146,7 +9155,7 @@ bool GOSTShowStarVectorInput(void* id, char *str, void *data)
 		std::string med;
 		med = "G14,CSM," + std::to_string(star) + ";";
 		char Buff[64];
-		sprintf_s(Buff, "%s", med.c_str());
+		snprintf(Buff, sizeof(Buff), "%s", med.c_str());
 		((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 		return true;
 	}
@@ -9171,7 +9180,7 @@ bool GOSTShowLandmarkVectorInput(void* id, char *str, void *data)
 
 		med = "G14," + med2 + ",," + std::to_string(hh) + ":" + std::to_string(mm) + ":" + std::to_string(ss) + "," + body + "," + std::to_string(lat) + "," + std::to_string(lng) + "," + std::to_string(height) + ";";
 		char Buff[64];
-		sprintf_s(Buff, "%s", med.c_str());
+		snprintf(Buff, sizeof(Buff), "%s", med.c_str());
 		((ApolloRTCCMFD*)data)->GeneralMEDRequest(Buff);
 
 		return true;
@@ -9598,7 +9607,7 @@ void ApolloRTCCMFD::set_AGCTimeUpdateCalc(char *dt)
 	}
 
 	char FullMED[128];
-	sprintf_s(FullMED, "%s%s;", MED, dt);
+	snprintf(FullMED, sizeof(FullMED), "%s%s;", MED, dt);
 	GeneralMEDRequest(FullMED);
 }
 
@@ -10291,7 +10300,7 @@ void ApolloRTCCMFD::menuMEDInputCalc()
 
 	med += ";";
 
-	sprintf_s(GC->rtcc->RTCCMEDBUFFER, 256, med.c_str());
+	snprintf(GC->rtcc->RTCCMEDBUFFER, 256, med.c_str());
 	G->GeneralMEDRequest();
 }
 

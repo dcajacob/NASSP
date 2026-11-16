@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <stdio.h>
 #include <math.h>
 #include "soundlib.h"
@@ -48,15 +48,26 @@
 #include "LVDC.h"
 #include "iu.h"
 #include "tracer.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
+#if defined(NASSP_NATIVE_LINUX)
+#include "NasspCsmBitmap.h"
+#include "Production/NativeInterpreterSdk.h"
+#include "MFDAPI.h"
+#include "ProjectApolloChecklistMFD.h"
+#endif
 
 //
 // Random functions from Yaagc.
 //
 
+#if !defined(NASSP_NATIVE_LINUX)
 extern "C" {
 	void srandom(unsigned int x);
 	long int random();
 }
+#endif
 
 //
 // Set the file name for the tracer code.
@@ -111,7 +122,9 @@ void SaturnV::initSaturnV()
 
 {
 	// DS20060301 Save DLL instance handle for later abuse
+#if !defined(NASSP_NATIVE_LINUX)
 	dllhandle = g_Param.hDLL;
+#endif
 
 	//
 	// Do the basic initialisation from the
@@ -315,6 +328,47 @@ void SaturnV::MoveEVA()
 	DefSetState(&eva);
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+VESSEL *ovcInit(OBJHANDLE vessel, int flightmodel)
+{
+	try {
+		if (!refcount) {
+			LoadSat5Meshes();
+			SaturnInitMeshes();
+			nassp::InitSaturnPanelResources();
+		}
+		BaseInit();
+		auto *result = new SaturnV(vessel, flightmodel);
+		++refcount;
+		return result;
+	} catch (...) {
+		if (!refcount) nassp::ReleaseSaturnPanelResources();
+		throw;
+	}
+}
+
+void ovcExit(VESSEL *vessel)
+{
+	delete static_cast<SaturnV*>(vessel);
+	--refcount;
+	if (!refcount) nassp::ReleaseSaturnPanelResources();
+}
+
+using Factory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor descriptor = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Saturn V and CSM",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 
 {
@@ -357,6 +411,8 @@ DLLCLBK void ovcExit (VESSEL *vessel)
 	if (vessel) delete (SaturnV *)vessel;
 }
 
+#endif
+
 void SaturnV::clbkSetClassCaps (FILEHANDLE cfg)
 
 {
@@ -390,6 +446,9 @@ void SaturnV::clbkSetClassCaps (FILEHANDLE cfg)
 		ProcessConfigFileLine(hFile, line);
 	}
 	oapiCloseFile(hFile, FILE_IN);
+#if defined(NASSP_NATIVE_LINUX)
+	nassp::RegisterSaturnChecklistMfd(*this);
+#endif
 }
 
 void SaturnV::DoFirstTimestep(double simt)

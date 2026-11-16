@@ -26,7 +26,10 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
 #include "stdio.h"
 #include "math.h"
 #include "nasspsound.h"
@@ -41,7 +44,9 @@
 #include "saturn.h"
 #include "papi.h"
 
+#if !defined(NASSP_NATIVE_LINUX)
 HINSTANCE g_hDLL;
+#endif
 char trace_file[] = "ProjectApollo MSS.log";
 
 // Pad and park coordinates
@@ -52,12 +57,41 @@ char trace_file[] = "ProjectApollo MSS.log";
 #define PAD_LAT 28.60839
  
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK void InitModule(HINSTANCE hModule) {
 
 	g_hDLL = hModule;
 }
+#endif
 
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
+
+	return new MSS(hvessel, flightmodel);
+}
+
+
+void ovcExit(VESSEL *vessel) {
+
+	if (vessel) delete (MSS*)vessel;
+}
+
+using Factory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor descriptor = {
+    sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+    sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP MSS",
+    ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+    return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
 
 	return new MSS(hvessel, flightmodel);
@@ -68,6 +102,7 @@ DLLCLBK void ovcExit(VESSEL *vessel) {
 
 	if (vessel) delete (MSS*)vessel;
 }
+#endif
 
 
 MSS::MSS(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {

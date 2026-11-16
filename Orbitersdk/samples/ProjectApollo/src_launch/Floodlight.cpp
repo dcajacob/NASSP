@@ -26,7 +26,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 #include "nasspsound.h"
@@ -35,10 +35,31 @@
 #include "Floodlight.h"
 #include "papi.h"
 
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#else
 HINSTANCE g_hDLL;
+#endif
 char trace_file[] = "ProjectApollo Floodlight.log";
  
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+VESSEL* CreateFloodlight(OBJHANDLE vessel, int model) { return new Floodlight(vessel, model); }
+void DestroyFloodlight(VESSEL *vessel) { delete static_cast<Floodlight*>(vessel); }
+using Factory = orbiter::native::VesselFactory<CreateFloodlight, DestroyFloodlight>;
+const OrbiterNativeModuleDescriptor descriptor = {
+    sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+    sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP floodlight",
+    ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+    return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK void InitModule(HINSTANCE hModule) {
 
 	g_hDLL = hModule;
@@ -56,6 +77,8 @@ DLLCLBK void ovcExit(VESSEL *vessel) {
 	if (vessel) delete (Floodlight*)vessel;
 }
 
+
+#endif
 
 Floodlight::Floodlight(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {
 
@@ -115,7 +138,7 @@ void Floodlight::clbkPreStep(double simt, double simdt, double mjd) {
 
 	// Day/night handling
 	VECTOR3 globalPos, localPos, horizonPos;
-	OBJHANDLE sun = oapiGetGbodyByName("Sun");
+	OBJHANDLE sun = oapiGetGbodyByIndex(0);
 	oapiGetGlobalPos(sun, &globalPos);
 	Global2Local(globalPos, localPos);
 	HorizonRot(localPos, horizonPos);

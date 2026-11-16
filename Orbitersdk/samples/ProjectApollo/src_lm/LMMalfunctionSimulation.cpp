@@ -24,7 +24,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #include "LMMalfunctionSimulation.h"
 #include "Malfunction.h"
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "soundlib.h"
 #include "nasspsound.h"
 #include "toggleswitch.h"

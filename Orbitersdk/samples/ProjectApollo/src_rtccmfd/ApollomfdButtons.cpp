@@ -2703,7 +2703,7 @@ ApolloRTCCMFDButtons::ApolloRTCCMFDButtons()
 		{ "Calculate solution", 0, 'C' },
 		{ "", 0, ' ' },
 		{ "", 0, ' ' },
-		{ "Transfer to MPT", 0, 'S' },
+		{ "Transfer to MPT", 0, 'Y' },
 		{ "Uplink to LVDC", 0, 'E' },
 		{ "Back to menu", 0, 'B' },
 	};
@@ -2720,7 +2720,7 @@ ApolloRTCCMFDButtons::ApolloRTCCMFDButtons()
 	RegisterFunction("CLC", OAPI_KEY_C, &ApolloRTCCMFD::menuTLIProcessorCalc);
 	RegisterFunction("", OAPI_KEY_A, &ApolloRTCCMFD::menuVoid);
 	RegisterFunction("", OAPI_KEY_P, &ApolloRTCCMFD::menuVoid);
-	RegisterFunction("MPT", OAPI_KEY_S, &ApolloRTCCMFD::SetMEDInputPageM75);
+	RegisterFunction("MPT", OAPI_KEY_Y, &ApolloRTCCMFD::SetMEDInputPageM75);
 	RegisterFunction("UPL", OAPI_KEY_E, &ApolloRTCCMFD::menuSLVTLITargetingUplink);
 	RegisterFunction("BCK", OAPI_KEY_B, &ApolloRTCCMFD::menuTranslunarPage);
 

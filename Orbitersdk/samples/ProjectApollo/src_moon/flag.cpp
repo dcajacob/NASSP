@@ -26,11 +26,17 @@
 
   // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
-#include "Flag.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
+#include "flag.h"
+#include <algorithm>
 #include "nasspdefs.h"
 
+#if !defined(NASSP_NATIVE_LINUX)
 static 	int refcount = 0;
+#endif
 static MESHHANDLE hFlag;
 
 Flag::Flag(OBJHANDLE hObj, int fmodel) : VESSEL2(hObj, fmodel)
@@ -284,10 +290,37 @@ void Flag::DefineFallAnimation()
 void Flag::MoveFlagFallAnimation(double simdt)
 {
 	double da = simdt * 1.25;
-	if (flagFallProc < 1) { flagFallProc = min(1, flagFallProc + da); }
+	if (flagFallProc < 1) { flagFallProc = (std::min)(1.0, flagFallProc + da); }
 	SetAnimation(animFlagFall, flagFallProc);
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+VESSEL *Create(OBJHANDLE vessel, int flightmodel)
+{
+	hFlag = oapiLoadMeshGlobal("ProjectApollo/Sat5flag");
+	return new Flag(vessel, flightmodel);
+}
+
+void Destroy(VESSEL *vessel)
+{
+	delete static_cast<Flag *>(vessel);
+}
+
+using Factory = orbiter::native::VesselFactory<Create, Destroy>;
+const OrbiterNativeModuleDescriptor descriptor = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "Apollo lunar flag",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK VESSEL* ovcInit(OBJHANDLE hvessel, int flightmodel)
 {
 	if (!refcount++) {
@@ -309,3 +342,4 @@ DLLCLBK void InitModule(HINSTANCE hModule)
 {
 
 }
+#endif

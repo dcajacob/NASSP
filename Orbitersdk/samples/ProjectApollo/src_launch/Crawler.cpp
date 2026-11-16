@@ -26,7 +26,10 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
 
 #include "stdio.h"
 #include "math.h"
@@ -51,14 +54,44 @@
 #define VIEWPOS_REARGANGWAY				5
 #define VIEWPOS_RIGHTREARGANGWAY		6
 
+#if !defined(NASSP_NATIVE_LINUX)
 HINSTANCE g_hDLL;
+#endif
 char trace_file[] = "ProjectApollo Crawler.log";
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK void InitModule(HINSTANCE hModule) {
 
 	g_hDLL = hModule;
 }
+#endif
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
+
+	return new Crawler(hvessel, flightmodel);
+}
+
+void ovcExit(VESSEL *vessel) {
+
+	if (vessel) delete (Crawler*)vessel;
+}
+
+using Factory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor descriptor = {
+    sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+    sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Crawler",
+    ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+    return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
 
 	return new Crawler(hvessel, flightmodel);
@@ -68,6 +101,7 @@ DLLCLBK void ovcExit(VESSEL *vessel) {
 
 	if (vessel) delete (Crawler*)vessel;
 }
+#endif
 
 Crawler::Crawler(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {
 
@@ -267,10 +301,10 @@ void Crawler::clbkPreStep(double simt, double simdt, double mjd) {
 	} else return;
 
 	if ((keyLeft && viewPos == VIEWPOS_FRONTCABIN) || (keyRight && viewPos == VIEWPOS_REARCABIN)) {
-		wheeldeflect = max(-1,wheeldeflect - (0.5 * simdt * (pow(2.0, log10(timeW))) / timeW));
+		wheeldeflect = max(-1.0,wheeldeflect - (0.5 * simdt * (pow(2.0, log10(timeW))) / timeW));
 	
 	} else if ((keyRight && viewPos == VIEWPOS_FRONTCABIN) || (keyLeft && viewPos == VIEWPOS_REARCABIN)) {
-		wheeldeflect = min(1, wheeldeflect + (0.5 * simdt * (pow(2.0, log10(timeW))) / timeW));
+		wheeldeflect = min(1.0, wheeldeflect + (0.5 * simdt * (pow(2.0, log10(timeW))) / timeW));
 
 	} else if (keyCenter) {
 		wheeldeflect = 0;
@@ -740,7 +774,7 @@ void Crawler::SetView(int viewpos) {
 	}	
 }
 
-void Crawler::SetMeshesVisibility(WORD mode) {
+void Crawler::SetMeshesVisibility(unsigned short mode) {
 
 	SetMeshVisibilityMode(meshidxCrawler, mode);
 	SetMeshVisibilityMode(meshidxTruck1, mode);

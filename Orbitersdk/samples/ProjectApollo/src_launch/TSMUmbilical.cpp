@@ -22,7 +22,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "s1csystems.h"
 #include "TailUmbilicalInterface.h"
 #include "TSMUmbilical.h"

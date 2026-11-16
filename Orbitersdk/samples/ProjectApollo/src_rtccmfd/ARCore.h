@@ -1,7 +1,7 @@
 #ifndef __ARCORE_H
 #define __ARCORE_H
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "MFDButtonPage.hpp"
 #include "ApollomfdButtons.h"
 #include "OrbMech.h"

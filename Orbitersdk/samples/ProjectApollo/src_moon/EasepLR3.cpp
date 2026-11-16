@@ -26,10 +26,15 @@
 
   // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
 #include "EasepLR3.h"
 
+#if !defined(NASSP_NATIVE_LINUX)
 static 	int refcount = 0;
+#endif
 static MESHHANDLE hEasepLR3;
 
 EasepLR3::EasepLR3(OBJHANDLE hObj, int fmodel) : VESSEL2(hObj, fmodel)
@@ -158,6 +163,33 @@ void EasepLR3::clbkVisualDestroyed(VISHANDLE vis, int refcount)
 
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+VESSEL *Create(OBJHANDLE vessel, int flightmodel)
+{
+	hEasepLR3 = oapiLoadMeshGlobal("ProjectApollo/EASEP_LR3");
+	return new EasepLR3(vessel, flightmodel);
+}
+
+void Destroy(VESSEL *vessel)
+{
+	delete static_cast<EasepLR3 *>(vessel);
+}
+
+using Factory = orbiter::native::VesselFactory<Create, Destroy>;
+const OrbiterNativeModuleDescriptor descriptor = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "Apollo EASEP laser retroreflector",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK VESSEL* ovcInit(OBJHANDLE hvessel, int flightmodel)
 {
 	if (!refcount++) {
@@ -179,3 +211,4 @@ DLLCLBK void InitModule(HINSTANCE hModule)
 {
 
 }
+#endif

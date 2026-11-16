@@ -24,7 +24,10 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
 
 #include "nasspdefs.h"
 #include "sii.h"
@@ -415,6 +418,56 @@ void SII::SetState(SIISettings &state)
 
 static int refcount = 0;
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
+
+{
+	VESSEL *v;
+
+	if (!refcount)
+	{
+		SIILoadMeshes();
+	}
+
+	v = new SII (hvessel, flightmodel);
+	++refcount;
+	return v;
+}
+
+
+void ovcExit (VESSEL *vessel)
+
+{
+	--refcount;
+
+	if (!refcount)
+	{
+
+		//
+		// This code could tidy up allocations when refcount == 0
+		//
+
+	}
+
+	if (vessel)
+		delete (SII *)vessel;
+}
+
+using Factory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor descriptor = {
+    sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+    sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP SII",
+    ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+    return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 
 {
@@ -447,3 +500,4 @@ DLLCLBK void ovcExit (VESSEL *vessel)
 	if (vessel) 
 		delete (SII *)vessel;
 }
+#endif

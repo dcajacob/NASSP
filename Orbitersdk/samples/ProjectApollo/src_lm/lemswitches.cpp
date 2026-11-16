@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <stdio.h>
 #include <math.h>
 #include "soundlib.h"
@@ -196,7 +196,7 @@ double LMSuitTempMeter::QueryValue()
 void LMSuitTempMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  3, 115-((int)((v-40)*1.7)), 0, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  3, 115-((int)((v-40)*1.7)), 0, 0, 7, 7, NasspPanelBlitKey);
 }
 
 // ECS indicator, cabin temp
@@ -224,7 +224,7 @@ double LMCabinTempMeter::QueryValue()
 void LMCabinTempMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  58, 115-((int)((v-40)*1.7)), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  58, 115-((int)((v-40)*1.7)), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 // ECS indicator, suit pressure
@@ -251,7 +251,7 @@ double LMSuitPressMeter::QueryValue()
 void LMSuitPressMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  94, 115-((int)(v*10.2)), 0, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  94, 115-((int)(v*10.2)), 0, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMSuitPressMeter::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -286,7 +286,7 @@ double LMCabinPressMeter::QueryValue()
 void LMCabinPressMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  149, 115-((int)(v*10.2)), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  149, 115-((int)(v*10.2)), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMCabinPressMeter::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -317,7 +317,7 @@ double LMCO2Meter::QueryValue()
 
 void LMCO2Meter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {
-	oapiBlt(drawSurface, NeedleSurface, 267, 114 - ((int)(v * 20.0)), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, 267, 114 - ((int)(v * 20.0)), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMCO2Meter::OnPostStep(double SimT, double DeltaT, double MJD)
@@ -352,7 +352,7 @@ double LMGlycolTempMeter::QueryValue()
 void LMGlycolTempMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  3, 111-((int)(v*1.2)), 0, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  3, 111-((int)(v*1.2)), 0, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMGlycolTempMeter::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -386,7 +386,7 @@ double LMGlycolPressMeter::QueryValue()
 void LMGlycolPressMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  58, 111-((int)(v*1.2)), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  58, 111-((int)(v*1.2)), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 // ECS indicator, Oxygen Quantity Meter
@@ -427,7 +427,7 @@ double LMOxygenQtyMeter::QueryValue()
 void LMOxygenQtyMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  94, 113-((int)(v*1.01)), 0, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  94, 113-((int)(v*1.01)), 0, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMOxygenQtyMeter::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -472,7 +472,7 @@ double LMWaterQtyMeter::QueryValue()
 void LMWaterQtyMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  149, 113-((int)(v*1.01)), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  149, 113-((int)(v*1.01)), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMWaterQtyMeter::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -509,7 +509,7 @@ double LMRCSATempInd::QueryValue()
 void LMRCSATempInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  3, 114-((int)((v-20)*1.01)), 0, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  3, 114-((int)((v-20)*1.01)), 0, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMRCSATempInd::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -546,7 +546,7 @@ double LMRCSBTempInd::QueryValue()
 void LMRCSBTempInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  58, 114-((int)((v-20)*1.01)), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  58, 114-((int)((v-20)*1.01)), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMRCSBTempInd::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -592,7 +592,7 @@ double LMRCSAPressInd::QueryValue()
 void LMRCSAPressInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  94, 101-((int)(v*0.22)), 0, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  94, 101-((int)(v*0.22)), 0, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMRCSAPressInd::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -652,7 +652,7 @@ double LMRCSBPressInd::QueryValue()
 void LMRCSBPressInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  149, 101-((int)(v*0.22)), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  149, 101-((int)(v*0.22)), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMRCSBPressInd::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -686,7 +686,7 @@ double LMRCSAQtyInd::QueryValue()
 void LMRCSAQtyInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  185, 97-((int)(v*0.8)), 0, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  185, 97-((int)(v*0.8)), 0, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMRCSAQtyInd::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -720,7 +720,7 @@ double LMRCSBQtyInd::QueryValue()
 void LMRCSBQtyInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface,  240, 97-((int)(v*0.8)), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  240, 97-((int)(v*0.8)), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void LMRCSBQtyInd::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -773,7 +773,7 @@ double TempMonitorInd::QueryValue()
 void TempMonitorInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface, 35, 112 - ((int)((v + 100)*0.34)), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, 35, 112 - ((int)((v + 100)*0.34)), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void TempMonitorInd::OnPostStep(double SimT, double DeltaT, double MJD)
@@ -807,7 +807,7 @@ double EngineThrustInd::QueryValue()
 void EngineThrustInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {	
-	oapiBlt(drawSurface, NeedleSurface,  3, 114-((int)v), 0, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  3, 114-((int)v), 0, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void EngineThrustInd::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -845,7 +845,7 @@ double CommandedThrustInd::QueryValue()
 
 void CommandedThrustInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 {	
-	oapiBlt(drawSurface, NeedleSurface,  58, 114-((int)v), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  58, 114-((int)v), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 void CommandedThrustInd::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -879,7 +879,7 @@ double ThrustWeightInd::QueryValue()
 void ThrustWeightInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {
-	oapiBlt(drawSurface, NeedleSurface, 20, (int)(161.5 - 25.0*v), 0, 0, 8, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface, 20, (int)(161.5 - 25.0*v), 0, 0, 8, 7, NasspPanelBlitKey);
 }
 
 double ThrustWeightInd::AdjustForPower(double val)
@@ -927,7 +927,7 @@ double MainFuelTempInd::QueryValue()
 void MainFuelTempInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {	
-	oapiBlt(drawSurface, NeedleSurface,  94, 115-((int)((v-40)*1.7)), 0, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  94, 115-((int)((v-40)*1.7)), 0, 0, 7, 7, NasspPanelBlitKey);
 }
 
 // Main Fuel Pressure Indicator
@@ -965,7 +965,7 @@ double MainFuelPressInd::QueryValue()
 void MainFuelPressInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {	
-	oapiBlt(drawSurface, NeedleSurface,  185, 115-((int)(v*0.34)), 0, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  185, 115-((int)(v*0.34)), 0, 0, 7, 7, NasspPanelBlitKey);
 }
 
 // Main Oxidizer Temperature Indicator
@@ -1008,7 +1008,7 @@ double MainOxidizerTempInd::QueryValue()
 void MainOxidizerTempInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {	
-	oapiBlt(drawSurface, NeedleSurface,  149, 115-((int)((v-40)*1.7)), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  149, 115-((int)((v-40)*1.7)), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 // Main Oxidizer Pressure Indicator
@@ -1046,7 +1046,7 @@ double MainOxidizerPressInd::QueryValue()
 void MainOxidizerPressInd::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 
 {	
-	oapiBlt(drawSurface, NeedleSurface,  240, 115-((int)(v*0.34)), 7, 0, 7, 7, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, NeedleSurface,  240, 115-((int)(v*0.34)), 7, 0, 7, 7, NasspPanelBlitKey);
 }
 
 // INVERTER SWITCH
@@ -1190,7 +1190,7 @@ void LEMDCVoltMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface){
 	// 20V = 180+35	
 	v = 240-((v-18)*12.5);
 	DrawNeedle(drawSurface, 49, 49, 25.0, v * RAD);
-	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 99, 98, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 99, 98, NasspPanelBlitKey);
 }
 
 void LEMDCVoltMeter::OnPostStep(double SimT, double DeltaT, double MJD) {
@@ -1256,7 +1256,7 @@ void LEMDCAmMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface){
 	
 	v = 220-(v*2.25);
 	DrawNeedle(drawSurface, 49, 49, 25.0, v * RAD);
-	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 99, 98, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 99, 98, NasspPanelBlitKey);
 }
 
 // LEM Voltmeter-feeding CB hack
@@ -1282,21 +1282,21 @@ void EngineStartButton::DoDrawSwitch(SURFHANDLE DrawSurface) {
 	if (LightLogic()) {
 		if (IsUp())
 		{
-			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset + height, width, height, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset + height, width, height, NasspPanelBlitKey);
 		}
 		else
 		{
-			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset + width, yOffset + height, width, height, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset + width, yOffset + height, width, height, NasspPanelBlitKey);
 		}
 	}
 	else {
 		if (IsUp())
 		{
-			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, NasspPanelBlitKey);
 		}
 		else
 		{
-			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset + width, yOffset, width, height, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset + width, yOffset, width, height, NasspPanelBlitKey);
 		}
 	}
 }
@@ -1306,21 +1306,21 @@ void EngineStartButton::DoDrawSwitchVC(SURFHANDLE surf, SURFHANDLE DrawSurface, 
 	if (LightLogic()) {
 		if (IsUp())
 		{
-			oapiBlt(surf, DrawSurface, 0, 0, xOffset*TexMul, yOffset*TexMul + height*TexMul, width*TexMul, height*TexMul, SURF_PREDEF_CK);
+			oapiBlt(surf, DrawSurface, 0, 0, xOffset*TexMul, yOffset*TexMul + height*TexMul, width*TexMul, height*TexMul, NasspPanelBlitKey);
 		}
 		else
 		{
-			oapiBlt(surf, DrawSurface, 0, 0, xOffset*TexMul + width*TexMul, yOffset*TexMul + height*TexMul, width*TexMul, height*TexMul, SURF_PREDEF_CK);
+			oapiBlt(surf, DrawSurface, 0, 0, xOffset*TexMul + width*TexMul, yOffset*TexMul + height*TexMul, width*TexMul, height*TexMul, NasspPanelBlitKey);
 		}
 	}
 	else {
 		if (IsUp())
 		{
-			oapiBlt(surf, DrawSurface, 0, 0, xOffset*TexMul, yOffset*TexMul, width*TexMul, height*TexMul, SURF_PREDEF_CK);
+			oapiBlt(surf, DrawSurface, 0, 0, xOffset*TexMul, yOffset*TexMul, width*TexMul, height*TexMul, NasspPanelBlitKey);
 		}
 		else
 		{
-			oapiBlt(surf, DrawSurface, 0, 0, xOffset*TexMul + width*TexMul, yOffset*TexMul, width*TexMul, height*TexMul, SURF_PREDEF_CK);
+			oapiBlt(surf, DrawSurface, 0, 0, xOffset*TexMul + width*TexMul, yOffset*TexMul, width*TexMul, height*TexMul, NasspPanelBlitKey);
 		}
 	}
 }
@@ -1398,21 +1398,21 @@ void EngineStopButton::DoDrawSwitch(SURFHANDLE DrawSurface) {
 	if (lem->LtgORideAnunSwitch.Voltage() > 1.8 && (lem->LampToneTestRotary.GetState() == 3 || IsUp())){
 		if (IsUp())
 		{
-			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset + height, width, height, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset + height, width, height, NasspPanelBlitKey);
 		}
 		else
 		{
-			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset + width, yOffset + height, width, height, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset + width, yOffset + height, width, height, NasspPanelBlitKey);
 		}
 	}
 	else {
 		if (IsUp())
 		{
-			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, NasspPanelBlitKey);
 		}
 		else
 		{
-			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset + width, yOffset, width, height, SURF_PREDEF_CK);
+			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset + width, yOffset, width, height, NasspPanelBlitKey);
 		}
 	}
 }
@@ -1506,7 +1506,7 @@ void LMAbortStageButton::DrawSwitch(SURFHANDLE DrawSurface) {
 		DoDrawSwitch(DrawSurface);
 	}
 	else {
-		oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, guardSurface, guardX, guardY, guardXOffset, guardYOffset, guardWidth, guardHeight, NasspPanelBlitKey);
 	}
 }
 
@@ -1651,7 +1651,7 @@ double LEMSteerableAntennaPitchMeter::QueryValue() {
 void LEMSteerableAntennaPitchMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface) {
 	v = (210.0 - v) * 0.75;
 	DrawNeedle(drawSurface, 91 / 2, 90 / 2, 25.0, v * RAD);
-	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 91, 90, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 91, 90, NasspPanelBlitKey);
 }
 
 void LEMSteerableAntennaYawMeter::Init(oapi::Pen *p0, oapi::Pen *p1, SwitchRow &row, LEM *s, SURFHANDLE frameSurface)
@@ -1667,7 +1667,7 @@ double LEMSteerableAntennaYawMeter::QueryValue() {
 void LEMSteerableAntennaYawMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface) {
 	v = (120.0 - v) * 0.75;
 	DrawNeedle(drawSurface, 91 / 2, 90 / 2, 25.0, v * RAD);
-	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 91, 90, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 91, 90, NasspPanelBlitKey);
 }
 
 void LEMSBandAntennaStrengthMeter::Init(oapi::Pen *p0, oapi::Pen *p1, SwitchRow &row, LEM *s, SURFHANDLE frameSurface)
@@ -1683,7 +1683,7 @@ double LEMSBandAntennaStrengthMeter::QueryValue() {
 void LEMSBandAntennaStrengthMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface) {
 	v = 220.0 - 2.7*v;
 	DrawNeedle(drawSurface, 91 / 2, 90 / 2, 25.0, v * RAD);
-	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 91, 90, SURF_PREDEF_CK);
+	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 91, 90, NasspPanelBlitKey);
 }
 
 LEMDPSValveTalkback::LEMDPSValveTalkback()
@@ -1996,10 +1996,10 @@ void LEMDigitalHeliumPressureMeter::SystemTimestep(double simdt)
 void DEDAPushSwitch::DoDrawSwitch(SURFHANDLE DrawSurface) {
 
 	if (IsUp()) {
-		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset, width, height, NasspPanelBlitKey);
 	}
 	else {
-		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset + 173, width, height, SURF_PREDEF_CK);
+		oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset, yOffset + 173, width, height, NasspPanelBlitKey);
 	}
 }
 

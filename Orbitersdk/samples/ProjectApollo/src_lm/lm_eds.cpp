@@ -22,7 +22,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "soundlib.h"
 #include "toggleswitch.h"
 #include "LEM.h"
@@ -327,7 +327,7 @@ LEM_EDS::LEM_EDS() :
 	HeliumPressurizationDelayB(6.0)
 {
 	lem = NULL;
-	LG_Deployed = FALSE;
+	LG_Deployed = false;
 	Deadface = false;
 
 	gear_state.SetOperatingSpeed(1.0);
@@ -700,12 +700,12 @@ void LEM_EDS::Timestep(double simdt) {
 
 	// PROCESS THESE IN THIS ORDER:
 	// Landing Gear Deployment
-	if (LG_Deployed == FALSE && lem->status == 0) {
+	if (LG_Deployed == false && lem->status == 0) {
 		// Check?
 		if (lem->LandingGearPyros.Blown()) {
 			// Deploy landing gear
 			lem->SetLmVesselHoverStage();
-			LG_Deployed = TRUE;
+			LG_Deployed = true;
 		}
 	}
 

@@ -24,11 +24,14 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "Sat5LMDSC.h"
 #include "LM_DescentStageResource.h"
 #include "Mission.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
 
 static int refcount = 0;
 static MESHHANDLE LM_Descent;
@@ -350,11 +353,11 @@ void Sat5LMDSC::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
 
 	while (oapiReadScenario_nextline(scn, line))
 	{
-		if (!_strnicmp(line, "STATE", 5))
+		if (!strnicmp(line, "STATE", 5))
 		{
 			sscanf(line + 5, "%d", &state);
 		}
-		else if (!_strnicmp(line, "APOLLONO", 8)) {
+		else if (!strnicmp(line, "APOLLONO", 8)) {
 			sscanf(line + 8, "%d", &ApolloNo);
 
 			if (sscanf(line + 8, "%d", &ApolloNo) == 1)
@@ -381,6 +384,42 @@ void Sat5LMDSC::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
 // API interface
 // ==============================================================
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel)
+{
+	if (!refcount) {
+		LM_Descent = oapiLoadMeshGlobal("ProjectApollo/LM_DescentStage");
+		LM_DescentNoLeg = oapiLoadMeshGlobal("ProjectApollo/LM_DescentStageNoLeg");
+		seperation_junk.tex = oapiRegisterParticleTexture("ProjectApollo/junk");
+	}
+	auto* vessel = new Sat5LMDSC(hvessel, flightmodel);
+	++refcount;
+	return vessel;
+}
+
+void ovcExit(VESSEL *vessel)
+{
+	if (!vessel) return;
+	delete static_cast<Sat5LMDSC*>(vessel);
+	--refcount;
+}
+
+
+using Factory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor descriptor = {
+    sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+    sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Lunar Module descent stage",
+    ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+    return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel)
 {
 	if (!refcount++) {
@@ -395,6 +434,8 @@ DLLCLBK void ovcExit(VESSEL *vessel)
 {
 	if (vessel) delete (Sat5LMDSC*)vessel;
 }
+
+#endif
 
 void Sat5LMDSC::clbkSetClassCaps(FILEHANDLE cfg)
 {

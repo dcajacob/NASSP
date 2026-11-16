@@ -22,7 +22,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "CWEA_FlipFlop.h"
 
 CWEA_FlipFlop::CWEA_FlipFlop()

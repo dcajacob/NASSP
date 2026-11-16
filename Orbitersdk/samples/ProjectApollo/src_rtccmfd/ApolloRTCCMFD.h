@@ -15,6 +15,8 @@
 #ifndef __ApolloRTCCMFD_H
 #define __ApolloRTCCMFD_H
 
+#include "NasspOrbiterSdk.h"
+#include "MFDAPI.h"
 #include "ARCore.h"
 #include "soundlib.h"
 #include "apolloguidance.h"
@@ -71,7 +73,7 @@ public:
 	//Functions using CW and CH
 	void Text(oapi::Sketchpad *skp, int x, int y, std::string message);
 	void Text(oapi::Sketchpad *skp, int x, int y, std::string message, int xmax, int ymax);
-	void TextW(oapi::Sketchpad *skp, int x, int y, LPWSTR message);
+	void TextW(oapi::Sketchpad *skp, int x, int y, const wchar_t *message);
 	void Text(oapi::Sketchpad *skp, int x, int y, char *format, double val);
 	void Text(oapi::Sketchpad *skp, int x, int y, char *format, int val);
 	void Text_GET_MMSS(oapi::Sketchpad *skp, int x, int y, double val);

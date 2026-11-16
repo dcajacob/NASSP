@@ -59,6 +59,7 @@ public:
 	inline VECTOR3 getResolverSineGimbal() { return SineGimbal; };
 	inline VECTOR3 getResolverCosineGimbal() { return CosineGimbal; };
 	VECTOR3 getPlatformEulerAnglesZYX();
+	const MATRIX3 &GetOrbiterAttitudeReference() const { return Orbiter.AttitudeReference; }
 	virtual VECTOR3 GetTotalAttitude();
 
 	void WireToBuses(e_object *a, e_object *b, GuardedToggleSwitch *s);

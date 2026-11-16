@@ -26,10 +26,15 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
 #include "EasepSWC.h"
 
+#if !defined(NASSP_NATIVE_LINUX)
 static 	int refcount = 0;
+#endif
 static MESHHANDLE hEasepSWC;
 
 EasepSWC::EasepSWC(OBJHANDLE hObj, int fmodel) : VESSEL2(hObj, fmodel)
@@ -168,6 +173,33 @@ void EasepSWC::clbkVisualDestroyed(VISHANDLE vis, int refcount)
 
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+VESSEL *Create(OBJHANDLE vessel, int flightmodel)
+{
+	hEasepSWC = oapiLoadMeshGlobal("ProjectApollo/EASEP_SWC");
+	return new EasepSWC(vessel, flightmodel);
+}
+
+void Destroy(VESSEL *vessel)
+{
+	delete static_cast<EasepSWC *>(vessel);
+}
+
+using Factory = orbiter::native::VesselFactory<Create, Destroy>;
+const OrbiterNativeModuleDescriptor descriptor = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "Apollo solar wind collector",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel)
 {
 	if (!refcount++) {
@@ -189,3 +221,4 @@ DLLCLBK void InitModule(HINSTANCE hModule)
 {
 
 }
+#endif

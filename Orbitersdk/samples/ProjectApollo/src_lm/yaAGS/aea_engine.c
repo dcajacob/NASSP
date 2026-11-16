@@ -122,9 +122,9 @@ static const int64_t CONST64_1 = ~0377777777777LL;
 static const int64_t CONST64_2 = 0177777777777LL;
 static const int64_t CONST64_3 = 1LL;
 #else
-static const int64_t CONST64_1 = ~0377777777777i64;
-static const int64_t CONST64_2 = 0177777777777i64;
-static const int64_t CONST64_3 = 1i64;
+static const int64_t CONST64_1 = ~0377777777777LL;
+static const int64_t CONST64_2 = 0177777777777LL;
+static const int64_t CONST64_3 = 1LL;
 #endif
 
 //----------------------------------------------------------------------------

@@ -29,6 +29,8 @@ See http://nassp.sourceforge.net/license/ for more details.
 #include "saturnv.h"
 #include "LVDC.h"
 #include "iu.h"
+#include "sivb.h"
+#include "nassputils.h"
 #include "LEM.h"
 #include "../src_rtccmfd/OrbMech.h"
 #include "mcc.h"
@@ -343,12 +345,25 @@ bool RTCC::CalculationMTP_G(int fcn, void*&pad, char * upString, char * upDesc, 
 	case 15: //TLI Evaluation
 	{
 		SaturnV *SatV = (SaturnV*)calcParams.src;
-		LVDCSV *lvdc = (LVDCSV*)SatV->iu->GetLVDC();
-
-		if (lvdc->LVDC_Timebase == 5)
+		IU *instrumentUnit = SatV->GetIU();
+		// The IU moves to the S-IVB when Columbia separates. The crew
+		// can acknowledge an earlier PAD after that separation.
+		if (!instrumentUnit)
 		{
-			scrubbed = true;
+			auto handle = oapiGetVesselByName(mcc->LVName);
+			auto *stage = handle ? oapiGetVesselInterface(handle) : nullptr;
+			if (stage && nassp::utils::IsVessel(stage, nassp::utils::SaturnV_SIVB))
+			{
+				instrumentUnit = static_cast<SIVB *>(stage)->GetIU();
+			}
 		}
+
+		auto *lvdc = instrumentUnit ? static_cast<LVDCSV *>(instrumentUnit->GetLVDC()) : nullptr;
+		if (!lvdc && upMessage)
+		{
+			sprintf(upMessage, "TLI evaluation unavailable: no Saturn V LVDC");
+		}
+		scrubbed = !lvdc || lvdc->LVDC_Timebase == 5;
 	}
 	break;
 	case 16: //Evasive Maneuver

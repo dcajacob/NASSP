@@ -1,3 +1,9 @@
+#include "NasspSocket.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include <netinet/tcp.h>
+#endif
+#include <chrono>
+#include <thread>
 #include "ARCore.h"
 
 #include "soundlib.h"
@@ -20,10 +26,21 @@
 
 using namespace nassp;
 
-static WSADATA wsaData;
-static SOCKET m_socket;
+static nassp::SocketRuntime socketRuntime;
+static nassp::SocketHandle m_socket = nassp::invalidSocket;
 static sockaddr_in clientService;
-static SOCKET close_Socket = INVALID_SOCKET;
+
+static void CloseSocket(nassp::SocketHandle &socket)
+{
+    if (socket == nassp::invalidSocket) return;
+#if defined(_WIN32)
+    closesocket(socket);
+#else
+    close(socket);
+#endif
+    socket = nassp::invalidSocket;
+}
+
 static char debugString[100];
 static char debugStringBuffer[100];
 static char debugWinsock[100];
@@ -219,10 +236,7 @@ AR_GCore::AR_GCore(AR_GlobalData* GD, VESSEL* v)
 	PDAPABTCOF[5] = 0.0;
 	PDAPABTCOF[6] = 0.0;
 	PDAPABTCOF[7] = 0.0;
-	for (int i = 0; i < 20; i++)
-	{
-		PDAP_UplinkData[i] = 0;
-	}
+	for (auto &word : PDAP_UplinkData) word = 0;
 	PDAP_V_hmin = 0.0;
 	DEDA224 = 0;
 	DEDA225 = 0;
@@ -616,7 +630,7 @@ int AR_GCore::MPTTrajectoryUpdate(VESSEL *ves, bool csm)
 		rtcc->BZUSEVEC.data[id].LandingSiteIndicator = false;
 	}
 	char Buff[16];
-	sprintf_s(Buff, "API%c%03d", letter, rtcc->BZUSEVEC.data[id].ID);
+	snprintf(Buff, sizeof(Buff), "API%c%03d", letter, rtcc->BZUSEVEC.data[id].ID);
 	rtcc->BZUSEVEC.data[id].VectorCode.assign(Buff);
 	return 0;
 }
@@ -776,8 +790,8 @@ ARCore::ARCore(VESSEL* v, AR_GCore* gcin, AR_GlobalData* gdin)
 	{
 		g_Data.emem[i] = 0;
 	}
-	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (iResult != NO_ERROR) {
+	int iResult = socketRuntime.Start();
+	if (iResult != 0) {
 		sprintf(debugWinsock, "ERROR AT WSAStartup()");
 	}
 	else {
@@ -919,24 +933,56 @@ ARCore::ARCore(VESSEL* v, AR_GCore* gcin, AR_GlobalData* gdin)
 
 ARCore::~ARCore()
 {
+	subThreadWorker.Kill();
 }
 
 void ARCore::MinorCycle(double SimT, double SimDT, double mjd)
 {
-	if (g_Data.connStatus > 0 && g_Data.uplinkBuffer.size() > 0) {
-		if (SimT > g_Data.uplinkBufferSimt + 0.1) {
-			unsigned char data = g_Data.uplinkBuffer.front();
-			send(m_socket, (char *)&data, 1, 0);
+	if (g_Data.connStatus == 0) return;
+
+#if defined(NASSP_NATIVE_LINUX)
+	// The same socket carries telemetry back to the MFD. Drain it so a
+	// completed write can close normally after the computer consumes it.
+	char telemetry[16384];
+	const auto received = recv(m_socket, telemetry, sizeof(telemetry), MSG_DONTWAIT);
+	if (received == 0 || (received < 0 && !nassp::RetrySocketError(nassp::LastSocketError()))) {
+		g_Data.uplinkBuffer = {};
+		g_Data.connStatus = 0;
+		CloseSocket(m_socket);
+		snprintf(debugWinsock, sizeof(debugWinsock), "DISCONNECTED");
+		return;
+	}
+#endif
+
+	if (!g_Data.uplinkBuffer.empty()) {
+		if (SimT <= g_Data.uplinkBufferSimt + 0.1) return;
+
+		const char data = static_cast<char>(g_Data.uplinkBuffer.front());
+		const auto sent = send(m_socket, &data, 1, nassp::socketSendFlags);
+		if (sent == 1) {
 			g_Data.uplinkBuffer.pop();
 			g_Data.uplinkBufferSimt = SimT;
-		}
-	}
-	else if (g_Data.connStatus > 0 && g_Data.uplinkBuffer.size() == 0) {
-		if (g_Data.connStatus == 1)	{
-			sprintf(debugWinsock, "DISCONNECTED");
+		} else if (sent < 0 && !nassp::RetrySocketError(nassp::LastSocketError())) {
+			g_Data.uplinkBuffer = {};
 			g_Data.connStatus = 0;
-			closesocket(m_socket);
+			CloseSocket(m_socket);
+			snprintf(debugWinsock, sizeof(debugWinsock), "UPLINK SEND FAILED");
 		}
+		return;
+	}
+
+	if (g_Data.connStatus == 1) {
+#if defined(NASSP_NATIVE_LINUX)
+		// Half-close the command side and continue reading until the
+		// spacecraft closes its side after processing the last byte.
+		if (shutdown(m_socket, SHUT_WR) == 0) {
+			g_Data.connStatus = 2;
+			return;
+		}
+#endif
+		g_Data.connStatus = 0;
+		CloseSocket(m_socket);
+		snprintf(debugWinsock, sizeof(debugWinsock), "DISCONNECTED");
 	}
 }
 
@@ -1314,7 +1360,7 @@ void ARCore::UpdateGRRTime(VESSEL *v)
 	double ss;
 	char Buff[128];
 	OrbMech::SStoHHMMSS(T_L, hh, mm, ss, 0.01);
-	sprintf_s(Buff, "P12,IU1,%d:%d:%.2lf,%.3lf;", hh, mm, ss, Azi*DEG);
+	snprintf(Buff, sizeof(Buff), "P12,IU1,%d:%d:%.2lf,%.3lf;", hh, mm, ss, Azi*DEG);
 	GC->rtcc->GMGMED(Buff);
 }
 
@@ -1801,6 +1847,12 @@ void ARCore::StateVectorUplink(int type)
 		isCSM = false;
 	}
 
+	// A state-vector load always contains 21 octal words, including the count.
+	if (SVOctals[0] != 21)
+	{
+		return;
+	}
+
 	for (int i = 0;i < 021;i++)
 	{
 		g_Data.emem[i] = SVOctals[i];
@@ -1812,7 +1864,7 @@ void ARCore::StateVectorUplink(int type)
 
 void ARCore::send_agc_key(char key, bool isCSM)
 {
-	int bytesXmit = SOCKET_ERROR;
+	int bytesXmit = -1;
 	unsigned char cmdbuf[4];
 
 	if (isCSM == false){
@@ -2303,14 +2355,14 @@ void ARCore::AP12AbortCoefUplink()
 void ARCore::UplinkData(bool isCSM)
 {
 	if (g_Data.connStatus == 0) {
-		int bytesRecv = SOCKET_ERROR;
+		int bytesRecv = -1;
 		char addr[256];
 		char buffer[8];
 		m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (m_socket == INVALID_SOCKET) {
+		if (m_socket == nassp::invalidSocket) {
 			//g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "ERROR AT SOCKET(): %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "ERROR AT SOCKET(): %d", nassp::LastSocketError());
+			CloseSocket(m_socket);
 			return;
 		}
 		sprintf(addr, "127.0.0.1");
@@ -2324,12 +2376,18 @@ void ARCore::UplinkData(bool isCSM)
 		{
 			clientService.sin_port = htons(14243);
 		}
-		if (connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService)) == SOCKET_ERROR) {
+		if (connect(m_socket, (sockaddr*)&clientService, sizeof(clientService)) == -1) {
 			//g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %d", nassp::LastSocketError());
+			CloseSocket(m_socket);
 			return;
 		}
+#if defined(NASSP_NATIVE_LINUX)
+		// Command bytes are paced by simulated time. Do not wait for TCP's
+		// delayed acknowledgments in wall-clock time.
+		const int noDelay = 1;
+		setsockopt(m_socket, IPPROTO_TCP, TCP_NODELAY, &noDelay, sizeof(noDelay));
+#endif
 		sprintf(debugWinsock, "CONNECTED");
 		g_Data.uplinkState = 0;
 		send_agc_key('V', isCSM);
@@ -2342,7 +2400,7 @@ void ARCore::UplinkData(bool isCSM)
 
 		while (g_Data.uplinkState < cnt && cnt <= 20 && cnt >= 3)
 			{
-				sprintf(buffer, "%ld", g_Data.emem[g_Data.uplinkState]);
+				snprintf(buffer, sizeof(buffer), "%d", g_Data.emem[g_Data.uplinkState]);
 				uplink_word(buffer, isCSM);
 				g_Data.uplinkState++;
 			}
@@ -2359,14 +2417,14 @@ void ARCore::UplinkData(bool isCSM)
 void ARCore::UplinkData2(bool isCSM)
 {
 	if (g_Data.connStatus == 0) {
-		int bytesRecv = SOCKET_ERROR;
+		int bytesRecv = -1;
 		char addr[256];
 		char buffer[8];
 		m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (m_socket == INVALID_SOCKET) {
+		if (m_socket == nassp::invalidSocket) {
 			//g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "ERROR AT SOCKET(): %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "ERROR AT SOCKET(): %d", nassp::LastSocketError());
+			CloseSocket(m_socket);
 			return;
 		}
 		sprintf(addr, "127.0.0.1");
@@ -2380,12 +2438,18 @@ void ARCore::UplinkData2(bool isCSM)
 		{
 			clientService.sin_port = htons(14243);
 		}
-		if (connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService)) == SOCKET_ERROR) {
+		if (connect(m_socket, (sockaddr*)&clientService, sizeof(clientService)) == -1) {
 			//g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %d", nassp::LastSocketError());
+			CloseSocket(m_socket);
 			return;
 		}
+#if defined(NASSP_NATIVE_LINUX)
+		// Command bytes are paced by simulated time. Do not wait for TCP's
+		// delayed acknowledgments in wall-clock time.
+		const int noDelay = 1;
+		setsockopt(m_socket, IPPROTO_TCP, TCP_NODELAY, &noDelay, sizeof(noDelay));
+#endif
 		sprintf(debugWinsock, "CONNECTED");
 		g_Data.uplinkState = 0;
 		send_agc_key('V', isCSM);
@@ -2398,7 +2462,7 @@ void ARCore::UplinkData2(bool isCSM)
 
 		while (g_Data.uplinkState < cnt && cnt <= 20 && cnt >= 3)
 		{
-			sprintf(buffer, "%ld", g_Data.emem[g_Data.uplinkState]);
+			snprintf(buffer, sizeof(buffer), "%d", g_Data.emem[g_Data.uplinkState]);
 			uplink_word(buffer, isCSM);
 			g_Data.uplinkState++;
 		}
@@ -2415,14 +2479,14 @@ void ARCore::UplinkData2(bool isCSM)
 void ARCore::UplinkDataV70V73(bool v70, bool isCSM)
 {
 	if (g_Data.connStatus == 0) {
-		int bytesRecv = SOCKET_ERROR;
+		int bytesRecv = -1;
 		char addr[256];
 		char buffer[8];
 		m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (m_socket == INVALID_SOCKET) {
+		if (m_socket == nassp::invalidSocket) {
 			//g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "ERROR AT SOCKET(): %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "ERROR AT SOCKET(): %d", nassp::LastSocketError());
+			CloseSocket(m_socket);
 			return;
 		}
 		sprintf(addr, "127.0.0.1");
@@ -2436,12 +2500,18 @@ void ARCore::UplinkDataV70V73(bool v70, bool isCSM)
 		{
 			clientService.sin_port = htons(14243);
 		}
-		if (connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService)) == SOCKET_ERROR) {
+		if (connect(m_socket, (sockaddr*)&clientService, sizeof(clientService)) == -1) {
 			//g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %d", nassp::LastSocketError());
+			CloseSocket(m_socket);
 			return;
 		}
+#if defined(NASSP_NATIVE_LINUX)
+		// Command bytes are paced by simulated time. Do not wait for TCP's
+		// delayed acknowledgments in wall-clock time.
+		const int noDelay = 1;
+		setsockopt(m_socket, IPPROTO_TCP, TCP_NODELAY, &noDelay, sizeof(noDelay));
+#endif
 		sprintf(debugWinsock, "CONNECTED");
 		g_Data.uplinkState = 0;
 		send_agc_key('V', isCSM);
@@ -2458,7 +2528,7 @@ void ARCore::UplinkDataV70V73(bool v70, bool isCSM)
 
 		while (g_Data.uplinkState < 2)
 		{
-			sprintf(buffer, "%ld", g_Data.emem[g_Data.uplinkState]);
+			snprintf(buffer, sizeof(buffer), "%d", g_Data.emem[g_Data.uplinkState]);
 			uplink_word(buffer, isCSM);
 			g_Data.uplinkState++;
 		}
@@ -2679,9 +2749,11 @@ int ARCore::startSubthread(int fcn, bool IsCSM) {
 		subThreadWorker.Start([this] { subThread(); });
 	}
 	else {
+#if defined(_WIN32)
 		subThreadWorker.Kill();
 		subThreadStatus = DONE;
-		return(-1);
+#endif
+		return -1;
 	}
 	return(0);
 }
@@ -2693,7 +2765,7 @@ int ARCore::subThread()
 	subThreadStatus = RUNNING;
 	switch (subThreadMode) {
 	case 0: // Test
-		Sleep(5000); // Waste 5 seconds
+		std::this_thread::sleep_for(std::chrono::seconds(5)); // Waste 5 seconds
 		Result = DONE;  // Success (negative = error)
 		break;
 	case 1: //Two Impulse Multiple Solution
@@ -5794,7 +5866,7 @@ int ARCore::subThread()
 
 			while (getline(medinputfile, line))
 			{
-				sprintf_s(GC->rtcc->RTCCMEDBUFFER, 256, line.c_str());
+				snprintf(GC->rtcc->RTCCMEDBUFFER, sizeof(GC->rtcc->RTCCMEDBUFFER), "%s", line.c_str());
 				GC->rtcc->GMGMED(GC->rtcc->RTCCMEDBUFFER);
 			}
 		}

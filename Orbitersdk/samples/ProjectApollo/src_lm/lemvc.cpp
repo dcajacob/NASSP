@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 #include "lmresource.h"
@@ -32,10 +32,15 @@
 #include "nasspdefs.h"
 #include "nassputils.h"
 
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeInterpreterSdk.h"
+#include "NasspCsmBitmap.h"
+#else
 #ifdef _OPENORBITER
 #include <gcCoreAPI.h>
 #else
 #include <gcConst.h>
+#endif
 #endif
 
 #include "nasspsound.h"
@@ -49,6 +54,12 @@
 #include "Mission.h"
 
 #include "LEM.h"
+#if defined(NASSP_NATIVE_LINUX)
+static constexpr auto SetLmVcColourKey = nassp::SetCsmSurfaceColourKey;
+#else
+static constexpr auto SetLmVcColourKey = oapiSetSurfaceColourKey;
+#endif
+
 
 // ==============================================================
 // VC Constants
@@ -965,16 +976,16 @@ void LEM::InitPanelVC() {
 	srf[SRF_AOTFONT_VC] = oapiLoadTexture("ProjectApollo/VC/aot_font.dds");
 	srf[SRF_ENGSTARTSTOP_VC] = oapiLoadTexture("ProjectApollo/VC/LMEngStartStop.dds");
 
-	oapiSetSurfaceColourKey(srf[SRF_VC_DIGITALDISP], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_DIGITALDISP2], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_DSKYDISP], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_DSKY_LIGHTS], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_RADAR_TAPEA], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_RADAR_TAPEB], ck);
-	oapiSetSurfaceColourKey(srf[SRF_VC_RADAR_TAPE2], ck);
-	oapiSetSurfaceColourKey(srf[SFR_VC_CW_LIGHTS], ck);
-	oapiSetSurfaceColourKey(srf[SRF_AOTFONT_VC], ck);
-	oapiSetSurfaceColourKey(srf[SRF_ENGSTARTSTOP_VC], ck);
+	SetLmVcColourKey(srf[SRF_VC_DIGITALDISP], ck);
+	SetLmVcColourKey(srf[SRF_VC_DIGITALDISP2], ck);
+	SetLmVcColourKey(srf[SRF_VC_DSKYDISP], ck);
+	SetLmVcColourKey(srf[SRF_VC_DSKY_LIGHTS], ck);
+	SetLmVcColourKey(srf[SRF_VC_RADAR_TAPEA], ck);
+	SetLmVcColourKey(srf[SRF_VC_RADAR_TAPEB], ck);
+	SetLmVcColourKey(srf[SRF_VC_RADAR_TAPE2], ck);
+	SetLmVcColourKey(srf[SFR_VC_CW_LIGHTS], ck);
+	SetLmVcColourKey(srf[SRF_AOTFONT_VC], ck);
+	SetLmVcColourKey(srf[SRF_ENGSTARTSTOP_VC], ck);
 }
 
 void LEM::ReleaseSurfacesVC()
@@ -3896,7 +3907,7 @@ void LEM::SetPowerFailureLight(int m, double voltage) {
 	oapiSetMaterial(vcmesh, m, mat);
 }
 
-#ifdef _OPENORBITER
+#if defined(_OPENORBITER) || defined(NASSP_NATIVE_LINUX)
 void LEM::SetVCLighting(UINT meshidx, DWORD *matList, MatProp EmissionMode, double state, int cnt)
 #else
 void LEM::SetVCLighting(UINT meshidx, DWORD *matList, int EmissionMode, double state, int cnt)
@@ -3913,6 +3924,11 @@ void LEM::SetVCLighting(UINT meshidx, DWORD *matList, int EmissionMode, double s
 	{
 		if (matList[i] == VC_MAT_NONE) continue;
 
+#if defined(NASSP_NATIVE_LINUX)
+		const float level = static_cast<float>(state);
+		const oapi::FVECTOR4 value = {level, level, level, 1.0f};
+		oapiSetMaterialEx(hMesh, matList[i], EmissionMode, &value);
+#else
 		gcCore *pCore = gcGetCoreInterface();
 		if (pCore) {
 			FVECTOR4 value;
@@ -3926,10 +3942,11 @@ void LEM::SetVCLighting(UINT meshidx, DWORD *matList, int EmissionMode, double s
 			pCore->MeshMaterial(hMesh, matList[i], EmissionMode, &value, true);
 #endif
 		}
+#endif
 	}
 }
 
-#ifdef _OPENORBITER
+#if defined(_OPENORBITER) || defined(NASSP_NATIVE_LINUX)
 void LEM::SetVCLighting(UINT meshidx, int material, MatProp EmissionMode, double state, int cnt)
 #else
 void LEM::SetVCLighting(UINT meshidx, int material, int EmissionMode, double state, int cnt)
@@ -3942,6 +3959,11 @@ void LEM::SetVCLighting(UINT meshidx, int material, int EmissionMode, double sta
     if (!hMesh)
         return;
 
+#if defined(NASSP_NATIVE_LINUX)
+	const float level = static_cast<float>(state);
+	const oapi::FVECTOR4 value = {level, level, level, 1.0f};
+	oapiSetMaterialEx(hMesh, material, EmissionMode, &value);
+#else
 	gcCore *pCore = gcGetCoreInterface();
 	if (pCore) {
 		FVECTOR4 value;
@@ -3955,6 +3977,7 @@ void LEM::SetVCLighting(UINT meshidx, int material, int EmissionMode, double sta
 		pCore->MeshMaterial(hMesh, material, EmissionMode, &value, true);
 #endif
 		}
+#endif
 }
 
 void LEM::MoveFlashlight()
@@ -3985,7 +4008,7 @@ void LEM::SetFlashlightOn(bool state)
 
 void LEM::ToggleFlashlight()
 {
-	if ((oapiCockpitMode() == COCKPIT_VIRTUAL) && (oapiCameraMode() == CAM_COCKPIT)) {
+	if ((oapiCockpitMode() == COCKPIT_VIRTUAL) && oapiCameraInternal()) {
 		SetFlashlightOn(!flashlightOn);
 	}
 }

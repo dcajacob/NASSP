@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 #include "lmresource.h"
@@ -42,43 +42,100 @@
 
 #include "LEM.h"
  
-#define LOADBMP(id) (LoadBitmap (g_Param.hDLL, MAKEINTRESOURCE (id)))
+#if defined(NASSP_NATIVE_LINUX)
+#include "NasspCsmBitmap.h"
+#include "Production/NativeInterpreterSdk.h"
+#include <stdexcept>
+using LmPanelBitmap = SURFHANDLE;
+#else
+using LmPanelBitmap = HBITMAP;
+#endif
 
 extern GDIParams g_Param;
 
-DLLCLBK void InitModule(HINSTANCE hModule)
-
+static LmPanelBitmap LoadLmBitmap(int id)
 {
+#if defined(NASSP_NATIVE_LINUX)
+    static constexpr struct { int id; const char *path; } bitmaps[] = {
+#include "nassp-lm-bitmaps.inc"
+    };
+    for (const auto &bitmap : bitmaps) {
+        if (bitmap.id != id) continue;
+        if (auto surface = oapiLoadSurfaceEx(bitmap.path, OAPISURFACE_NOMIPMAPS)) return surface;
+        throw std::runtime_error(std::string("Cannot load NASSP Lunar Module bitmap ") + bitmap.path);
+    }
+    throw std::runtime_error("Unknown NASSP Lunar Module bitmap ID " + std::to_string(id));
+#else
+    return LoadBitmap(g_Param.hDLL, MAKEINTRESOURCE(id));
+#endif
+}
+
+static SURFHANDLE LoadLmSurface(int id)
+{
+#if defined(NASSP_NATIVE_LINUX)
+    return LoadLmBitmap(id);
+#else
+    return oapiCreateSurface(LoadLmBitmap(id));
+#endif
+}
+
+static void SetLmColourKey(SURFHANDLE surface, DWORD colour)
+{
+#if defined(NASSP_NATIVE_LINUX)
+    nassp::SetCsmSurfaceColourKey(surface, colour);
+#else
+    oapiSetSurfaceColourKey(surface, colour);
+#endif
+}
+
+#if defined(NASSP_NATIVE_LINUX)
+void InitLmPanelResources()
+#else
+DLLCLBK void InitModule(HINSTANCE hModule)
+#endif
+{
+#if !defined(NASSP_NATIVE_LINUX)
 	g_Param.hDLL = hModule;
+#endif
 
 	// allocate GDI resources
 	g_Param.font[0]  = oapiCreateFont(-13, true, "Arial");
 	g_Param.font[1]  = oapiCreateFont(-10, true, "Arial");
 
-	g_Param.brush[0] = oapiCreateBrush(RGB(0,255,0));    // green
-	g_Param.brush[1] = oapiCreateBrush(RGB(255,0,0));    // red
-	g_Param.brush[2] = oapiCreateBrush(RGB(154,154,154));  // Grey
-	g_Param.brush[3] = oapiCreateBrush(RGB(3,3,3));  // Black
+	g_Param.brush[0] = oapiCreateBrush(oapiGetColour(0,255,0));    // green
+	g_Param.brush[1] = oapiCreateBrush(oapiGetColour(255,0,0));    // red
+	g_Param.brush[2] = oapiCreateBrush(oapiGetColour(154,154,154));  // Grey
+	g_Param.brush[3] = oapiCreateBrush(oapiGetColour(3,3,3));  // Black
 
-	g_Param.pen[0] = oapiCreatePen(1, 1, RGB(224,224,224));
-	g_Param.pen[1] = oapiCreatePen(1, 3, RGB(164,164,164));
-	g_Param.pen[2] = oapiCreatePen(1, 1, RGB(255,0,0));
-	g_Param.pen[3] = oapiCreatePen(1, 3, RGB(255,0,0));
-	g_Param.pen[4] = oapiCreatePen(1, 3, RGB(0,0,0));
+	g_Param.pen[0] = oapiCreatePen(1, 1, oapiGetColour(224,224,224));
+	g_Param.pen[1] = oapiCreatePen(1, 3, oapiGetColour(164,164,164));
+	g_Param.pen[2] = oapiCreatePen(1, 1, oapiGetColour(255,0,0));
+	g_Param.pen[3] = oapiCreatePen(1, 3, oapiGetColour(255,0,0));
+	g_Param.pen[4] = oapiCreatePen(1, 3, oapiGetColour(0,0,0));
 
 	g_Param.col[2] = oapiGetColour(154,154,154);
 	g_Param.col[3] = oapiGetColour(3,3,3);
 	g_Param.col[4] = oapiGetColour(255,0,255);
 }
 
-DLLCLBK void ExitModule(HINSTANCE hDll)
-
+#if defined(NASSP_NATIVE_LINUX)
+void ReleaseLmPanelResources()
+#else
+DLLCLBK void ExitModule(HINSTANCE)
+#endif
 {
-	int i;
-	// deallocate sketchpad resources
-	for (i = 0; i < 2; i++) oapiReleaseFont(g_Param.font[i]);
-	for (i = 0; i < 4; i++) oapiReleaseBrush(g_Param.brush[i]);
-	for (i = 0; i < 4; i++) oapiReleasePen(g_Param.pen[i]);
+    for (auto *&font : g_Param.font) {
+        if (font) oapiReleaseFont(font);
+        font = nullptr;
+    }
+    for (auto *&brush : g_Param.brush) {
+        if (brush) oapiReleaseBrush(brush);
+        brush = nullptr;
+    }
+    for (auto *&pen : g_Param.pen) {
+        if (pen) oapiReleasePen(pen);
+        pen = nullptr;
+    }
 }
 
 #define RETICLE_X_CENTER 525
@@ -91,7 +148,7 @@ void DrawReticle(oapi::Sketchpad * skp, double angle, int dimmer)
 {
 	int xend, yend;
 	// Set up Dimmer Pen
-	oapi::Pen* pen = oapiCreatePen(1, 1, RGB(dimmer, 64, 64));
+	oapi::Pen* pen = oapiCreatePen(1, 1, oapiGetColour(dimmer, 64, 64));
 	oapi::Pen* oldObj = skp->SetPen(pen);
 	// Draw crosshair vertical member
 	xend = RETICLE_X_CENTER - (int)(RETICLE_RADIUS * sin(angle));
@@ -1078,16 +1135,16 @@ void LEM::RedrawPanel_Horizon (SURFHANDLE surf)
 	for (iphi = (int)phi0+4, i = 0; i < 8; i++, iphi--) {
 		if (iphi) {
 			int lb = abs(iphi)-1; if (lb >= 9) lb = 16-lb;
-			oapiBlt (surf, srf[SRF_DIGITAL], size-5+(int)xlr, size-3+(int)ylr, 9*lb, 96, 9, 7, SURF_PREDEF_CK);
-			oapiBlt (surf, srf[SRF_DIGITAL], size-5+(int)xll, size-3+(int)yll, 9*lb, 96, 9, 7, SURF_PREDEF_CK);
+			oapiBlt (surf, srf[SRF_DIGITAL], size-5+(int)xlr, size-3+(int)ylr, 9*lb, 96, 9, 7, NasspPanelBlitKey);
+			oapiBlt (surf, srf[SRF_DIGITAL], size-5+(int)xll, size-3+(int)yll, 9*lb, 96, 9, 7, NasspPanelBlitKey);
 		}
 		xlr -= dsinb, ylr += dcosb;
 		xll -= dsinb, yll += dcosb;
 	}
 
 	// now overlay markings with transparent blt
-	oapiBlt (surf, srf[SRF_DIGITAL], 0, 0, 0, 0, 96, 96, SURF_PREDEF_CK);
-	// oapiBlt (surf, srf[5], 0, 0, 0, 0, 96, 96, SURF_PREDEF_CK);
+	oapiBlt (surf, srf[SRF_DIGITAL], 0, 0, 0, 0, 96, 96, NasspPanelBlitKey);
+	// oapiBlt (surf, srf[5], 0, 0, 0, 0, 96, 96, NasspPanelBlitKey);
 }
 
 void DrawNeedle(oapi::Sketchpad* skp, int x, int y, double rad, double angle, oapi::Pen* pen0, oapi::Pen* pen1)
@@ -1165,254 +1222,254 @@ void LEM::InitPanel (int panel)
 
 {
     // LEM Main Panel
-		srf[0]						= oapiCreateSurface (LOADBMP (IDB_ECSG));
-		srf[SRF_INDICATOR]			= oapiCreateSurface (LOADBMP (IDB_INDICATOR));
-		srf[SRF_NEEDLE]				= oapiCreateSurface (LOADBMP (IDB_NEEDLE1));
-		srf[SRF_DIGITAL]			= oapiCreateSurface (LOADBMP (IDB_DIGITAL));
-		srf[SRF_SWITCHUP]			= oapiCreateSurface (LOADBMP (IDB_SWITCHUP));
+		srf[0]						= LoadLmSurface(IDB_ECSG);
+		srf[SRF_INDICATOR]			= LoadLmSurface(IDB_INDICATOR);
+		srf[SRF_NEEDLE]				= LoadLmSurface(IDB_NEEDLE1);
+		srf[SRF_DIGITAL]			= LoadLmSurface(IDB_DIGITAL);
+		srf[SRF_SWITCHUP]			= LoadLmSurface(IDB_SWITCHUP);
 		// Unused surface 5 was
-		// srf[5]						= oapiCreateSurface (LOADBMP (IDB_FDAI));
-		srf[SRF_LIGHTS2]			= oapiCreateSurface (LOADBMP (IDB_LIGHTS2));
-		srf[SRF_LEMSWITCH1]			= oapiCreateSurface (LOADBMP (IDB_LEMSWITCH1));
-		srf[SRF_LEMSWTICH3]			= oapiCreateSurface (LOADBMP (IDB_LEMSWITCH3));
+		// srf[5]						= LoadLmSurface(IDB_FDAI);
+		srf[SRF_LIGHTS2]			= LoadLmSurface(IDB_LIGHTS2);
+		srf[SRF_LEMSWITCH1]			= LoadLmSurface(IDB_LEMSWITCH1);
+		srf[SRF_LEMSWTICH3]			= LoadLmSurface(IDB_LEMSWITCH3);
 		// Unused surface 7 was
-		// srf[7]						= oapiCreateSurface (LOADBMP (IDB_SWLEVER));
-		srf[SRF_SECSWITCH]			= oapiCreateSurface (LOADBMP (IDB_SECSWITCH));
-		// srf[9]						= oapiCreateSurface (LOADBMP (IDB_ABORT));
-		// srf[10]						= oapiCreateSurface (LOADBMP (IDB_ANNUN));
-		// srf[11]						= oapiCreateSurface (LOADBMP (IDB_LAUNCH));		
-		srf[SRF_LMTWOPOSLEVER]		= oapiCreateSurface (LOADBMP (IDB_LEMSWITCH2));
-		// srf[12]						= oapiCreateSurface (LOADBMP (IDB_LV_ENG));
+		// srf[7]						= LoadLmSurface(IDB_SWLEVER);
+		srf[SRF_SECSWITCH]			= LoadLmSurface(IDB_SECSWITCH);
+		// srf[9]						= LoadLmSurface(IDB_ABORT);
+		// srf[10]						= LoadLmSurface(IDB_ANNUN);
+		// srf[11]						= LoadLmSurface(IDB_LAUNCH);
+		srf[SRF_LMTWOPOSLEVER]		= LoadLmSurface(IDB_LEMSWITCH2);
+		// srf[12]						= LoadLmSurface(IDB_LV_ENG);
 		// There was a conflict here between hardcoded index 13 and SRF_DSKY
 		// Hardcoded index 13 was moved to SRF_LIGHTS2 (index 5)
-		srf[SRF_DSKY]				= oapiCreateSurface (LOADBMP (IDB_DSKY_LIGHTS));
-		// srf[14]						= oapiCreateSurface (LOADBMP (IDB_ALTIMETER));
-		// srf[15]						= oapiCreateSurface (LOADBMP (IDB_ANLG_GMETER));
-		// srf[16]						= oapiCreateSurface (LOADBMP (IDB_THRUST));
-		// srf[17]					= oapiCreateSurface (LOADBMP (IDB_HEADING));
-		srf[SRF_CONTACTLIGHT]		= oapiCreateSurface (LOADBMP (IDB_CONTACT));
+		srf[SRF_DSKY]				= LoadLmSurface(IDB_DSKY_LIGHTS);
+		// srf[14]						= LoadLmSurface(IDB_ALTIMETER);
+		// srf[15]						= LoadLmSurface(IDB_ANLG_GMETER);
+		// srf[16]						= LoadLmSurface(IDB_THRUST);
+		// srf[17]					= LoadLmSurface(IDB_HEADING);
+		srf[SRF_CONTACTLIGHT]		= LoadLmSurface(IDB_CONTACT);
 		// srf[19] (SRF_THREEPOSSWITCH305) was hardcoded in several places but never actually loaded?
-		// srf[SRF_THREEPOSSWITCH305]	= oapiCreateSurface (LOADBMP (IDB_CONTACT));
+		// srf[SRF_THREEPOSSWITCH305]	= LoadLmSurface(IDB_CONTACT);
 		// There was a conflict here between hardcoded index 20 and SRF_LMABORTBUTTON
 		// Hardcoded index 20 was moved to SRF_LEMSWITCH3 (index 7)		
-		srf[SRF_LMABORTBUTTON]		= oapiCreateSurface (LOADBMP (IDB_LMABORTBUTTON));
-		srf[SRF_LMMFDFRAME]			= oapiCreateSurface (LOADBMP (IDB_LMMFDFRAME));
-		srf[SRF_LMTHREEPOSLEVER]	= oapiCreateSurface (LOADBMP (IDB_LMTHREEPOSLEVER));
-		srf[SRF_LMTHREEPOSSWITCH]	= oapiCreateSurface (LOADBMP (IDB_LMTHREEPOSSWITCH));
-		srf[SRF_DSKYDISP]			= oapiCreateSurface (LOADBMP (IDB_DSKY_DISP));
-		//srf[SRF_FDAI]	        	= oapiCreateSurface (LOADBMP (IDB_FDAI));		//The LM FDAI texture doesn't need this
-		srf[SRF_FDAIROLL]			= oapiCreateSurface (LOADBMP (IDB_LEM_FDAI_ROLL));
-		srf[SRF_CWSLIGHTS]			= oapiCreateSurface (LOADBMP (IDB_CWS_LIGHTS));
-		srf[SRF_DSKYKEY]			= oapiCreateSurface (LOADBMP (IDB_DSKY_KEY));
-		srf[SRF_LEMROTARY]			= oapiCreateSurface (LOADBMP (IDB_LEMROTARY));
-		srf[SRF_FDAIOFFFLAG]		= oapiCreateSurface (LOADBMP (IDB_FDAIOFFFLAG));
-		srf[SRF_FDAINEEDLES]		= oapiCreateSurface (LOADBMP (IDB_LEM_FDAI_NEEDLES));
-		srf[SRF_CIRCUITBRAKER]		= oapiCreateSurface (LOADBMP (IDB_CIRCUITBRAKER));
-		srf[SRF_LEM_COAS1]			= oapiCreateSurface (LOADBMP (IDB_LEM_COAS1));
-		srf[SRF_LEM_COAS2]			= oapiCreateSurface (LOADBMP (IDB_LEM_COAS2));
-		srf[SRF_DCVOLTS]			= oapiCreateSurface (LOADBMP (IDB_LMDCVOLTS));
-		srf[SRF_DCAMPS]				= oapiCreateSurface (LOADBMP (IDB_LMDCAMPS));
-		srf[SRF_LMYAWDEGS]			= oapiCreateSurface (LOADBMP (IDB_LMYAWDEGS));
-		srf[SRF_LMPITCHDEGS]		= oapiCreateSurface (LOADBMP (IDB_LMPITCHDEGS));
-		srf[SRF_LMSIGNALSTRENGTH]	= oapiCreateSurface (LOADBMP (IDB_LMSIGNALSTRENGTH));
-		srf[SRF_AOTRETICLEKNOB]     = oapiCreateSurface (LOADBMP (IDB_AOT_RETICLE_KNOB));
-		srf[SRF_AOTSHAFTKNOB]       = oapiCreateSurface (LOADBMP (IDB_AOT_SHAFT_KNOB));
-		srf[SRF_AOT_FONT]           = oapiCreateSurface (LOADBMP (IDB_AOT_FONT));
-		srf[SRF_THUMBWHEEL_LARGEFONTS] = oapiCreateSurface (LOADBMP (IDB_THUMBWHEEL_LARGEFONTS));
-		srf[SRF_FIVE_POS_SWITCH]	= oapiCreateSurface (LOADBMP (IDB_FIVE_POS_SWITCH));
-		srf[SRF_RR_NOTRACK]         = oapiCreateSurface (LOADBMP (IDB_RR_NOTRACK));
-		srf[SRF_LEM_STAGESWITCH]	= oapiCreateSurface (LOADBMP (IDB_LEM_STAGESWITCH));
-		srf[SRF_DIGITALDISP2]		= oapiCreateSurface (LOADBMP (IDB_DIGITALDISP2));
-		srf[SRF_RADAR_TAPE]         = oapiCreateSurface (LOADBMP (IDB_RADAR_TAPE));
-		srf[SRF_RADAR_TAPE2]        = oapiCreateSurface(LOADBMP(IDB_RADAR_TAPE2));
-		srf[SRF_SEQ_LIGHT]			= oapiCreateSurface (LOADBMP (IDB_SEQ_LIGHT));
-		srf[SRF_LMENGINE_START_STOP_BUTTONS] = oapiCreateSurface (LOADBMP (IDB_LMENGINESTARTSTOPBUTTONS));
-		srf[SRF_LMTRANSLBUTTON]		= oapiCreateSurface (LOADBMP (IDB_LMTRANSLBUTTON));
-		srf[SRF_LEMVENT]			= oapiCreateSurface (LOADBMP (IDB_LEMVENT));
-		srf[SRF_LEM_ACT_OVRD]		= oapiCreateSurface (LOADBMP (IDB_LEM_ACT_OVRD));
-		srf[SRF_LEM_CAN_SEL]		= oapiCreateSurface (LOADBMP (IDB_LEM_CAN_SEL));
-		srf[SRF_LEM_ECS_ROTARY]		= oapiCreateSurface (LOADBMP (IDB_LEM_ECS_ROTARY));
-		srf[SRF_LEM_H20_SEL]		= oapiCreateSurface (LOADBMP (IDB_LEM_H20_SEL));
-		srf[SRF_LEM_H20_SEP]		= oapiCreateSurface (LOADBMP (IDB_LEM_H20_SEP));
-		srf[SRF_LEM_ISOL_ROTARY]	= oapiCreateSurface (LOADBMP (IDB_LEM_ISOL_ROTARY));
-		srf[SRF_LEM_PRIM_C02]		= oapiCreateSurface (LOADBMP (IDB_LEM_PRIM_C02));
-		srf[SRF_LEM_SEC_C02]		= oapiCreateSurface (LOADBMP (IDB_LEM_SEC_C02));
-		srf[SRF_LEM_SGD_LEVER]		= oapiCreateSurface (LOADBMP (IDB_LEM_SGD_LEVER));
-		srf[SRF_LEM_U_HATCH_REL_VLV] = oapiCreateSurface(LOADBMP(IDB_LEM_UPPER_REL_VLV));
-		srf[SRF_LEM_U_HATCH_HNDL]   = oapiCreateSurface(LOADBMP(IDB_LEM_UPPER_HANDLE));
-		srf[SRF_LEM_F_HATCH_HNDL]   = oapiCreateSurface(LOADBMP(IDB_LEM_FWD_HANDLE));
-		srf[SRF_LEM_F_HATCH_REL_VLV] = oapiCreateSurface(LOADBMP(IDB_LEM_FWD_REL_VLV));
-		srf[SRF_LEM_INTLK_OVRD]     = oapiCreateSurface(LOADBMP(IDB_LEM_INTLK_OVRD));
-		srf[SRF_RED_INDICATOR]		= oapiCreateSurface(LOADBMP(IDB_RED_INDICATOR));
-		srf[SRF_LEM_MASTERALARM]	 = oapiCreateSurface(LOADBMP(IDB_LEM_MASTERALARM));
-		srf[SRF_DEDA_KEY]			= oapiCreateSurface(LOADBMP(IDB_DEDA_KEY));
-		srf[SRF_DEDA_LIGHTS]		= oapiCreateSurface(LOADBMP(IDB_DEDA_LIGHTS));
-		srf[SRF_ORDEAL_ROTARY]		= oapiCreateSurface(LOADBMP(IDB_ORDEAL_ROTARY));
-		srf[SRF_ORDEAL_PANEL]		= oapiCreateSurface(LOADBMP(IDB_ORDEAL_PANEL));
-		srf[SRF_TW_NEEDLE]			= oapiCreateSurface(LOADBMP(IDB_TW_NEEDLE));
-		srf[SRF_PWRFAIL_LIGHT]      = oapiCreateSurface(LOADBMP(IDB_LEM_PWRFAIL_LIGHT));
+		srf[SRF_LMABORTBUTTON]		= LoadLmSurface(IDB_LMABORTBUTTON);
+		srf[SRF_LMMFDFRAME]			= LoadLmSurface(IDB_LMMFDFRAME);
+		srf[SRF_LMTHREEPOSLEVER]	= LoadLmSurface(IDB_LMTHREEPOSLEVER);
+		srf[SRF_LMTHREEPOSSWITCH]	= LoadLmSurface(IDB_LMTHREEPOSSWITCH);
+		srf[SRF_DSKYDISP]			= LoadLmSurface(IDB_DSKY_DISP);
+		//srf[SRF_FDAI]	        	= LoadLmSurface(IDB_FDAI);		//The LM FDAI texture doesn't need this
+		srf[SRF_FDAIROLL]			= LoadLmSurface(IDB_LEM_FDAI_ROLL);
+		srf[SRF_CWSLIGHTS]			= LoadLmSurface(IDB_CWS_LIGHTS);
+		srf[SRF_DSKYKEY]			= LoadLmSurface(IDB_DSKY_KEY);
+		srf[SRF_LEMROTARY]			= LoadLmSurface(IDB_LEMROTARY);
+		srf[SRF_FDAIOFFFLAG]		= LoadLmSurface(IDB_FDAIOFFFLAG);
+		srf[SRF_FDAINEEDLES]		= LoadLmSurface(IDB_LEM_FDAI_NEEDLES);
+		srf[SRF_CIRCUITBRAKER]		= LoadLmSurface(IDB_CIRCUITBRAKER);
+		srf[SRF_LEM_COAS1]			= LoadLmSurface(IDB_LEM_COAS1);
+		srf[SRF_LEM_COAS2]			= LoadLmSurface(IDB_LEM_COAS2);
+		srf[SRF_DCVOLTS]			= LoadLmSurface(IDB_LMDCVOLTS);
+		srf[SRF_DCAMPS]				= LoadLmSurface(IDB_LMDCAMPS);
+		srf[SRF_LMYAWDEGS]			= LoadLmSurface(IDB_LMYAWDEGS);
+		srf[SRF_LMPITCHDEGS]		= LoadLmSurface(IDB_LMPITCHDEGS);
+		srf[SRF_LMSIGNALSTRENGTH]	= LoadLmSurface(IDB_LMSIGNALSTRENGTH);
+		srf[SRF_AOTRETICLEKNOB]     = LoadLmSurface(IDB_AOT_RETICLE_KNOB);
+		srf[SRF_AOTSHAFTKNOB]       = LoadLmSurface(IDB_AOT_SHAFT_KNOB);
+		srf[SRF_AOT_FONT]           = LoadLmSurface(IDB_AOT_FONT);
+		srf[SRF_THUMBWHEEL_LARGEFONTS] = LoadLmSurface(IDB_THUMBWHEEL_LARGEFONTS);
+		srf[SRF_FIVE_POS_SWITCH]	= LoadLmSurface(IDB_FIVE_POS_SWITCH);
+		srf[SRF_RR_NOTRACK]         = LoadLmSurface(IDB_RR_NOTRACK);
+		srf[SRF_LEM_STAGESWITCH]	= LoadLmSurface(IDB_LEM_STAGESWITCH);
+		srf[SRF_DIGITALDISP2]		= LoadLmSurface(IDB_DIGITALDISP2);
+		srf[SRF_RADAR_TAPE]         = LoadLmSurface(IDB_RADAR_TAPE);
+		srf[SRF_RADAR_TAPE2]        = LoadLmSurface(IDB_RADAR_TAPE2);
+		srf[SRF_SEQ_LIGHT]			= LoadLmSurface(IDB_SEQ_LIGHT);
+		srf[SRF_LMENGINE_START_STOP_BUTTONS] = LoadLmSurface(IDB_LMENGINESTARTSTOPBUTTONS);
+		srf[SRF_LMTRANSLBUTTON]		= LoadLmSurface(IDB_LMTRANSLBUTTON);
+		srf[SRF_LEMVENT]			= LoadLmSurface(IDB_LEMVENT);
+		srf[SRF_LEM_ACT_OVRD]		= LoadLmSurface(IDB_LEM_ACT_OVRD);
+		srf[SRF_LEM_CAN_SEL]		= LoadLmSurface(IDB_LEM_CAN_SEL);
+		srf[SRF_LEM_ECS_ROTARY]		= LoadLmSurface(IDB_LEM_ECS_ROTARY);
+		srf[SRF_LEM_H20_SEL]		= LoadLmSurface(IDB_LEM_H20_SEL);
+		srf[SRF_LEM_H20_SEP]		= LoadLmSurface(IDB_LEM_H20_SEP);
+		srf[SRF_LEM_ISOL_ROTARY]	= LoadLmSurface(IDB_LEM_ISOL_ROTARY);
+		srf[SRF_LEM_PRIM_C02]		= LoadLmSurface(IDB_LEM_PRIM_C02);
+		srf[SRF_LEM_SEC_C02]		= LoadLmSurface(IDB_LEM_SEC_C02);
+		srf[SRF_LEM_SGD_LEVER]		= LoadLmSurface(IDB_LEM_SGD_LEVER);
+		srf[SRF_LEM_U_HATCH_REL_VLV] = LoadLmSurface(IDB_LEM_UPPER_REL_VLV);
+		srf[SRF_LEM_U_HATCH_HNDL]   = LoadLmSurface(IDB_LEM_UPPER_HANDLE);
+		srf[SRF_LEM_F_HATCH_HNDL]   = LoadLmSurface(IDB_LEM_FWD_HANDLE);
+		srf[SRF_LEM_F_HATCH_REL_VLV] = LoadLmSurface(IDB_LEM_FWD_REL_VLV);
+		srf[SRF_LEM_INTLK_OVRD]     = LoadLmSurface(IDB_LEM_INTLK_OVRD);
+		srf[SRF_RED_INDICATOR]		= LoadLmSurface(IDB_RED_INDICATOR);
+		srf[SRF_LEM_MASTERALARM]	 = LoadLmSurface(IDB_LEM_MASTERALARM);
+		srf[SRF_DEDA_KEY]			= LoadLmSurface(IDB_DEDA_KEY);
+		srf[SRF_DEDA_LIGHTS]		= LoadLmSurface(IDB_DEDA_LIGHTS);
+		srf[SRF_ORDEAL_ROTARY]		= LoadLmSurface(IDB_ORDEAL_ROTARY);
+		srf[SRF_ORDEAL_PANEL]		= LoadLmSurface(IDB_ORDEAL_PANEL);
+		srf[SRF_TW_NEEDLE]			= LoadLmSurface(IDB_TW_NEEDLE);
+		srf[SRF_PWRFAIL_LIGHT]      = LoadLmSurface(IDB_LEM_PWRFAIL_LIGHT);
 		
 		//
 		// Flashing borders.
 		//
 
-		srf[SRF_BORDER_34x29]		= oapiCreateSurface (LOADBMP (IDB_BORDER_34x29));
-		srf[SRF_BORDER_34x61]		= oapiCreateSurface (LOADBMP (IDB_BORDER_34x61));
-		srf[SRF_BORDER_55x111]		= oapiCreateSurface (LOADBMP (IDB_BORDER_55x111));
-		srf[SRF_BORDER_46x75]		= oapiCreateSurface (LOADBMP (IDB_BORDER_46x75));
-		srf[SRF_BORDER_39x38]		= oapiCreateSurface (LOADBMP (IDB_BORDER_39x38));
-		srf[SRF_BORDER_92x40]		= oapiCreateSurface (LOADBMP (IDB_BORDER_92x40));
-		srf[SRF_BORDER_34x33]		= oapiCreateSurface (LOADBMP (IDB_BORDER_34x33));
-		srf[SRF_BORDER_29x29]		= oapiCreateSurface (LOADBMP (IDB_BORDER_29x29));
-		srf[SRF_BORDER_34x31]		= oapiCreateSurface (LOADBMP (IDB_BORDER_34x31));
-		srf[SRF_BORDER_47x43]		= oapiCreateSurface (LOADBMP(IDB_BORDER_47x43));
-		srf[SRF_BORDER_50x158]		= oapiCreateSurface (LOADBMP (IDB_BORDER_50x158));
-		srf[SRF_BORDER_38x52]		= oapiCreateSurface (LOADBMP (IDB_BORDER_38x52));
-		srf[SRF_BORDER_34x34]		= oapiCreateSurface (LOADBMP (IDB_BORDER_34x34));
-		srf[SRF_BORDER_90x90]		= oapiCreateSurface (LOADBMP (IDB_BORDER_90x90));
-		srf[SRF_BORDER_84x84]		= oapiCreateSurface (LOADBMP (IDB_BORDER_84x84));
-		srf[SRF_BORDER_70x70]		= oapiCreateSurface (LOADBMP (IDB_BORDER_70x70));
-		srf[SRF_BORDER_23x20]		= oapiCreateSurface (LOADBMP (IDB_BORDER_23x20));
-		srf[SRF_BORDER_78x78]		= oapiCreateSurface (LOADBMP (IDB_BORDER_78x78));
-		srf[SRF_BORDER_32x160]		= oapiCreateSurface (LOADBMP (IDB_BORDER_32x160));
-		srf[SRF_BORDER_72x72]		= oapiCreateSurface (LOADBMP (IDB_BORDER_72x72));
-		srf[SRF_BORDER_75x64]		= oapiCreateSurface (LOADBMP (IDB_BORDER_75x64));
-		srf[SRF_BORDER_34x39]		= oapiCreateSurface (LOADBMP (IDB_BORDER_34x39));
-		srf[SRF_BORDER_38x38]		= oapiCreateSurface (LOADBMP (IDB_BORDER_38x38));
-		srf[SRF_BORDER_40x40]		= oapiCreateSurface (LOADBMP (IDB_BORDER_40x40));
-		srf[SRF_BORDER_126x131]     = oapiCreateSurface (LOADBMP (IDB_BORDER_126x131));
-		srf[SRF_BORDER_115x115]     = oapiCreateSurface (LOADBMP (IDB_BORDER_115x115));
-		srf[SRF_BORDER_68x68]       = oapiCreateSurface (LOADBMP (IDB_BORDER_68x68));
-		srf[SRF_BORDER_169x168]     = oapiCreateSurface (LOADBMP (IDB_BORDER_169x168));
-		srf[SRF_BORDER_67x64]       = oapiCreateSurface (LOADBMP (IDB_BORDER_67x64));
-		srf[SRF_BORDER_201x205]     = oapiCreateSurface (LOADBMP (IDB_BORDER_201x205));
-		srf[SRF_BORDER_122x265]     = oapiCreateSurface (LOADBMP (IDB_BORDER_122x265));
-		srf[SRF_BORDER_225x224]     = oapiCreateSurface (LOADBMP (IDB_BORDER_225x224));
-		srf[SRF_BORDER_51x54]       = oapiCreateSurface (LOADBMP (IDB_BORDER_51x54));
-		srf[SRF_BORDER_205x205]     = oapiCreateSurface (LOADBMP (IDB_BORDER_205x205));
-		srf[SRF_BORDER_30x144]      = oapiCreateSurface (LOADBMP (IDB_BORDER_30x144));
-		srf[SRF_BORDER_400x400]     = oapiCreateSurface (LOADBMP (IDB_BORDER_400x400));
-		srf[SRF_BORDER_1001x240]    = oapiCreateSurface (LOADBMP (IDB_BORDER_1001x240));
-		srf[SRF_BORDER_360x316]     = oapiCreateSurface (LOADBMP (IDB_BORDER_360x316));
-		srf[SRF_BORDER_178x187]     = oapiCreateSurface (LOADBMP (IDB_BORDER_178x187));
-		srf[SRF_BORDER_55x55]       = oapiCreateSurface (LOADBMP (IDB_BORDER_55x55));
-		srf[SRF_BORDER_109x119]     = oapiCreateSurface (LOADBMP (IDB_BORDER_109x119));
-		srf[SRF_BORDER_68x69]       = oapiCreateSurface (LOADBMP (IDB_BORDER_68x69));
-		srf[SRF_BORDER_210x200]     = oapiCreateSurface (LOADBMP (IDB_BORDER_210x200));
-		srf[SRF_BORDER_104x106]     = oapiCreateSurface (LOADBMP (IDB_BORDER_104x106));
-		srf[SRF_BORDER_286x197]     = oapiCreateSurface (LOADBMP (IDB_BORDER_286x197));
+		srf[SRF_BORDER_34x29]		= LoadLmSurface(IDB_BORDER_34x29);
+		srf[SRF_BORDER_34x61]		= LoadLmSurface(IDB_BORDER_34x61);
+		srf[SRF_BORDER_55x111]		= LoadLmSurface(IDB_BORDER_55x111);
+		srf[SRF_BORDER_46x75]		= LoadLmSurface(IDB_BORDER_46x75);
+		srf[SRF_BORDER_39x38]		= LoadLmSurface(IDB_BORDER_39x38);
+		srf[SRF_BORDER_92x40]		= LoadLmSurface(IDB_BORDER_92x40);
+		srf[SRF_BORDER_34x33]		= LoadLmSurface(IDB_BORDER_34x33);
+		srf[SRF_BORDER_29x29]		= LoadLmSurface(IDB_BORDER_29x29);
+		srf[SRF_BORDER_34x31]		= LoadLmSurface(IDB_BORDER_34x31);
+		srf[SRF_BORDER_47x43]		= LoadLmSurface(IDB_BORDER_47x43);
+		srf[SRF_BORDER_50x158]		= LoadLmSurface(IDB_BORDER_50x158);
+		srf[SRF_BORDER_38x52]		= LoadLmSurface(IDB_BORDER_38x52);
+		srf[SRF_BORDER_34x34]		= LoadLmSurface(IDB_BORDER_34x34);
+		srf[SRF_BORDER_90x90]		= LoadLmSurface(IDB_BORDER_90x90);
+		srf[SRF_BORDER_84x84]		= LoadLmSurface(IDB_BORDER_84x84);
+		srf[SRF_BORDER_70x70]		= LoadLmSurface(IDB_BORDER_70x70);
+		srf[SRF_BORDER_23x20]		= LoadLmSurface(IDB_BORDER_23x20);
+		srf[SRF_BORDER_78x78]		= LoadLmSurface(IDB_BORDER_78x78);
+		srf[SRF_BORDER_32x160]		= LoadLmSurface(IDB_BORDER_32x160);
+		srf[SRF_BORDER_72x72]		= LoadLmSurface(IDB_BORDER_72x72);
+		srf[SRF_BORDER_75x64]		= LoadLmSurface(IDB_BORDER_75x64);
+		srf[SRF_BORDER_34x39]		= LoadLmSurface(IDB_BORDER_34x39);
+		srf[SRF_BORDER_38x38]		= LoadLmSurface(IDB_BORDER_38x38);
+		srf[SRF_BORDER_40x40]		= LoadLmSurface(IDB_BORDER_40x40);
+		srf[SRF_BORDER_126x131]     = LoadLmSurface(IDB_BORDER_126x131);
+		srf[SRF_BORDER_115x115]     = LoadLmSurface(IDB_BORDER_115x115);
+		srf[SRF_BORDER_68x68]       = LoadLmSurface(IDB_BORDER_68x68);
+		srf[SRF_BORDER_169x168]     = LoadLmSurface(IDB_BORDER_169x168);
+		srf[SRF_BORDER_67x64]       = LoadLmSurface(IDB_BORDER_67x64);
+		srf[SRF_BORDER_201x205]     = LoadLmSurface(IDB_BORDER_201x205);
+		srf[SRF_BORDER_122x265]     = LoadLmSurface(IDB_BORDER_122x265);
+		srf[SRF_BORDER_225x224]     = LoadLmSurface(IDB_BORDER_225x224);
+		srf[SRF_BORDER_51x54]       = LoadLmSurface(IDB_BORDER_51x54);
+		srf[SRF_BORDER_205x205]     = LoadLmSurface(IDB_BORDER_205x205);
+		srf[SRF_BORDER_30x144]      = LoadLmSurface(IDB_BORDER_30x144);
+		srf[SRF_BORDER_400x400]     = LoadLmSurface(IDB_BORDER_400x400);
+		srf[SRF_BORDER_1001x240]    = LoadLmSurface(IDB_BORDER_1001x240);
+		srf[SRF_BORDER_360x316]     = LoadLmSurface(IDB_BORDER_360x316);
+		srf[SRF_BORDER_178x187]     = LoadLmSurface(IDB_BORDER_178x187);
+		srf[SRF_BORDER_55x55]       = LoadLmSurface(IDB_BORDER_55x55);
+		srf[SRF_BORDER_109x119]     = LoadLmSurface(IDB_BORDER_109x119);
+		srf[SRF_BORDER_68x69]       = LoadLmSurface(IDB_BORDER_68x69);
+		srf[SRF_BORDER_210x200]     = LoadLmSurface(IDB_BORDER_210x200);
+		srf[SRF_BORDER_104x106]     = LoadLmSurface(IDB_BORDER_104x106);
+		srf[SRF_BORDER_286x197]     = LoadLmSurface(IDB_BORDER_286x197);
 
 		//
 		// Set color keys where appropriate.
 		//
 
-		oapiSetSurfaceColourKey (srf[0], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_NEEDLE], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_DIGITAL], 0);
-		oapiSetSurfaceColourKey (srf[SRF_DIGITALDISP2], g_Param.col[4]);
-		// oapiSetSurfaceColourKey (srf[5], g_Param.col[4]);
-		// oapiSetSurfaceColourKey (srf[14], g_Param.col[4]);
-		// oapiSetSurfaceColourKey (srf[15], g_Param.col[4]);
-		// oapiSetSurfaceColourKey (srf[16], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_CONTACTLIGHT], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_LMABORTBUTTON],		g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_LMTHREEPOSLEVER],		g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_LMTWOPOSLEVER],		g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_LMTHREEPOSSWITCH],		g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_DSKYDISP],				g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_SWITCHUP],				g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_LEMROTARY],			g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_CIRCUITBRAKER],		g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_FDAI],					g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_FDAIROLL],				g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_FDAIOFFFLAG],			g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_FDAINEEDLES],			g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_LEM_COAS1],			g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_LEM_COAS2],			g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_DCVOLTS],				g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_DCAMPS],				g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_LMYAWDEGS],			g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_LMPITCHDEGS],			g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_LMSIGNALSTRENGTH],		g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_THUMBWHEEL_LARGEFONTS],g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_FIVE_POS_SWITCH],		g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_RR_NOTRACK],	     	g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_RADAR_TAPE],	     	g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_ORDEAL_ROTARY],		g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_ORDEAL_PANEL],			g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_TW_NEEDLE],			g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_LEM_STAGESWITCH],		g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_SEQ_LIGHT],			g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LMENGINE_START_STOP_BUTTONS], g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LMTRANSLBUTTON],		g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEMVENT],				g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_ACT_OVRD],			g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_CAN_SEL],			g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_ECS_ROTARY],		g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_H20_SEL],			g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_H20_SEP],			g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_ISOL_ROTARY],		g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_PRIM_C02],			g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_SEC_C02],			g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_SGD_LEVER],			g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_U_HATCH_REL_VLV],   g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_U_HATCH_HNDL],      g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_F_HATCH_HNDL],      g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_F_HATCH_REL_VLV],   g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_INTLK_OVRD],        g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_LEM_MASTERALARM],		g_Param.col[4]);
-		//oapiSetSurfaceColourKey(srf[SRF_AOTRETICLEKNOB],		g_Param.col[4]);
+		SetLmColourKey (srf[0], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_NEEDLE], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_DIGITAL], 0);
+		SetLmColourKey (srf[SRF_DIGITALDISP2], g_Param.col[4]);
+		// SetLmColourKey (srf[5], g_Param.col[4]);
+		// SetLmColourKey (srf[14], g_Param.col[4]);
+		// SetLmColourKey (srf[15], g_Param.col[4]);
+		// SetLmColourKey (srf[16], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_CONTACTLIGHT], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_LMABORTBUTTON],		g_Param.col[4]);
+		SetLmColourKey (srf[SRF_LMTHREEPOSLEVER],		g_Param.col[4]);
+		SetLmColourKey (srf[SRF_LMTWOPOSLEVER],		g_Param.col[4]);
+		SetLmColourKey (srf[SRF_LMTHREEPOSSWITCH],		g_Param.col[4]);
+		SetLmColourKey (srf[SRF_DSKYDISP],				g_Param.col[4]);
+		SetLmColourKey (srf[SRF_SWITCHUP],				g_Param.col[4]);
+		SetLmColourKey (srf[SRF_LEMROTARY],			g_Param.col[4]);
+		SetLmColourKey (srf[SRF_CIRCUITBRAKER],		g_Param.col[4]);
+		SetLmColourKey (srf[SRF_FDAI],					g_Param.col[4]);
+		SetLmColourKey (srf[SRF_FDAIROLL],				g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_FDAIOFFFLAG],			g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_FDAINEEDLES],			g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_LEM_COAS1],			g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_LEM_COAS2],			g_Param.col[4]);
+		SetLmColourKey (srf[SRF_DCVOLTS],				g_Param.col[4]);
+		SetLmColourKey (srf[SRF_DCAMPS],				g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_LMYAWDEGS],			g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_LMPITCHDEGS],			g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_LMSIGNALSTRENGTH],		g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_THUMBWHEEL_LARGEFONTS],g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_FIVE_POS_SWITCH],		g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_RR_NOTRACK],	     	g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_RADAR_TAPE],	     	g_Param.col[4]);
+		SetLmColourKey (srf[SRF_ORDEAL_ROTARY],		g_Param.col[4]);
+		SetLmColourKey (srf[SRF_ORDEAL_PANEL],			g_Param.col[4]);
+		SetLmColourKey (srf[SRF_TW_NEEDLE],			g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_LEM_STAGESWITCH],		g_Param.col[4]);
+		SetLmColourKey (srf[SRF_SEQ_LIGHT],			g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LMENGINE_START_STOP_BUTTONS], g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LMTRANSLBUTTON],		g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEMVENT],				g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_ACT_OVRD],			g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_CAN_SEL],			g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_ECS_ROTARY],		g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_H20_SEL],			g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_H20_SEP],			g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_ISOL_ROTARY],		g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_PRIM_C02],			g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_SEC_C02],			g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_SGD_LEVER],			g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_U_HATCH_REL_VLV],   g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_U_HATCH_HNDL],      g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_F_HATCH_HNDL],      g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_F_HATCH_REL_VLV],   g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_INTLK_OVRD],        g_Param.col[4]);
+		SetLmColourKey(srf[SRF_LEM_MASTERALARM],		g_Param.col[4]);
+		//SetLmColourKey(srf[SRF_AOTRETICLEKNOB],		g_Param.col[4]);
 
 		//
 		// Borders need to set the center color to transparent so only the outline
 		// is visible.
 		//
 
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_34x29], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_34x61], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_55x111], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_46x75], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_39x38], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_92x40], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_34x33], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_29x29], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_34x31], g_Param.col[4]);
-		oapiSetSurfaceColourKey(srf[SRF_BORDER_47x43],  g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_50x158], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_38x52], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_34x34], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_90x90], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_84x84], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_70x70], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_23x20], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_78x78], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_32x160], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_72x72], g_Param.col[4]);
-		oapiSetSurfaceColourKey	(srf[SRF_BORDER_75x64], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_34x39], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_38x38], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_40x40], g_Param.col[4]);
-        oapiSetSurfaceColourKey (srf[SRF_BORDER_126x131], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_115x115], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_68x68], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_169x168], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_67x64], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_201x205], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_122x265], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_225x224], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_51x54], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_205x205], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_30x144], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_400x400], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_1001x240], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_360x316], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_178x187], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_55x55], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_109x119], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_68x69], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_210x200], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_104x106], g_Param.col[4]);
-		oapiSetSurfaceColourKey (srf[SRF_BORDER_286x197], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_34x29], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_34x61], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_55x111], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_46x75], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_39x38], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_92x40], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_34x33], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_29x29], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_34x31], g_Param.col[4]);
+		SetLmColourKey(srf[SRF_BORDER_47x43],  g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_50x158], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_38x52], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_34x34], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_90x90], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_84x84], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_70x70], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_23x20], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_78x78], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_32x160], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_72x72], g_Param.col[4]);
+		SetLmColourKey	(srf[SRF_BORDER_75x64], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_34x39], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_38x38], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_40x40], g_Param.col[4]);
+        SetLmColourKey (srf[SRF_BORDER_126x131], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_115x115], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_68x68], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_169x168], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_67x64], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_201x205], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_122x265], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_225x224], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_51x54], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_205x205], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_30x144], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_400x400], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_1001x240], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_360x316], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_178x187], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_55x55], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_109x119], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_68x69], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_210x200], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_104x106], g_Param.col[4]);
+		SetLmColourKey (srf[SRF_BORDER_286x197], g_Param.col[4]);
 
     SetSwitches(panel);
 }
@@ -1427,77 +1484,77 @@ bool LEM::clbkLoadPanel (int id) {
 	//
 	// Load panel background image
 	//
-	HBITMAP hBmp;
+	LmPanelBitmap hBmp = nullptr;
 
 	switch(id) {
     case LMPANEL_MAIN:
-		hBmp = LoadBitmap (g_Param.hDLL, MAKEINTRESOURCE (IDB_LEM_MAIN_PANEL));
+		hBmp = LoadLmBitmap(IDB_LEM_MAIN_PANEL);
 		oapiSetPanelNeighbours(LMPANEL_LEFTWINDOW, LMPANEL_RIGHTWINDOW, LMPANEL_RNDZWINDOW, LMPANEL_FWDHATCH);
 		break;
 
 	case LMPANEL_RIGHTWINDOW:
-		hBmp = LoadBitmap (g_Param.hDLL, MAKEINTRESOURCE (IDB_LEM_RIGHT_WINDOW));
+		hBmp = LoadLmBitmap(IDB_LEM_RIGHT_WINDOW);
 		oapiSetPanelNeighbours(LMPANEL_MAIN, LMPANEL_RIGHTPANEL, -1, -1);
 		break;
 
     case LMPANEL_LEFTWINDOW:
-		hBmp = LoadBitmap (g_Param.hDLL, MAKEINTRESOURCE (IDB_LEM_LEFT_WINDOW));
+		hBmp = LoadLmBitmap(IDB_LEM_LEFT_WINDOW);
 		oapiSetPanelNeighbours(LMPANEL_LEFTPANEL, LMPANEL_MAIN, LMPANEL_LEFTZOOM, LMPANEL_LPDWINDOW);
 		break;
 
     case LMPANEL_LPDWINDOW:
-		hBmp = LoadBitmap (g_Param.hDLL, MAKEINTRESOURCE (IDB_LEM_LPD_WINDOW));
+		hBmp = LoadLmBitmap(IDB_LEM_LPD_WINDOW);
 		oapiSetPanelNeighbours(-1, LMPANEL_MAIN, LMPANEL_LEFTWINDOW, -1);
 		break;
 
 	case LMPANEL_RNDZWINDOW:
-		hBmp = LoadBitmap (g_Param.hDLL, MAKEINTRESOURCE (IDB_LEM_RENDEZVOUS_WINDOW));
+		hBmp = LoadLmBitmap(IDB_LEM_RENDEZVOUS_WINDOW);
 		oapiSetPanelNeighbours(-1, LMPANEL_AOTVIEW, LMPANEL_DOCKVIEW, LMPANEL_MAIN);
 		break;
 
 	case LMPANEL_LEFTPANEL:
-		hBmp = LoadBitmap (g_Param.hDLL, MAKEINTRESOURCE (IDB_LEM_LEFT_PANEL));
+		hBmp = LoadLmBitmap(IDB_LEM_LEFT_PANEL);
 		oapiSetPanelNeighbours(-1, LMPANEL_LEFTWINDOW, -1, -1);
 		break;
 
 	case LMPANEL_AOTVIEW:
-		hBmp = LoadBitmap (g_Param.hDLL, MAKEINTRESOURCE (IDB_LEM_AOT_VIEW));
+		hBmp = LoadLmBitmap(IDB_LEM_AOT_VIEW);
 		oapiSetPanelNeighbours(LMPANEL_RNDZWINDOW, -1, LMPANEL_AOTZOOM, LMPANEL_MAIN);
 		break;
 
 	case LMPANEL_RIGHTPANEL:
-		hBmp = LoadBitmap (g_Param.hDLL, MAKEINTRESOURCE (IDB_LEM_RIGHT_PANEL));
+		hBmp = LoadLmBitmap(IDB_LEM_RIGHT_PANEL);
 		oapiSetPanelNeighbours(LMPANEL_RIGHTWINDOW, LMPANEL_ECSPANEL, -1, -1);
 		break;
 
 	case LMPANEL_ECSPANEL:
-		hBmp = LoadBitmap(g_Param.hDLL, MAKEINTRESOURCE(IDB_LEM_ECS_PANEL));
+		hBmp = LoadLmBitmap(IDB_LEM_ECS_PANEL);
 		oapiSetPanelNeighbours(LMPANEL_RIGHTPANEL, -1, LMPANEL_UPPERHATCH, -1);
 		break;
 
 	case LMPANEL_DOCKVIEW:
-		hBmp = LoadBitmap(g_Param.hDLL, MAKEINTRESOURCE(IDB_LEM_DOCK_VIEW));
+		hBmp = LoadLmBitmap(IDB_LEM_DOCK_VIEW);
 		oapiSetPanelNeighbours(-1, -1, -1, LMPANEL_RNDZWINDOW);
 		break;
 
 	case LMPANEL_AOTZOOM:
-		hBmp = LoadBitmap(g_Param.hDLL, MAKEINTRESOURCE(IDB_LEM_AOT_ZOOM));
+		hBmp = LoadLmBitmap(IDB_LEM_AOT_ZOOM);
 		oapiSetPanelNeighbours(-1, -1, -1, LMPANEL_AOTVIEW);
 		break;
 	
 	case LMPANEL_LEFTZOOM:
-		hBmp = LoadBitmap(g_Param.hDLL, MAKEINTRESOURCE(IDB_LEM_LEFT_ZOOM));
+		hBmp = LoadLmBitmap(IDB_LEM_LEFT_ZOOM);
 		oapiSetPanelNeighbours(-1, -1, -1, LMPANEL_LEFTWINDOW);
 		break;
 
 	case LMPANEL_UPPERHATCH:
 		if (OverheadHatch.IsOpen())
 		{
-			hBmp = LoadBitmap(g_Param.hDLL, MAKEINTRESOURCE(IDB_LEM_UPPER_HATCH_OPEN));
+			hBmp = LoadLmBitmap(IDB_LEM_UPPER_HATCH_OPEN);
 		}
 		else
 		{
-			hBmp = LoadBitmap(g_Param.hDLL, MAKEINTRESOURCE(IDB_LEM_UPPER_HATCH));
+			hBmp = LoadLmBitmap(IDB_LEM_UPPER_HATCH);
 		}
 		oapiSetPanelNeighbours(-1, -1, -1, LMPANEL_ECSPANEL);
 		break;
@@ -1505,11 +1562,11 @@ bool LEM::clbkLoadPanel (int id) {
 	case LMPANEL_FWDHATCH:
 		if (ForwardHatch.IsOpen())
 		{
-			hBmp = LoadBitmap(g_Param.hDLL, MAKEINTRESOURCE(IDB_LEM_FWD_HATCH_OPEN));
+			hBmp = LoadLmBitmap(IDB_LEM_FWD_HATCH_OPEN);
 		}
 		else
 		{
-			hBmp = LoadBitmap(g_Param.hDLL, MAKEINTRESOURCE(IDB_LEM_FWD_HATCH));
+			hBmp = LoadLmBitmap(IDB_LEM_FWD_HATCH);
 		}
 		oapiSetPanelNeighbours(-1, -1, LMPANEL_MAIN, -1);
 		break;
@@ -3159,16 +3216,16 @@ bool LEM::clbkPanelRedrawEvent (int id, int event, SURFHANDLE surf)
 		if (ordealEnabled == 0) {
 			if (PanelOrdeal.IsFlashing()) {
 				if (PanelFlashOn) {
-					oapiBlt(surf, srf[SRF_BORDER_50x158], 0, 22, 0, 0, 50, 158, SURF_PREDEF_CK);
+					oapiBlt(surf, srf[SRF_BORDER_50x158], 0, 22, 0, 0, 50, 158, NasspPanelBlitKey);
 				}
 				return true;
 			}
 			return false;
 		}
-		oapiBlt(surf, srf[SRF_ORDEAL_PANEL], 0, 0, 0, 0, 477, 202, SURF_PREDEF_CK);
+		oapiBlt(surf, srf[SRF_ORDEAL_PANEL], 0, 0, 0, 0, 477, 202, NasspPanelBlitKey);
 		if (PanelOrdeal.IsFlashing()) {
 			if (PanelFlashOn) {
-				oapiBlt(surf, srf[SRF_BORDER_50x158], 0, 22, 0, 0, 50, 158, SURF_PREDEF_CK);
+				oapiBlt(surf, srf[SRF_BORDER_50x158], 0, 22, 0, 0, 50, 158, NasspPanelBlitKey);
 			}
 		}
 	}
@@ -3248,17 +3305,17 @@ bool LEM::clbkPanelRedrawEvent (int id, int event, SURFHANDLE surf)
 
 	case AID_LEM_COAS1:
 		if (LEMCoas1Enabled) {
-			oapiBlt(surf, srf[SRF_LEM_COAS1], 0, 0, 0, 0, 830, 830, SURF_PREDEF_CK);
+			oapiBlt(surf, srf[SRF_LEM_COAS1], 0, 0, 0, 0, 830, 830, NasspPanelBlitKey);
 		} else {
-			oapiBlt(surf, srf[SRF_LEM_COAS1], 0, 0, 0, 830, 830, 830, SURF_PREDEF_CK);
+			oapiBlt(surf, srf[SRF_LEM_COAS1], 0, 0, 0, 830, 830, 830, NasspPanelBlitKey);
 		}
 		return true;
 
 	case AID_LEM_COAS2:
 		if (LEMCoas2Enabled) {
-			oapiBlt(surf, srf[SRF_LEM_COAS2], 0, 0, 0, 540, 540, 540, SURF_PREDEF_CK);
+			oapiBlt(surf, srf[SRF_LEM_COAS2], 0, 0, 0, 540, 540, 540, NasspPanelBlitKey);
 		} else {
-			oapiBlt(surf, srf[SRF_LEM_COAS2], 0, 0, 0, 0, 540, 540, SURF_PREDEF_CK);
+			oapiBlt(surf, srf[SRF_LEM_COAS2], 0, 0, 0, 0, 540, 540, NasspPanelBlitKey);
 		}
 		return true;
 
@@ -3272,76 +3329,76 @@ bool LEM::clbkPanelRedrawEvent (int id, int event, SURFHANDLE surf)
 
 	case AID_CONTACTLIGHT1:
 		if (ComponentLights.GetCDRContactLt()) {
-			oapiBlt(surf, srf[SRF_CONTACTLIGHT], 0, 0, 0, 0, 48, 48, SURF_PREDEF_CK);
+			oapiBlt(surf, srf[SRF_CONTACTLIGHT], 0, 0, 0, 0, 48, 48, NasspPanelBlitKey);
 		}
 		return true;
 
 	case AID_CONTACTLIGHT2:
 		if (ComponentLights.GetLMPContactLt()) {
-			oapiBlt(surf, srf[SRF_CONTACTLIGHT], 0, 0, 0, 0, 48, 48, SURF_PREDEF_CK);
+			oapiBlt(surf, srf[SRF_CONTACTLIGHT], 0, 0, 0, 0, 48, 48, NasspPanelBlitKey);
 		}
 		return true;
 
 	case AID_RR_NOTRACK:
 		if (ComponentLights.GetNoTrackCompLt()) {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, SURF_PREDEF_CK); // Light On
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, NasspPanelBlitKey); // Light On
 		}
 		else {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, SURF_PREDEF_CK); // Light Off
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, NasspPanelBlitKey); // Light Off
 		}
 		return true;
 
 	case AID_CO2_LIGHT:
 		if (ComponentLights.GetCO2CompLt()) {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, SURF_PREDEF_CK); // Light On
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, NasspPanelBlitKey); // Light On
 		}
 		else {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, SURF_PREDEF_CK); // Light Off
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, NasspPanelBlitKey); // Light Off
 		}
 		return true;
 
 	case AID_SUITFAN_LIGHT:
 		if (ComponentLights.GetSuitFanCompLt()) {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, SURF_PREDEF_CK); // Light On
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, NasspPanelBlitKey); // Light On
 		}
 		else {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, SURF_PREDEF_CK); // Light Off
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, NasspPanelBlitKey); // Light Off
 		}
 		return true;
 
 	case AID_H2OSEP_LIGHT:
 		if (ComponentLights.GetH2OSepCompLt()) {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, SURF_PREDEF_CK); // Light On
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, NasspPanelBlitKey); // Light On
 		}
 		else {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, SURF_PREDEF_CK); // Light Off
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, NasspPanelBlitKey); // Light Off
 		}
 		return true;
 
 	case AID_GLYCOL_LIGHT:
 		if (ComponentLights.GetGlycolCompLt()) {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, SURF_PREDEF_CK); // Light On
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, NasspPanelBlitKey); // Light On
 		}
 		else {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, SURF_PREDEF_CK); // Light Off
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, NasspPanelBlitKey); // Light Off
 		}
 		return true;
 
 	case AID_DC_BUS_LIGHT:
 		if (ComponentLights.GetFeederFaultCompLt()) {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, SURF_PREDEF_CK); // Light On
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, NasspPanelBlitKey); // Light On
 		}
 		else {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, SURF_PREDEF_CK); // Light Off
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, NasspPanelBlitKey); // Light Off
 		}
 		return true;
 
 	case AID_BAT_FAULT_LIGHT:
 		if (ComponentLights.GetBatFaultCompLt()) {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, SURF_PREDEF_CK); // Light On
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 34, 34, 34, NasspPanelBlitKey); // Light On
 		}
 		else {
-			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, SURF_PREDEF_CK); // Light Off
+			oapiBlt(surf, srf[SRF_RR_NOTRACK], 0, 0, 0, 0, 34, 34, NasspPanelBlitKey); // Light Off
 		}
 		return true;
 

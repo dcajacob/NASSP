@@ -24,8 +24,17 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #pragma once
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
+#if defined(NASSP_NATIVE_LINUX)
+class ARoapiModule {
+public:
+    void clbkSimulationEnd();
+    void clbkPreStep(double simt, double simdt, double mjd);
+    void clbkDeleteVessel(OBJHANDLE vessel);
+    static oapi::CockpitMessageResult MsgProc(UINT, UINT, oapi::CockpitUnsignedParam, oapi::CockpitSignedParam);
+};
+#else
 #ifndef OAPI_MSGTYPE
 typedef int OAPI_MSGTYPE;
 #endif
@@ -42,3 +51,4 @@ public:
 	static OAPI_MSGTYPE MsgProc(UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam);
 
 };
+#endif

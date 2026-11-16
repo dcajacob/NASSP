@@ -22,7 +22,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
 #include "soundlib.h"
 
@@ -146,7 +146,7 @@ void F1Engine::Timestep(double simdt)
 			}
 			else
 			{
-				ThrustLevel = min(ThrustLevel, 1);
+				ThrustLevel = min(ThrustLevel, 1.0);
 			}
 
 			vessel->SetThrusterLevel(th_f1, ThrustLevel);

@@ -339,6 +339,8 @@ public:
 	virtual bool InterruptPending(Interrupt rupt) final;
 
 protected:
+	void LoadProgram(const char *binfile);
+
 
 	//
 	// DSKY interface.

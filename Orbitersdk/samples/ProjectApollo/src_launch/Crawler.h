@@ -94,7 +94,7 @@ protected:
 	void SetView();
 	void SetView(int viewpos);
 	void SlowIfDesired(double timeAcceleration);
-	void SetMeshesVisibility(WORD mode);
+	void SetMeshesVisibility(unsigned short mode);
 
 	VECTOR3 panelMeshoffset;
     int panelMeshidx;

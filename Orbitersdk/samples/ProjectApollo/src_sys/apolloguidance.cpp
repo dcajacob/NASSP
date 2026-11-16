@@ -106,10 +106,8 @@ ApolloGuidance::~ApolloGuidance()
 #endif
 }
 
-void ApolloGuidance::InitVirtualAGC(char *binfile)
-
+void ApolloGuidance::LoadProgram(const char *binfile)
 {
-
 #if defined(NASSP_NATIVE_LINUX)
 	const auto* files = orbiter::production::GetNativeRenderContext().programFiles;
 	if (!files) throw std::runtime_error("Apollo Guidance Computer asset resolver is unavailable");
@@ -121,6 +119,11 @@ void ApolloGuidance::InitVirtualAGC(char *binfile)
 #else
 	(void) agc_load_binfile(&vagc, binfile);
 #endif
+}
+
+void ApolloGuidance::InitVirtualAGC(char *binfile)
+{
+	LoadProgram(binfile);
 
 	// Set channels only once, otherwise this code overwrites the channel values in the scenario
 	if (!PadLoaded) { 

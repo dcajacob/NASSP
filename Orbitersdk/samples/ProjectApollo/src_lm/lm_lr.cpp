@@ -22,7 +22,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "soundlib.h"
 #include "toggleswitch.h"
 #include "apolloguidance.h"
@@ -176,13 +176,13 @@ void LEM_LR::Timestep(double simdt) {
 
 	if (!IsPowered()) {
 		// Clobber data.
-		bool clobber = FALSE;
-		if (val33[LRDataGood]) { clobber = TRUE; val33[LRDataGood] = 0; }
-		if (val33[LRVelocityDataGood]) { clobber = TRUE; val33[LRVelocityDataGood] = 0; }
-		if (val33[LRPos1]) { clobber = TRUE; val33[LRPos1] = 0; }
-		if (val33[LRPos2]) { clobber = TRUE; val33[LRPos2] = 0; }
-		if (val33[LRRangeLowScale] == 0) { clobber = TRUE; val33[LRRangeLowScale] = 1; }
-		if (clobber == TRUE) { lem->agc.SetInputChannel(033, val33); }
+		bool clobber = false;
+		if (val33[LRDataGood]) { clobber = true; val33[LRDataGood] = 0; }
+		if (val33[LRVelocityDataGood]) { clobber = true; val33[LRVelocityDataGood] = 0; }
+		if (val33[LRPos1]) { clobber = true; val33[LRPos1] = 0; }
+		if (val33[LRPos2]) { clobber = true; val33[LRPos2] = 0; }
+		if (val33[LRRangeLowScale] == 0) { clobber = true; val33[LRRangeLowScale] = 1; }
+		if (clobber == true) { lem->agc.SetInputChannel(033, val33); }
 		rangeGood = 0;
 		velocityGood = 0;
 		return;

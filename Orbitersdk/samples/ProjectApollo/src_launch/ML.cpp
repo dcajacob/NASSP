@@ -26,7 +26,10 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
 #include "nasspsound.h"
 #include "soundlib.h"
 #include "tracer.h"
@@ -43,7 +46,9 @@
 #include "SIC_ESE.h"
 #include "SIB_ESE.h"
 
+#if !defined(NASSP_NATIVE_LINUX)
 HINSTANCE g_hDLL;
+#endif
 char trace_file[] = "ProjectApollo ML.log";
 
 const static char* MESHNAME_MOBILE_LAUNCHER = "ProjectApollo\\Saturn5ML";
@@ -96,12 +101,41 @@ PARTICLESTREAMSPEC liftoffStreamSpec = {
 };
 
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK void InitModule(HINSTANCE hModule) {
 
 	g_hDLL = hModule;
 }
+#endif
 
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
+
+	return new ML(hvessel, flightmodel);
+}
+
+
+void ovcExit(VESSEL *vessel) {
+
+	if (vessel) delete (ML*)vessel;
+}
+
+using Factory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor descriptor = {
+    sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+    sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP ML",
+    ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+    return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel) {
 
 	return new ML(hvessel, flightmodel);
@@ -112,6 +146,7 @@ DLLCLBK void ovcExit(VESSEL *vessel) {
 
 	if (vessel) delete (ML*)vessel;
 }
+#endif
 
 
 ML::ML(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {
@@ -398,7 +433,7 @@ void ML::clbkPreStep(double simt, double simdt, double mjd) {
 	case STATE_ROLLOUT:
 
 		if (craneProc > 0) {
-			craneProc = max(0, craneProc - simdt / 600.0);
+			craneProc = max(0.0, craneProc - simdt / 600.0);
 			SetAnimation(craneAnim, craneProc);
 		}
 		if (cmarmProc > 0.00001) {

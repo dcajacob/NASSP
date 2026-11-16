@@ -24,7 +24,11 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeGraphics.h"
+#include <stdexcept>
+#endif
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 #include "lmresource.h"
@@ -796,7 +800,17 @@ bool LEM_AEA::GetEngineOffSignal()
 
 void LEM_AEA::InitVirtualAGS(char *binfile)
 {
+#if defined(NASSP_NATIVE_LINUX)
+	const auto *files = orbiter::production::GetNativeRenderContext().programFiles;
+	if (!files) throw std::runtime_error("Lunar abort guidance asset resolver is unavailable");
+	const auto path = files->Resolve(binfile);
+	const int status = aea_engine_init(&vags, path.c_str(), nullptr);
+	if (status != 0)
+		throw std::runtime_error("Cannot load Lunar Module abort guidance ROM " + path.string() +
+			" (yaAGS status " + std::to_string(status) + ")");
+#else
 	aea_engine_init(&vags, binfile, NULL);
+#endif
 }
 
 void LEM_AEA::SetMissionInfo(std::string ProgramName)
@@ -805,7 +819,7 @@ void LEM_AEA::SetMissionInfo(std::string ProgramName)
 
 	char binfile[100];
 
-	sprintf_s(binfile, 100, "Config/ProjectApollo/%s.bin", ProgramName.c_str());
+	snprintf(binfile, sizeof(binfile), "Config/ProjectApollo/%s.bin", ProgramName.c_str());
 	InitVirtualAGS(binfile);
 
 	AEAInitialized = true;

@@ -42,6 +42,14 @@
 
 #include "LEM.h"
 #include "tracer.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+extern "C" {
+#include <lua/lauxlib.h>
+}
+void InitLmPanelResources();
+void ReleaseLmPanelResources();
+#endif
 #include "papi.h"
 #include "Mission.h"
 #include "Autosave.h"
@@ -51,6 +59,69 @@
 #include "LM_VC_Resource.h"
 
 using namespace nassp;
+
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+LEM &LuaLunarModule(lua_State *state)
+{
+	auto **vessel = static_cast<VESSEL **>(luaL_checkudata(state, 1, "VESSEL.LEM"));
+	return *static_cast<LEM *>(*vessel);
+}
+}
+
+int LEM::clbkGeneric(int msgid, int prm, void *context)
+{
+	if (msgid != VMSG_LUAINSTANCE)
+		return Payload::clbkGeneric(msgid, prm, context);
+
+	auto *state = static_cast<lua_State *>(context);
+	if (luaL_newmetatable(state, "VESSEL.LEM")) {
+		static const luaL_Reg methods[] = {
+			{"get_panelswitch", [](lua_State *lua) {
+				auto &lm = LuaLunarModule(lua);
+				lua_pushinteger(lua, lm.MainPanel.GetState(luaL_checkstring(lua, 2)));
+				return 1;
+			}},
+			{"set_panelswitch", [](lua_State *lua) {
+				auto &lm = LuaLunarModule(lua);
+				const char *name = luaL_checkstring(lua, 2);
+				int position = luaL_checkint(lua, 3);
+				lua_pushboolean(lua, lm.MainPanel.SetState(name, position, false, lua_toboolean(lua, 4)));
+				return 1;
+			}},
+			{"get_dsky_display", [](lua_State *lua) {
+				auto &dsky = LuaLunarModule(lua).dsky;
+				lua_pushstring(lua, dsky.GetProg());
+				lua_pushstring(lua, dsky.GetVerb());
+				lua_pushstring(lua, dsky.GetNoun());
+				lua_pushstring(lua, dsky.GetR1());
+				lua_pushstring(lua, dsky.GetR2());
+				lua_pushstring(lua, dsky.GetR3());
+				return 6;
+			}},
+			{"set_ttca_throttle", [](lua_State *lua) {
+				auto &lm = LuaLunarModule(lua);
+				double position = luaL_checknumber(lua, 2);
+				luaL_argcheck(lua, position >= 0.0 && position <= 1.0, 2,
+					"TTCA throttle position must be in [0, 1]");
+				lm.ttca_throttle_vel = 0;
+				lm.ttca_throttle_pos_dig = position;
+				return 0;
+			}},
+			{nullptr, nullptr}
+		};
+		lua_newtable(state);
+		luaL_register(state, nullptr, methods);
+		lua_newtable(state);
+		luaL_getmetatable(state, "VESSEL.vtable");
+		lua_setfield(state, -2, "__index");
+		lua_setmetatable(state, -2);
+		lua_setfield(state, -2, "__index");
+	}
+	lua_setmetatable(state, -2);
+	return 0;
+}
+#endif
 
 char trace_file[] = "ProjectApollo LM.log";
 
@@ -89,6 +160,45 @@ GDIParams g_Param;
 // API interface
 // ==============================================================
 
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+VESSEL *ovcInit(OBJHANDLE vessel, int flightmodel)
+{
+	try {
+		if (!refcount) {
+			LEMLoadMeshes();
+			InitLmPanelResources();
+		}
+		auto *result = new LEM(vessel, flightmodel);
+		++refcount;
+		return result;
+	} catch (...) {
+		if (!refcount) ReleaseLmPanelResources();
+		throw;
+	}
+}
+
+void ovcExit(VESSEL *vessel)
+{
+	delete static_cast<LEM*>(vessel);
+	--refcount;
+	if (!refcount) ReleaseLmPanelResources();
+}
+
+using Factory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor descriptor = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Lunar Module",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel)
 
 {
@@ -122,6 +232,8 @@ DLLCLBK void ovcExit(VESSEL *vessel)
 
 	if (vessel) delete static_cast<LEM *> (vessel);
 }
+
+#endif
 
 #define LM_AXIS_INPUT_CNT  39
 VesimInputDefinition vesim_lm_inputs[LM_AXIS_INPUT_CNT] = {
@@ -468,7 +580,9 @@ LEM::LEM(OBJHANDLE hObj, int fmodel) : Payload (hObj, fmodel),
 	CueCards(vcidx, this, 25)
 {
 #if !defined(NASSP_NATIVE_LINUX)
+#if !defined(NASSP_NATIVE_LINUX)
 	dllhandle = g_Param.hDLL; // DS20060413 Save for later
+#endif
 #endif
 	InitLEMCalled = false;
 
@@ -572,7 +686,7 @@ void LEM::Init()
 	SwitchFocusToLeva = 0;
 
 	agc.ControlVessel(this);
-	imu.SetVessel(this, TRUE);
+	imu.SetVessel(this, true);
 	
 	ph_Dsc = 0;
 	ph_Asc = 0;
@@ -858,7 +972,7 @@ int LEM::clbkConsumeDirectKey(char* kstate)
 	}
 
 	if ((!KEYMOD_CONTROL(kstate)) && (!KEYMOD_ALT(kstate))) {
-		if ((oapiCockpitMode() == COCKPIT_VIRTUAL) && (oapiCameraMode() == CAM_COCKPIT)) {
+		if ((oapiCockpitMode() == COCKPIT_VIRTUAL) && oapiCameraInternal()) {
 			if (setFreeCam == true) {
 				VCFreeCam(camDir, camSlow);
 			}
@@ -899,6 +1013,11 @@ int LEM::clbkConsumeDirectKey(char* kstate)
 		RESETKEY(kstate, OAPI_KEY_NUMPAD6);
 		RESETKEY(kstate, OAPI_KEY_NUMPAD1);
 		RESETKEY(kstate, OAPI_KEY_NUMPAD3);
+	} else {
+		// Translation and DSKY input must release the keyboard attitude controller.
+		for (double &deflection : aca_keyboard_deflection) {
+			deflection = 0.0;
+		}
 	}
 
 	return 0;
@@ -1531,7 +1650,7 @@ void LEM::clbkPreStep (double simt, double simdt, double mjd) {
 		dsky.SendNetworkPacketDSKY();
 	}
 
-	if ((oapiGetFocusObject() == GetHandle()) && (oapiCockpitMode() == COCKPIT_VIRTUAL) && (oapiCameraMode() == CAM_COCKPIT)) {
+	if ((oapiGetFocusObject() == GetHandle()) && (oapiCockpitMode() == COCKPIT_VIRTUAL) && oapiCameraInternal()) {
 		//We have focus on this vessel, and are in the VC
 		MoveFlashlight();
 	}

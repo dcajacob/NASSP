@@ -3068,6 +3068,8 @@ void RTCC::EntryTargeting(const EntryOpt &opt, EntryResults &res)
 		}
 
 		PoweredFlightProcessor(sv_tig, TIG_imp, opt.enginetype, LMmass, DV_imp, true, res.P30TIG, res.dV_LVLH, res.sv_preburn, res.sv_postburn);
+		res.solutionfound = !rte.errorstate && std::isfinite(res.GET400K)
+			&& std::isfinite(res.P30TIG) && std::isfinite(length(res.dV_LVLH));
 	}
 	else
 	{

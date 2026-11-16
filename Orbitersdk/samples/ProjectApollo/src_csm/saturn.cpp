@@ -5472,6 +5472,40 @@ int Saturn::Lua_InitInstance (void *context)
 		{"get_agcchannel", LuaCall_GetAGCChannel},	
 		{"set_agcerasable", LuaCall_SetAGCErasable},	
 		{"get_agcuplinkstatus", LuaCall_GetAGCUplinkStatus},	
+#if defined(NASSP_NATIVE_LINUX)
+		{"get_imu_reference", [](lua_State *L) {
+			auto **slot = static_cast<VESSEL **>(luaL_checkudata(L, 1, "Saturn.vtable"));
+			const auto &ref = static_cast<Saturn *>(*slot)->imu.GetOrbiterAttitudeReference();
+			lua_createtable(L, 9, 0);
+			for (int i = 0; i < 9; ++i) {
+				lua_pushnumber(L, ref.data[i]);
+				lua_rawseti(L, -2, i + 1);
+			}
+			return 1;
+		}},
+		{"get_dsky_display", [](lua_State *L) {
+			auto **slot = static_cast<VESSEL **>(luaL_checkudata(L, 1, "Saturn.vtable"));
+			auto &display = static_cast<Saturn *>(*slot)->dsky;
+			lua_pushstring(L, display.GetProg());
+			lua_pushstring(L, display.GetVerb());
+			lua_pushstring(L, display.GetNoun());
+			lua_pushstring(L, display.GetR1());
+			lua_pushstring(L, display.GetR2());
+			lua_pushstring(L, display.GetR3());
+			return 6;
+		}},
+		{"set_sps_gimbal_trim", [](lua_State *L) {
+			auto **slot = static_cast<VESSEL **>(luaL_checkudata(L, 1, "Saturn.vtable"));
+			auto &vehicle = *static_cast<Saturn *>(*slot);
+			const double pitch = luaL_checknumber(L, 2);
+			const double yaw = luaL_checknumber(L, 3);
+			luaL_argcheck(L, fabs(pitch) <= 4.0, 2, "pitch trim must be between -4 and 4 degrees");
+			luaL_argcheck(L, fabs(yaw) <= 4.0, 3, "yaw trim must be between -4 and 4 degrees");
+			vehicle.SPSGimbalPitchThumbwheel.SetInitValue(pitch);
+			vehicle.SPSGimbalYawThumbwheel.SetInitValue(yaw);
+			return 0;
+		}},
+#endif
 		{NULL, NULL}
     };
 	luaL_newmetatable (L, "Saturn.vtable");

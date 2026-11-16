@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include <stdio.h>
 #include <math.h>
 #include "soundlib.h"
@@ -46,7 +46,7 @@
 LEM_RGA::LEM_RGA()
 {
 	powered = false;
-	dc_source = false;
+	dc_source = nullptr;
 	rates = _V(0, 0, 0);
 }
 
@@ -1366,7 +1366,7 @@ void ATCA::LoadState(FILEHANDLE scn) {
 // DESCENT ENGINE CONTROL ASSEMBLY
 DECA::DECA() {
 	lem = NULL;
-	powered = FALSE;
+	powered = false;
 	dc_source = NULL;
 	pitchactuatorcommand = 0;
 	rollactuatorcommand = 0;

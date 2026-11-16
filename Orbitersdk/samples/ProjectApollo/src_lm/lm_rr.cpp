@@ -22,7 +22,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "soundlib.h"
 #include "toggleswitch.h"
 #include "apolloguidance.h"
@@ -296,10 +296,10 @@ void LEM_RR::Timestep(double simdt) {
 	}
 
 	if (!IsPowered()) {
-		bool clobber = FALSE;
-		if (val33[RRPowerOnAuto]) { clobber = TRUE; val33[RRPowerOnAuto] = 0; }
-		if (val33[RRDataGood]) { clobber = TRUE; val33[RRDataGood] = 0; }
-		if (clobber == TRUE) { lem->agc.SetInputChannel(033, val33); }
+		bool clobber = false;
+		if (val33[RRPowerOnAuto]) { clobber = true; val33[RRPowerOnAuto] = 0; }
+		if (val33[RRDataGood]) { clobber = true; val33[RRDataGood] = 0; }
+		if (clobber == true) { lem->agc.SetInputChannel(033, val33); }
 		SignalStrengthRCVD = 0.0;
 		radarDataGood = false;
 		FrequencyLock = false;

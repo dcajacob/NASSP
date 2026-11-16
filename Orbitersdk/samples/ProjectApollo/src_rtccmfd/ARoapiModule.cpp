@@ -25,9 +25,15 @@ See http://nassp.sourceforge.net/license/ for more details.
 #define STRICT
 #define ORBITER_MODULE
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "ApolloRTCCMFD.h"
 #include "ARoapiModule.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeApolloRtccMfd.h"
+#include "Production/NativeAbi.h"
+#include "Production/ModuleBootstrap.h"
+#include <memory>
+#endif
 
 //
 // ==============================================================
@@ -47,7 +53,7 @@ extern int g_MFDmode;
 // Static globals for this compilation file
 //
 
-static char *name = "Apollo RTCC MFD";
+static char name[] = "Apollo RTCC MFD";
 
 //
 // ==============================================================
@@ -55,6 +61,67 @@ static char *name = "Apollo RTCC MFD";
 // ==============================================================
 //
 
+#if defined(NASSP_NATIVE_LINUX)
+oapi::CockpitMessageResult ARoapiModule::MsgProc(UINT msg, UINT mfd,
+    oapi::CockpitUnsignedParam dimensions, oapi::CockpitSignedParam vessel)
+{
+    if (msg != OAPI_MSG_MFD_OPENED) return 0;
+    return reinterpret_cast<oapi::CockpitMessageResult>(new ApolloRTCCMFD(
+        dimensions & 0xffff, (dimensions >> 16) & 0xffff, reinterpret_cast<VESSEL*>(vessel), mfd));
+}
+
+namespace {
+orbiter::production::NativeApolloRtccMfdApi callbacks = {
+    sizeof(orbiter::production::NativeApolloRtccMfdApi),
+    [](double simt, double simdt, double mjd) { g_coreMod->clbkPreStep(simt, simdt, mjd); },
+    [](OBJHANDLE vessel) { g_coreMod->clbkDeleteVessel(vessel); },
+    [] { g_coreMod->clbkSimulationEnd(); }
+};
+
+int ORBITER_NATIVE_CALL Initialize(const OrbiterNativeHost *host, void **instance,
+    char *error, std::uint32_t capacity) noexcept
+{
+    if (!host || host->struct_size != sizeof(*host) || !host->context || !instance || g_coreMod) {
+        std::snprintf(error, capacity, "Invalid or repeated Apollo RTCC MFD initialization");
+        return 1;
+    }
+    try {
+        auto core = std::make_unique<ARoapiModule>();
+        MFDMODESPECEX spec{};
+        spec.name = name;
+        spec.key = OAPI_KEY_W;
+        spec.msgproc = ARoapiModule::MsgProc;
+        g_MFDmode = oapiRegisterMFDMode(spec);
+        g_coreMod = core.release();
+        *instance = &callbacks;
+        return 0;
+    } catch (...) {
+        std::snprintf(error, capacity, "Cannot register Apollo RTCC MFD");
+        return 1;
+    }
+}
+
+void ORBITER_NATIVE_CALL Shutdown(void*) noexcept
+{
+    oapiUnregisterMFDMode(g_MFDmode);
+    delete g_coreMod;
+    g_coreMod = nullptr;
+    g_MFDmode = 0;
+}
+
+const OrbiterNativeModuleDescriptor descriptor = {
+    sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+    sizeof(void*), ORBITER_NATIVE_PLUGIN, "NASSP Apollo RTCC MFD",
+    ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Initialize, Shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+    return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK void InitModule(HINSTANCE hDLL) {          // Called by Orbiter when module selected in the Launchpad
 	g_coreMod = new ARoapiModule(hDLL);           // Declare a single root class instance for ApolloRTCCMFD for this simulation run
 
@@ -88,6 +155,8 @@ ARoapiModule::~ARoapiModule() {}
 
 void ARoapiModule::clbkSimulationStart(RenderMode mode) {}
 
+#endif
+
 void ARoapiModule::clbkSimulationEnd() {                                      // When we exit sim back to Launchpad, make sure we tidy things up properly
 	for (int i = 0;i<nGutsUsed;i++) {
 		delete GCoreData[i];
@@ -108,7 +177,9 @@ void ARoapiModule::clbkPreStep(double simt, double simdt, double mjd) {      // 
 	return;
 }
 
+#if !defined(NASSP_NATIVE_LINUX)
 void ARoapiModule::clbkPostStep(double simt, double simdt, double mjd) {}
+#endif
 
 void ARoapiModule::clbkDeleteVessel(OBJHANDLE hVessel) {                     // Tidy up when a vessel is deleted (stops clbkPreStep calling a dead vessel)
 	VESSEL *vessel = oapiGetVesselInterface(hVessel);
@@ -125,6 +196,7 @@ void ARoapiModule::clbkDeleteVessel(OBJHANDLE hVessel) {                     // 
 	}
 }
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK void opcSaveState(FILEHANDLE scn)
 {
 	g_GlobalData.SaveState(scn);
@@ -134,3 +206,4 @@ DLLCLBK void opcLoadState(FILEHANDLE scn)
 {
 	g_GlobalData.LoadState(scn);
 }
+#endif
