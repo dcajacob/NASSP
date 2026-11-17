@@ -460,6 +460,24 @@ if(NASSP_BUILD_NATIVE_LINUX)
         )
         target_link_options(${target} PRIVATE "-Wl,--no-undefined")
     endforeach()
+    add_library(NasspASTP MODULE src_saturn/Astp.cpp)
+    add_library(NasspSkylab MODULE
+        src_skylab/ATMDC.cpp
+        src_skylab/skylab.cpp
+        src_skylab/SkylabConnector.cpp
+        src_skylab/SkylabMesh.cpp
+    )
+    foreach(module IN ITEMS ASTP Skylab)
+        set_target_properties(Nassp${module} PROPERTIES
+            PREFIX "" OUTPUT_NAME "${module}" CXX_VISIBILITY_PRESET hidden
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+        )
+        target_link_libraries(Nassp${module} PRIVATE NasspVesselSystems)
+        target_link_options(Nassp${module} PRIVATE "-Wl,--no-undefined")
+    endforeach()
+    target_link_libraries(NasspSkylab PRIVATE NasspAudio)
+    target_include_directories(NasspASTP PRIVATE src_launch)
+    target_include_directories(NasspSkylab PRIVATE src_aux src_csm src_launch src_lm src_mfd)
     add_library(NasspCrawler MODULE src_launch/Crawler.cpp)
     add_library(NasspMSS MODULE src_launch/MSS.cpp)
     add_library(NasspML MODULE

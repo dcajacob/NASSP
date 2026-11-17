@@ -327,6 +327,35 @@ void Skylab::SetTrackLights(bool mode)
 	}
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#include "OrbiterNativeBuild.h"
+
+namespace {
+VESSEL *Create(OBJHANDLE vessel, int flightmodel)
+{
+	return new Skylab(vessel, flightmodel);
+}
+
+void Destroy(VESSEL *vessel)
+{
+	delete static_cast<Skylab *>(vessel);
+}
+
+using Factory = orbiter::native::VesselFactory<Create, Destroy>;
+const OrbiterNativeModuleDescriptor descriptor = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Skylab orbital workshop",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK VESSEL* ovcInit(OBJHANDLE hvessel, int flightmodel)
 {
 	VESSEL* skylab;
@@ -342,5 +371,4 @@ DLLCLBK void ovcExit(VESSEL* vessel)
 		delete (Skylab*)vessel;
 	}
 }
-
-
+#endif
