@@ -490,6 +490,9 @@ if(NASSP_BUILD_NATIVE_LINUX)
         DESTINATION "Doc/Project Apollo - NASSP/Checklists" COMPONENT ChecklistAssets
         FILES_MATCHING PATTERN "*.xls"
     )
+    install(FILES "${NASSP_SOURCE_ROOT}/../../../Script/ProjectApollo/apollo10-entry-replay.lua"
+        DESTINATION "Script/ProjectApollo" COMPONENT ApolloReplayAssets
+    )
     add_library(NasspS1C MODULE src_saturn/s1c.cpp src_saturn/s1csystems.cpp)
     add_library(NasspSII MODULE src_saturn/sii.cpp src_saturn/siisystems.cpp src_saturn/j2engine.cpp)
     foreach(module IN ITEMS Crawler MSS ML S1C SII)
