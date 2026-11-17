@@ -440,6 +440,47 @@ if(NASSP_BUILD_NATIVE_LINUX)
         target_link_options(${target} PRIVATE "-Wl,--no-undefined")
     endforeach()
 
+    add_library(NasspEVA MODULE src_csm/eva.cpp)
+    add_library(NasspLEVA MODULE src_moon/leva.cpp)
+    add_library(NasspLRV MODULE src_moon/LRV.cpp)
+    set(alsep_modules AlsepStation AlsepRTG AlsepSBnd AlsepPSE AlsepLSM AlsepSWS AlsepSIDE)
+    foreach(module IN LISTS alsep_modules)
+        add_library(Nassp${module} MODULE "src_moon/${module}.cpp")
+    endforeach()
+    foreach(module IN ITEMS EVA LEVA LRV ${alsep_modules})
+        set(target "Nassp${module}")
+        target_sources(${target} PRIVATE src_moon/NativeSurfaceModule.cpp)
+        set_target_properties(${target} PROPERTIES
+            PREFIX "" OUTPUT_NAME "${module}" CXX_VISIBILITY_PRESET hidden
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+        )
+        target_compile_definitions(${target} PRIVATE NASSP_NATIVE_SURFACE_MODULE="Apollo ${module}")
+        target_include_directories(${target} PRIVATE
+            src_aux src_csm src_lm src_mfd src_moon src_saturn src_sys/PanelSDK/Internals
+        )
+        target_link_libraries(${target} PRIVATE NasspVesselSystems)
+        target_link_options(${target} PRIVATE "-Wl,--no-undefined")
+    endforeach()
+    foreach(module IN ITEMS LEVA LRV)
+        target_sources(Nassp${module} PRIVATE src_aux/CDK.cpp src_aux/OrbiterMath.cpp)
+        target_link_libraries(Nassp${module} PRIVATE NasspAudio)
+    endforeach()
+
+    add_library(NasspProjectApolloMFD MODULE
+        src_mfd/NativeMfdVesselCommands.cpp
+        src_mfd/ProjectApolloMFD.cpp
+        src_mfd/ProjectApolloMFDButtons.cpp
+    )
+    target_include_directories(NasspProjectApolloMFD PRIVATE
+        src_aux src_csm src_launch src_lm src_mfd src_rtccmfd src_saturn src_sys/PanelSDK/Internals
+    )
+    target_link_libraries(NasspProjectApolloMFD PRIVATE NasspGuidance NasspOrbMech NasspCockpitSupport)
+    target_link_options(NasspProjectApolloMFD PRIVATE "-Wl,--no-undefined")
+    set_target_properties(NasspProjectApolloMFD PROPERTIES
+        PREFIX "" OUTPUT_NAME ProjectApolloMFD CXX_VISIBILITY_PRESET hidden
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Plugin"
+    )
+
     add_library(NasspApolloRTCCMFD MODULE
         src_rtccmfd/ApollomfdButtons.cpp
         src_rtccmfd/ApolloRTCCMFD.cpp

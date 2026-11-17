@@ -87,8 +87,25 @@ void LEM::ToggleEVA(bool isCDR)
 		VESSELSTATUS vs1;
 		GetStatus(vs1);
 
-		// The LM must be in landed state
-		if (vs1.status != 1) return;
+		if (vs1.status != 1) {
+#if defined(NASSP_NATIVE_LINUX)
+			// A settled LM can remain in the dynamics solver while the
+			// touchdown points bear its weight. Use the surface state for egress.
+			constexpr double maxEgressSpeed = 0.05; // m/s relative to the surface
+			double speed;
+			if (!GroundContact() || !oapiGetGroundspeed(GetHandle(), &speed) || !(speed <= maxEgressSpeed))
+				return;
+			double radius;
+			if (!oapiGetEquPos(GetHandle(), &vs1.vdata[0].x, &vs1.vdata[0].y, &radius) ||
+				!oapiGetHeading(GetHandle(), &vs1.vdata[0].z))
+				return;
+			vs1.rbody = GetSurfaceRef();
+			vs1.base = nullptr;
+			vs1.status = 1;
+#else
+			return;
+#endif
+		}
 
 		EVA_IP[i] = true;
 

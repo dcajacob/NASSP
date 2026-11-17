@@ -25,6 +25,10 @@
 #ifndef __PROJECTAPOLLOMFD_H
 #define __PROJECTAPOLLOMFD_H
 
+#include "NasspOrbiterSdk.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "MFDAPI.h"
+#endif
 #include "ProjectApolloMFDButtons.h"
 
 class Saturn;
@@ -135,7 +139,12 @@ public:
 	void ReadStatus (FILEHANDLE scn);
 	void StoreStatus (void) const;
 	void RecallStatus (void);
+#if defined(NASSP_NATIVE_LINUX)
+	static oapi::CockpitMessageResult MsgProc(UINT msg, UINT mfd,
+		oapi::CockpitUnsignedParam dimensions, oapi::CockpitSignedParam vessel);
+#else
 	static OAPI_MSGTYPE MsgProc (UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam);
+#endif
 
 protected:
 

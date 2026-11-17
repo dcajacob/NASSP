@@ -830,6 +830,7 @@ protected:
 	void SetSwitches(int panel);
 	void AddRCS_LMH(double TRANY);
 	void ToggleEVA(bool isCDR);
+	void ProcessSurfaceEVA();
 	void SetView();
 	void RedrawPanel_Horizon (SURFHANDLE surf);
 	void RedrawPanel_AOTReticle (SURFHANDLE surf);

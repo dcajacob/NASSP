@@ -26,9 +26,10 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
+#include <algorithm>
 
 #include "nasspsound.h"
 #include "nasspdefs.h"
@@ -470,24 +471,24 @@ void LRV::MoveLRV(double SimDT, VESSELSTATUS *eva, double heading)
 	{
 		if (speed > 0.0) {
 			// we are still braking from forward movement to standstill
-			speed = __max(0.0, speed - ctrl_factor * SimDT * ROVER_BRK_M_S2); 
+			speed = (std::max)(0.0, speed - ctrl_factor * SimDT * ROVER_BRK_M_S2);
 			speedlock = (speed == 0.0);  // if wheelstop: don't go into reverse until key is released
 		}
 		else if (!speedlock)
 		{
-			speed = __max(-ROVER_SPEED_M_S, speed - ctrl_factor * SimDT * ROVER_ACC_M_S2); 
+			speed = (std::max)(-ROVER_SPEED_M_S, speed - ctrl_factor * SimDT * ROVER_ACC_M_S2);
 		}
 	}
 	else if (KEYADD)  // accelerate
 	{
 		if (speed < 0.0) {
 			// we are still braking from reverse movement to standstill
-			speed = __min(0.0, speed + ctrl_factor * SimDT * ROVER_BRK_M_S2); 
+			speed = (std::min)(0.0, speed + ctrl_factor * SimDT * ROVER_BRK_M_S2);
 			speedlock = (speed == 0.0);  // if wheelstop: don't accellerate until key is released
 		}
 		else if (!speedlock)
 		{
-			speed = __min(ROVER_SPEED_M_S, speed + ctrl_factor * SimDT * ROVER_ACC_M_S2); 
+			speed = (std::min)(ROVER_SPEED_M_S, speed + ctrl_factor * SimDT * ROVER_ACC_M_S2);
 		}
 	}
 	else
@@ -561,11 +562,11 @@ void LRV::LRVAttitude(VESSELSTATUS2* eva)
 	roll_angle = atan2(elev_ant_dx - elev_ant_sx, ant_dx_pos.x - ant_sx_pos.x);
 	pitch_angle = atan2(-elev_post + ((elev_ant_dx + elev_ant_sx) * 0.5), ant_dx_pos.z - post_pos.z);
 
-	MATRIX3 rot1 = RotationMatrix(_V(0 * RAD, (90 * RAD - lng), 0 * RAD), TRUE);
-	MATRIX3 rot2 = RotationMatrix(_V(-lat + 0 * RAD, 0, 0 * RAD), TRUE);
-	MATRIX3 rot3 = RotationMatrix(_V(0, 0, 180 * RAD + hdg), TRUE);
+	MATRIX3 rot1 = RotationMatrix(_V(0 * RAD, (90 * RAD - lng), 0 * RAD), true);
+	MATRIX3 rot2 = RotationMatrix(_V(-lat + 0 * RAD, 0, 0 * RAD), true);
+	MATRIX3 rot3 = RotationMatrix(_V(0, 0, 180 * RAD + hdg), true);
 
-	MATRIX3 rot4 = RotationMatrix(_V(90 * RAD - pitch_angle, 0, roll_angle), TRUE);
+	MATRIX3 rot4 = RotationMatrix(_V(90 * RAD - pitch_angle, 0, roll_angle), true);
 	MATRIX3 RotMatrix_Def = mul(rot1, mul(rot2, mul(rot3, rot4)));
 
 	eva->arot.x = arot_save.x = atan2(RotMatrix_Def.m23, RotMatrix_Def.m33);
@@ -576,7 +577,7 @@ void LRV::LRVAttitude(VESSELSTATUS2* eva)
 }
 
 //From GeneralVehicle by fred18
-MATRIX3 LRV::RotationMatrix(VECTOR3 angles, bool xyz = FALSE)
+MATRIX3 LRV::RotationMatrix(VECTOR3 angles, bool xyz)
 {
 	MATRIX3 m;
 	MATRIX3 RM_X, RM_Y, RM_Z;
@@ -718,7 +719,7 @@ void LRV::SetMissionPath()
 {
 	char MissionName[24];
 
-	_snprintf(MissionName, 23, "Apollo%d", ApolloNo);
+	snprintf(MissionName, sizeof(MissionName), "Apollo%d", ApolloNo);
 	soundlib.SetSoundLibMissionPath(MissionName);
 }
 
@@ -764,7 +765,7 @@ void LRV::SetNeedleAngle(int idx, double val, double min_val, double max_val)
 	//
 	// Move one of the 8 needles of the 4 power/temp gauges
 	//
-	double pos = __min(1.0, __max(0.0, (val - min_val) / (max_val - min_val)));  // position in [0 .. 1]
+	double pos = (std::min)(1.0, (std::max)(0.0, (val - min_val) / (max_val - min_val)));  // position in [0 .. 1]
 	double needle_rad = Radians(pos * (VCC_NEEDLE_MAXPOS[idx] - VCC_NEEDLE_MINPOS[idx]));
 
 	mgtRotGauges.P.rotparam.angle = float(needle_rad - vccNeedleAngle[idx]);
@@ -1175,7 +1176,11 @@ void LRV::clbkSaveState(FILEHANDLE scn)
 	}
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+VESSEL *CreateSurfaceVessel (OBJHANDLE hvessel, int flightmodel)
+#else
 DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
+#endif
 {
 	if (!refcount++) {
 		hLRV = oapiLoadMeshGlobal ("ProjectApollo/LRV");
@@ -1185,7 +1190,11 @@ DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 	return new LRV (hvessel, flightmodel);
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+void DestroySurfaceVessel (VESSEL *vessel)
+#else
 DLLCLBK void ovcExit (VESSEL *vessel)
+#endif
 {
 	LRV *sv = (LRV *) vessel;
 
@@ -1193,10 +1202,12 @@ DLLCLBK void ovcExit (VESSEL *vessel)
 		delete sv;
 }
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK void InitModule (HINSTANCE hModule)
 {
 
 }
+#endif
 
 /* just some handy code for debugging purposes ...
 char test[200];

@@ -26,7 +26,7 @@
 
   // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "AlsepPSE.h"
 
 static 	int refcount = 0;
@@ -168,7 +168,11 @@ void AlsepPSE::clbkVisualDestroyed(VISHANDLE vis, int refcount)
 
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+VESSEL* CreateSurfaceVessel(OBJHANDLE hvessel, int flightmodel)
+#else
 DLLCLBK VESSEL* ovcInit(OBJHANDLE hvessel, int flightmodel)
+#endif
 {
 	if (!refcount++) {
 		hAlsepPSE = oapiLoadMeshGlobal("ProjectApollo/ALSEP_PSE");
@@ -177,7 +181,11 @@ DLLCLBK VESSEL* ovcInit(OBJHANDLE hvessel, int flightmodel)
 	return new AlsepPSE(hvessel, flightmodel);
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+void DestroySurfaceVessel(VESSEL* vessel)
+#else
 DLLCLBK void ovcExit(VESSEL* vessel)
+#endif
 {
 	AlsepPSE* sv = (AlsepPSE*)vessel;
 
@@ -185,7 +193,9 @@ DLLCLBK void ovcExit(VESSEL* vessel)
 		delete sv;
 }
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK void InitModule(HINSTANCE hModule)
 {
 
 }
+#endif

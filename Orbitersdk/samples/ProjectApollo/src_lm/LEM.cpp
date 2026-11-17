@@ -1510,7 +1510,35 @@ void LEM::SetAnimations(double simdt) {
 // Timestep code.
 //
 
+void LEM::ProcessSurfaceEVA()
+{
+	if (EVA_IP[0]) {
+		if(!hLEVA[0]) {
+			ToggleEVA(true);
+		}
+	}
+	if (EVA_IP[1]) {
+		if (!hLEVA[1]) {
+			ToggleEVA(false);
+		}
+	}
+
+	if (ToggleEva && GroundContact() && CDRinPLSS > 0 && EVA_IP[0] == false){
+		ToggleEVA(true);
+	}
+	if (ToggleEva && GroundContact() && LMPinPLSS > 0 && EVA_IP[1] == false) {
+		ToggleEVA(false);
+	}
+	ToggleEva = false; //Always reset, in case the condition wasn't met
+}
+
 void LEM::clbkPreStep (double simt, double simdt, double mjd) {
+#if defined(NASSP_NATIVE_LINUX)
+	// Landed vessel creation needs the finalized state from the previous step.
+	if ((stage == 1 || stage == 5) && pMission->LMHasLegs())
+		ProcessSurfaceEVA();
+#endif
+
 
 	SetAnimations(simdt);
 
@@ -1736,24 +1764,9 @@ void LEM::clbkPostStep(double simt, double simdt, double mjd)
 
 	}else if (stage == 1 || stage == 5)	{
 
-		if (EVA_IP[0]) {
-			if(!hLEVA[0]) {
-				ToggleEVA(true);
-			}
-		}
-		if (EVA_IP[1]) {
-			if (!hLEVA[1]) {
-				ToggleEVA(false);
-			}
-		}
-
-		if (ToggleEva && GroundContact() && CDRinPLSS > 0 && EVA_IP[0] == false){
-			ToggleEVA(true);
-		}
-		if (ToggleEva && GroundContact() && LMPinPLSS > 0 && EVA_IP[1] == false) {
-			ToggleEVA(false);
-		}
-		ToggleEva = false; //Always reset, in case the condition wasn't met
+#if !defined(NASSP_NATIVE_LINUX)
+		ProcessSurfaceEVA();
+#endif
 
 		double vsAlt = GetAltitude(ALTMODE_GROUND);
 		if (!Landed && (GroundContact() || (vsAlt < 1.0))) {
