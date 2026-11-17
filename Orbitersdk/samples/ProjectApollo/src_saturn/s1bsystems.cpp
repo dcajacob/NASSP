@@ -99,8 +99,9 @@ void H1Engine::Timestep(double simdt)
 {
 	if (th_h1 == NULL) return;
 
-	//Thrust OK switch
-	ThrustOK = vessel->GetThrusterLevel(th_h1) > 0.9 && !EngineFailed;
+	// Read back Orbiter's restored throttle before evaluating thrust OK or cutoff.
+	ThrustLevel = vessel->GetThrusterLevel(th_h1);
+	ThrustOK = ThrustLevel > 0.9 && !EngineFailed;
 
 	if (ProgrammedCutoff || EDSCutoff || GSECutoff || RSSCutoff || ThrustNotOKCutoff)
 	{

@@ -295,6 +295,7 @@ void S1B::AddEngines()
 	}
 
 	thg_retro = CreateThrusterGroup(th_retro, 4, THGROUP_RETRO);
+	solid_exhaust.tex = oapiRegisterParticleTexture ("Contrail2");
 
 	int i;
 	SURFHANDLE tex = oapiRegisterExhaustTexture("ProjectApollo/Exhaust2");
@@ -453,6 +454,10 @@ void S1B::clbkLoadStateEx (FILEHANDLE scn, void *vstatus)
 			ParseScenarioLineEx (line, vstatus);
         }
 	}
+
+	// Orbiter applies the saved fuel and throttle after the load callback returns.
+	SetEmptyMass(EmptyMass);
+	AddEngines();
 }
 
 void S1B::clbkSetClassCaps (FILEHANDLE cfg)
@@ -520,7 +525,6 @@ void S1B::LoadMeshes(bool lowres)
 		hsat1stg1 = oapiLoadMeshGlobal("ProjectApollo/nsat1stg1");
 		hSat1intstg = oapiLoadMeshGlobal("ProjectApollo/nsat1intstg");
 	}	
-	solid_exhaust.tex = oapiRegisterParticleTexture ("Contrail2");
 }
 
 void S1B::clbkDockEvent(int dock, OBJHANDLE connected)
@@ -540,7 +544,8 @@ void S1B::clbkPostCreation()
 
 	mesh_dir = _V(0, 0, 16.2);
 	AddMesh(hSat1intstg, &mesh_dir);
-	AddEngines();
+	if (!thg_main)
+		AddEngines();
 
 	if (SIB_SIVB_Sep.Blown())
 	{
