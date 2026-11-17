@@ -27,6 +27,10 @@
 #include "PadLCCInterface.h"
 #include "LCCPadInterface.h"
 #include "RCA110A.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeGraphics.h"
+#include "Production/ResourceResolver.h"
+#endif
 
 ATOLLSequence::ATOLLSequence()
 {
@@ -135,13 +139,14 @@ void ATOLLProcessor::Timestep(double simt)
 	if (simtime < nextitemtime) return;
 	if (skipgetline == false)
 	{
-		if (!ifs.getline(line, 100))
+		if (!std::getline(ifs, line))
 		{
 			ifs.close();
+			return;
 		}
 	}
 	seq.Clear();
-	if (seq.ReadIn(line))
+	if (seq.ReadIn(line.c_str()))
 	{
 		opcode = seq.GetOperator();
 		switch (opcode)
@@ -221,9 +226,21 @@ void ATOLLProcessor::SSEL()
 	}
 }
 
-void ATOLLProcessor::ReadFile(const char *str)
+bool ATOLLProcessor::ReadFile(const char *str)
 {
-	ifs.open(str);
+#if defined(NASSP_NATIVE_LINUX)
+	const auto* files = orbiter::production::GetNativeRenderContext().programFiles;
+	if (!files || !files->Contains(str)) return false;
+	std::ifstream program(files->Resolve(str));
+#else
+	std::ifstream program(str);
+#endif
+	if (!program) return false;
+	ifs = std::move(program);
+	nextitemtime = 0.0;
+	skipgetline = false;
+	delaystatus = false;
+	return true;
 }
 
 RCA110A::RCA110A()
@@ -323,9 +340,9 @@ void RCA110AL::Timestep(double simt, double simdt)
 	}
 }
 
-void RCA110AL::ReadFile(const char *str)
+bool RCA110AL::ReadFile(const char *str)
 {
-	atoll.ReadFile(str);
+	return atoll.ReadFile(str);
 }
 
 void RCA110AL::IssueSwitchSelectorCmd(int stage, int chan)

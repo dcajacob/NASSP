@@ -68,7 +68,7 @@ class ATOLLProcessor
 public:
 	ATOLLProcessor(RCA110AL *r);
 	void Timestep(double simt);
-	void ReadFile(const char *str);
+	bool ReadFile(const char *str);
 private:
 	//Operators
 	void DELY();
@@ -78,7 +78,7 @@ private:
 
 	ATOLLSequence seq;
 	std::ifstream ifs;
-	char line[128];
+	std::string line;
 	int opcode;
 	RCA110AL *rca110a;
 	double nextitemtime;
@@ -120,7 +120,7 @@ public:
 	RCA110AL(PadLCCInterface *l);
 	void Timestep(double simt, double simdt);
 	void IssueSwitchSelectorCmd(int stage, int chan);
-	void ReadFile(const char *str);
+	bool ReadFile(const char *str);
 private:
 	PadLCCInterface *lcc;
 	ATOLLProcessor atoll;

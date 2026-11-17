@@ -23,6 +23,8 @@
   **************************************************************************/
 
 #include "LCC_MFD.h"
+#include "RCA110A.h"
+#include <string>
 
 LCC_MFD::LCC_MFD(DWORD w, DWORD h, VESSEL *v) :MFD2(w, h, v)
 {
@@ -38,6 +40,15 @@ LCC_MFD::~LCC_MFD(void)
 	return;
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+oapi::CockpitMessageResult LCC_MFD::MsgProc(UINT msg, UINT,
+	oapi::CockpitUnsignedParam dimensions, oapi::CockpitSignedParam vessel)
+{
+	if (msg != OAPI_MSG_MFD_OPENED) return 0;
+	return reinterpret_cast<oapi::CockpitMessageResult>(new LCC_MFD(
+		dimensions & 0xffff, (dimensions >> 16) & 0xffff, reinterpret_cast<VESSEL*>(vessel)));
+}
+#else
 OAPI_MSGTYPE LCC_MFD::MsgProc(UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam)
 {
 	switch (msg)
@@ -47,6 +58,7 @@ OAPI_MSGTYPE LCC_MFD::MsgProc(UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam)
 	}
 	return 0;
 }
+#endif
 
 bool LCC_MFD::Update(oapi::Sketchpad* skp)
 {
@@ -92,7 +104,7 @@ bool SLCCDiscreteInputInput(void *id, char *str, void *data)
 {
 	int n, on;
 
-	if (sscanf(str, "%d %d", &n, &on) == 2)
+	if (sscanf(str, "%d %d", &n, &on) == 2 && n >= 0 && n < RCA110A_INPUT_LINES)
 	{
 		((LCC_MFD*)data)->set_SLCCDiscreteInput(n, on == 0 ? false : true);
 		return true;
@@ -114,15 +126,13 @@ void LCC_MFD::menuLoadProgram()
 
 bool LoadCheckoutProgramInput(void *id, char *str, void *data)
 {
-	((LCC_MFD*)data)->LoadCheckoutProgram(str);
-	return true;
+	return ((LCC_MFD*)data)->LoadCheckoutProgram(str);
 }
 
-void  LCC_MFD::LoadCheckoutProgram(const char *str)
+bool LCC_MFD::LoadCheckoutProgram(const char *str)
 {
-	char str2[128];
-
-	sprintf_s(str2, 128, "Config\\ProjectApollo\\Checkout\\%s.csv", str);
-
-	pLCC->SLCCLoadProgram(str2);
+	const std::string name(str);
+	if (name.empty() || name.find_first_of("/\\:") != std::string::npos)
+		return false;
+	return pLCC->SLCCLoadProgram(("Config/ProjectApollo/Checkout/" + name + ".csv").c_str());
 }

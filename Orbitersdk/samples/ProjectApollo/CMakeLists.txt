@@ -573,7 +573,12 @@ if(NASSP_BUILD_NATIVE_LINUX)
     )
     add_library(NasspS1C MODULE src_saturn/s1c.cpp src_saturn/s1csystems.cpp)
     add_library(NasspSII MODULE src_saturn/sii.cpp src_saturn/siisystems.cpp src_saturn/j2engine.cpp)
-    foreach(module IN ITEMS Crawler MSS ML S1C SII)
+    add_library(NasspLCC MODULE
+        src_launch/LCC.cpp src_launch/LCC_MFD.cpp
+        src_launch/LCCMFDButtons.cpp src_launch/RCA110A.cpp
+    )
+    target_include_directories(NasspLCC PRIVATE src_rtccmfd)
+    foreach(module IN ITEMS Crawler MSS ML S1C SII LCC)
         set_target_properties(Nassp${module} PROPERTIES
             PREFIX "" OUTPUT_NAME "${module}"
             LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
