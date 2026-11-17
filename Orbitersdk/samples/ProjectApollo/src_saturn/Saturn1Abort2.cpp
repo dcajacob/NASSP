@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "papi.h"
 
@@ -127,7 +127,7 @@ void Sat1Abort2::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
 
 	while (oapiReadScenario_nextline(scn, line))
 	{
-		if (!_strnicmp(line, "LOWRES", 6))
+		if (!strnicmp(line, "LOWRES", 6))
 		{
 			int i;
 			sscanf(line + 6, "%d", &i);
@@ -149,7 +149,11 @@ void Sat1Abort2::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
 // ==============================================================
 
 
+#if defined(NASSP_NATIVE_LINUX)
+VESSEL *CreateAbortVessel(OBJHANDLE hvessel, int flightmodel)
+#else
 DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
+#endif
 {
 	if (!refcount++) {
 		hSat1stg2low = oapiLoadMeshGlobal ("ProjectApollo/LowRes/nsat1stg2");
@@ -163,7 +167,11 @@ DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 	return new Sat1Abort2(hvessel, flightmodel);
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+void DestroyAbortVessel(VESSEL *vessel)
+#else
 DLLCLBK void ovcExit(VESSEL *vessel)
+#endif
 {
 	if (vessel) delete (Sat1Abort2*)vessel;
 }

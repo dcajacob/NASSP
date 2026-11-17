@@ -325,6 +325,25 @@ if(NASSP_BUILD_NATIVE_LINUX)
         target_link_options(${target} PRIVATE "-Wl,--no-undefined")
     endforeach()
 
+    add_library(NasspSat1bAbort1 MODULE src_saturn/Saturn1Abort.cpp)
+    add_library(NasspSat1bAbort2 MODULE src_saturn/Saturn1Abort2.cpp)
+    foreach(module IN ITEMS Sat5Abort1 Sat5Abort2 Sat5Abort3)
+        add_library(Nassp${module} MODULE "src_saturn/${module}.cpp")
+    endforeach()
+    foreach(module IN ITEMS Sat1bAbort1 Sat1bAbort2 Sat5Abort1 Sat5Abort2 Sat5Abort3)
+        set(target "Nassp${module}")
+        target_sources(${target} PRIVATE src_saturn/NativeAbortModule.cpp)
+        set_target_properties(${target} PROPERTIES
+            PREFIX "" OUTPUT_NAME "${module}" CXX_VISIBILITY_PRESET hidden
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+        )
+        target_compile_definitions(${target} PRIVATE NASSP_NATIVE_ABORT_MODULE="Apollo ${module}")
+        target_include_directories(${target} PRIVATE src_aux src_csm src_saturn)
+        target_link_libraries(${target} PRIVATE NasspVesselSystems)
+        target_link_options(${target} PRIVATE "-Wl,--no-undefined")
+    endforeach()
+    target_sources(NasspSat5Abort3 PRIVATE src_csm/smjc.cpp)
+
     add_library(NasspFloatBag MODULE src_landing/FloatBag.cpp)
     add_library(NasspLES MODULE src_saturn/LES.cpp)
     set_target_properties(NasspFloatBag PROPERTIES OUTPUT_NAME FloatBag)

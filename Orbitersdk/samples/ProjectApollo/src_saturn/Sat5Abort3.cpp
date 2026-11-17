@@ -24,7 +24,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "papi.h"
 #include "nasspdefs.h"
@@ -83,6 +83,7 @@ void Sat5Abort3::init()
 
 {
 	LowRes = false;
+	VehicleNo = 0;
 	SMBusAPowered = false;
 	SMBusBPowered = false;
 	SMJCA = NULL;
@@ -165,6 +166,8 @@ void Sat5Abort3::Setup()
 
 void Sat5Abort3::clbkPreStep(double simt, double simdt, double mjd)
 {
+	if (!SMJCA || !SMJCB) return;
+
 	SMJCA->Timestep(simdt, SMBusAPowered);
 	SMJCB->Timestep(simdt, SMBusBPowered);
 
@@ -346,6 +349,10 @@ void Sat5Abort3::clbkSaveState(FILEHANDLE scn)
 
 	papiWriteScenario_bool(scn, "LOWRES", LowRes);
 	oapiWriteScenario_int(scn, "VECHNO", VehicleNo);
+	papiWriteScenario_bool(scn, "SMBUS_A", SMBusAPowered);
+	papiWriteScenario_bool(scn, "SMBUS_B", SMBusBPowered);
+	if (SMJCA) SMJCA->SaveState(scn, SMJCA_START_STRING);
+	if (SMJCB) SMJCB->SaveState(scn, SMJCB_START_STRING);
 }
 
 void Sat5Abort3::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
@@ -355,7 +362,7 @@ void Sat5Abort3::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
 
 	while (oapiReadScenario_nextline(scn, line))
 	{
-		if (!_strnicmp(line, "LOWRES", 6))
+		if (!strnicmp(line, "LOWRES", 6))
 		{
 			int i;
 			sscanf(line + 6, "%d", &i);
@@ -364,7 +371,21 @@ void Sat5Abort3::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
 		else if (!strnicmp(line, "VECHNO", 6))
 		{
 			sscanf(line + 6, "%d", &VehicleNo);
-			AddMissionSpecificSystems();
+		}
+		else if (papiReadScenario_bool(line, "SMBUS_A", SMBusAPowered) ||
+		         papiReadScenario_bool(line, "SMBUS_B", SMBusBPowered))
+		{
+			continue;
+		}
+		else if (!strnicmp(line, SMJCA_START_STRING, sizeof(SMJCA_START_STRING)))
+		{
+			AddSMJC();
+			SMJCA->LoadState(scn);
+		}
+		else if (!strnicmp(line, SMJCB_START_STRING, sizeof(SMJCB_START_STRING)))
+		{
+			AddSMJC();
+			SMJCB->LoadState(scn);
 		}
 		else
 		{
@@ -372,6 +393,7 @@ void Sat5Abort3::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
 		}
 	}
 
+	AddMissionSpecificSystems();
 	Setup();
 }
 
@@ -379,7 +401,11 @@ void Sat5Abort3::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
 // API interface
 // ==============================================================
 
+#if defined(NASSP_NATIVE_LINUX)
+VESSEL *CreateAbortVessel(OBJHANDLE hvessel, int flightmodel)
+#else
 DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
+#endif
 {
 	if (!refcount++) {
 		hsat5stg3low = oapiLoadMeshGlobal("ProjectApollo/LowRes/sat5stg3");
@@ -398,7 +424,11 @@ DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 	return new Sat5Abort3 (hvessel, flightmodel);
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+void DestroyAbortVessel(VESSEL *vessel)
+#else
 DLLCLBK void ovcExit(VESSEL *vessel)
+#endif
 {
 	if (vessel) delete (Sat5Abort3*)vessel;
 }

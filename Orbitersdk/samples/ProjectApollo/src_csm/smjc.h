@@ -60,6 +60,7 @@ public:
 	virtual void GetState(SMJCState &state);
 
 protected:
+	virtual DelayTimer *TranslationCutoffTimer() { return nullptr; }
 
 	bool FireMinusXTrans;
 	bool FirePlusRoll;
@@ -89,6 +90,8 @@ public:
 	void SetState(const SMJCState &state);
 	void GetState(SMJCState &state);
 protected:
+	DelayTimer *TranslationCutoffTimer() override { return &TD4; }
+
 	//RELAYS
 
 	//-X Trans Deactivate
