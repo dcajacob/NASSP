@@ -2699,14 +2699,19 @@ void Saturn::JoystickTimestep()
 	// Direct ullage thrust
 	//
 
-	if (DirectUllageButton.GetState() == 1) {
-		if (DirectUllMnACircuitBraker.IsPowered()) {   
-			SetRCSState(RCS_SM_QUAD_B, 4, true);
-			SetRCSState(RCS_SM_QUAD_D, 3, true);
+	if (DirectUllageButton.GetState() == 1 && stage >= PRELAUNCH_STAGE && stage <= CSM_LEM_STAGE) {
+		// The direct circuit holds each valve open for the whole step.
+		// SetRCSState adds one guidance-computer impulse per call instead.
+		auto fireJet = [this](THRUSTER_HANDLE jet) {
+			if (jet) SetThrusterLevel(jet, 1.0);
+		};
+		if (DirectUllMnACircuitBraker.IsPowered()) {
+			fireJet(th_rcs_b[4]);
+			fireJet(th_rcs_d[3]);
 		}
-		if (DirectUllMnBCircuitBraker.IsPowered()) {   
-			SetRCSState(RCS_SM_QUAD_A, 4, true); 
-			SetRCSState(RCS_SM_QUAD_C, 3, true);
+		if (DirectUllMnBCircuitBraker.IsPowered()) {
+			fireJet(th_rcs_a[4]);
+			fireJet(th_rcs_c[3]);
 		}
 		if (SCSLogicBus1.Voltage() > SP_MIN_DCVOLTAGE)
 		{

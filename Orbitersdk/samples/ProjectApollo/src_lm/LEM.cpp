@@ -2306,6 +2306,29 @@ void LEM::clbkSetClassCaps (FILEHANDLE cfg) {
 
 void LEM::clbkPostCreation()
 {
+#if defined(NASSP_NATIVE_LINUX)
+	// Landed saves use the mesh origin. Initialise the loaded mass and
+	// touchdown points before stepping, then anchor the shifted centre
+	// of mass at the corresponding point on the surface.
+	VESSELSTATUS2 surface = {};
+	surface.version = 2;
+	GetStatusEx(&surface);
+	if (surface.status == 1 && surface.rbody && !surface.base) {
+		VECTOR3 meshOrigin;
+		GetGlobalPos(meshOrigin);
+		UpdateMassAndCoG();
+
+		VECTOR3 centreOffset;
+		GlobalRot(currentCoG, centreOffset);
+		double radius;
+		oapiGlobalToEqu(surface.rbody, meshOrigin + centreOffset,
+			&surface.surf_lng, &surface.surf_lat, &radius);
+		surface.vrot.x = radius - oapiGetSize(surface.rbody) -
+			oapiSurfaceElevation(surface.rbody, surface.surf_lng, surface.surf_lat);
+		DefSetStateEx(&surface);
+	}
+#endif
+
 	//Set up systems
 	imu.clbkPostCreation();
 
