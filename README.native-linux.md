@@ -108,3 +108,9 @@ absolute and relative tolerances. The job fails on missing events, invalid
 vessel state, Lua errors, or measurements outside those tolerances.
 
 Launcher and replay audio use a private PulseAudio virtual output set to 5%.
+
+The pinned `nassp-native-ci-opengl-surface-v2.tar.zst` runtime supplement
+includes the OpenGL surface tile crash fix, its source patch, and build
+provenance. Apply it after the base runtime when reproducing CI locally.
+The patch checks for surface and cloud textures before drawing tiles. Apollo 7's
+original rendering cadence exposed this crash during the burn replays.

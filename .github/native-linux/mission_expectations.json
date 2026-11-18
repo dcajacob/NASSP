@@ -42,8 +42,28 @@
     "telemetry": {
       "sps3-scs.csv": {
         "last": {
+          "sps_mass": {
+            "value": 3543.37,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
           "altitude": {
             "value": 246898.842,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "orbital_speed": {
+            "value": 7753.195,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "periapsis": {
+            "value": 165117.469,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apoapsis": {
+            "value": 307234.947,
             "absolute": 0.5,
             "relative": 0.02
           }
@@ -83,8 +103,28 @@
     "telemetry": {
       "sps4-p40.csv": {
         "last": {
+          "sps_mass": {
+            "value": 3519.392,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
           "altitude": {
             "value": 246833.603,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "orbital_speed": {
+            "value": 7758.688,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "periapsis": {
+            "value": 177042.837,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apoapsis": {
+            "value": 313751.954,
             "absolute": 0.5,
             "relative": 0.02
           }
@@ -123,8 +163,28 @@
     "telemetry": {
       "sps5-manual-tvc.csv": {
         "last": {
+          "sps_mass": {
+            "value": 1476.09,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
           "altitude": {
             "value": 193320.889,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "orbital_speed": {
+            "value": 7819.21,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "periapsis": {
+            "value": 145183.014,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apoapsis": {
+            "value": 337153.702,
             "absolute": 0.5,
             "relative": 0.02
           }
@@ -233,8 +293,28 @@
     "telemetry": {
       "sps6-p40.csv": {
         "last": {
+          "sps_mass": {
+            "value": 1455.063,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
           "altitude": {
             "value": 423520.265,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "orbital_speed": {
+            "value": 7584.596,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "periapsis": {
+            "value": 165672.659,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apoapsis": {
+            "value": 426810.606,
             "absolute": 0.5,
             "relative": 0.02
           }
@@ -273,8 +353,29 @@
     "telemetry": {
       "sps7-scs.csv": {
         "last": {
+          "sps_mass": {
+            "value": 1093.559,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
           "altitude": {
             "value": 418047.817,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "orbital_speed": {
+            "value": 7608.562,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "periapsis": {
+            "value": 171961.577,
+            "absolute": 0.5,
+            "relative": 0.02,
+            "historical_value": 225906.905
+          },
+          "apoapsis": {
+            "value": 427043.168,
             "absolute": 0.5,
             "relative": 0.02
           }
@@ -304,7 +405,8 @@
           "ems_cutoff_confirmed"
         ]
       }
-    }
+    },
+    "qualification_note": "Requalified on the current pinned Orbiter runtime after the tile rendering fix. SPS fuel consumption and EMS cutoff match the original run. The current engine gives a 171.962 km perigee. The historical run gave 225.907 km."
   },
   "runtime-release-apollo7-countdown-sps8-p40-burn": {
     "vessels": {
@@ -316,8 +418,28 @@
     "telemetry": {
       "retrofire-burn.csv": {
         "last": {
+          "sps_mass": {
+            "value": 746.088,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
           "altitude": {
             "value": 375327.601,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "orbital_speed": {
+            "value": 7597.578,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "periapsis": {
+            "value": 15933.196,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apoapsis": {
+            "value": 435161.521,
             "absolute": 0.5,
             "relative": 0.02
           }

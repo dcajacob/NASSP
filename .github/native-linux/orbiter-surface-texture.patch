@@ -1,0 +1,16 @@
+diff --git a/OVP/OGLClient/cloudmgr2.cpp b/OVP/OGLClient/cloudmgr2.cpp
+index f963cc2e..649824cf 100644
+--- a/OVP/OGLClient/cloudmgr2.cpp
++++ b/OVP/OGLClient/cloudmgr2.cpp
+@@ -96 +96,2 @@ void CloudTile::Render ()
+-	if (!mesh) return; // DEBUG : TEMPORARY
++	// Cloud tile textures can still be unavailable after mesh creation.
++	if (!mesh || !tex) return;
+diff --git a/OVP/OGLClient/surfmgr2.cpp b/OVP/OGLClient/surfmgr2.cpp
+index 1a155d9b..912ac066 100644
+--- a/OVP/OGLClient/surfmgr2.cpp
++++ b/OVP/OGLClient/surfmgr2.cpp
+@@ -503 +503,2 @@ void SurfTile::Render ()
+-	if (!mesh) return; // DEBUG : TEMPORARY
++	// A tile can have elevation data before a surface texture is available.
++	if (!mesh || !tex) return;

@@ -143,6 +143,17 @@ jobs:
           tar --zstd -xf mission-replays.tar.zst
           rm mission-replays.tar.zst
 
+      - name: Fetch and verify the surface texture crash fix
+        env:
+          OPENGL_FIX_URL: https://github.com/dcajacob/NASSP/releases/download/native-linux-ci-inputs-v1/nassp-native-ci-opengl-surface-v2.tar.zst
+          OPENGL_FIX_SHA256: 5a118041be1fc80328f12ed3c0c5a1bfc7a297ca954181dd44b9eba924095b7c
+        run: |
+          cd "$RUNNER_TEMP/nassp-inputs"
+          curl --fail --location --retry 3 --output opengl-fix.tar.zst "$OPENGL_FIX_URL"
+          printf '%s  opengl-fix.tar.zst\n' "$OPENGL_FIX_SHA256" | sha256sum -c -
+          tar --zstd -xf opengl-fix.tar.zst
+          rm opengl-fix.tar.zst
+
       - name: Build NASSP from the PR
         id: build
         env:
