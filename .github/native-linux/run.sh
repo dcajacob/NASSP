@@ -21,6 +21,8 @@ case "${3:-}" in
     launcher)
         # Keep the audio server private and use the same backend as a Linux desktop.
         pulse_dir=$(mktemp -d)
+        # The GitHub job container's mounted home is inaccessible to PulseAudio.
+        export HOME="$pulse_dir"
         export PULSE_RUNTIME_PATH="$pulse_dir"
         export PULSE_SERVER="unix:$pulse_dir/pulse.sock"
         export PULSE_SINK=nassp_ci
