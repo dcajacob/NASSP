@@ -7,6 +7,38 @@ mkdir -p "$2"
 output=$(realpath "$2")
 runtime="$inputs/runtime"
 
+if [[ "${3:-}" == launcher || "${3:-}" == flight ]]; then
+    # Keep the audio server private and use the same backend as a Linux desktop.
+    pulse_dir=$(mktemp -d)
+    # The GitHub job container's mounted home is inaccessible to PulseAudio.
+    export HOME="$pulse_dir"
+    export PULSE_RUNTIME_PATH="$pulse_dir"
+    export PULSE_SERVER="unix:$pulse_dir/pulse.sock"
+    export PULSE_SINK=nassp_ci
+    export LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 QT_QPA_PLATFORM=xcb
+    env DBUS_SESSION_BUS_ADDRESS="unix:path=$pulse_dir/no-session-bus" pulseaudio -n --daemonize=no --exit-idle-time=-1 --log-target=stderr \
+        -L "module-native-protocol-unix socket=$pulse_dir/pulse.sock" \
+        -L "module-null-sink sink_name=$PULSE_SINK" > "$output/pulseaudio.log" 2>&1 &
+    pulse_pid=$!
+    cleanup_audio() {
+        kill "$pulse_pid" 2>/dev/null || true
+        wait "$pulse_pid" 2>/dev/null || true
+        rm -rf "$pulse_dir"
+    }
+    trap cleanup_audio EXIT
+    for attempt in {1..50}; do
+        if pactl info >/dev/null 2>&1; then
+            break
+        fi
+        if ! kill -0 "$pulse_pid" 2>/dev/null; then
+            break
+        fi
+        sleep .2
+    done
+    pactl info || { cat "$output/pulseaudio.log"; exit 1; }
+    pactl set-sink-volume "$PULSE_SINK" 5%
+fi
+
 case "${3:-}" in
     build)
         cmake -S "$source_dir/Orbitersdk/samples/ProjectApollo" -B "$output/build" -G Ninja \
@@ -19,34 +51,6 @@ case "${3:-}" in
         done
         ;;
     launcher)
-        # Keep the audio server private and use the same backend as a Linux desktop.
-        pulse_dir=$(mktemp -d)
-        # The GitHub job container's mounted home is inaccessible to PulseAudio.
-        export HOME="$pulse_dir"
-        export PULSE_RUNTIME_PATH="$pulse_dir"
-        export PULSE_SERVER="unix:$pulse_dir/pulse.sock"
-        export PULSE_SINK=nassp_ci
-        export LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 QT_QPA_PLATFORM=xcb
-        pulseaudio -n --daemonize=no --exit-idle-time=-1 --log-target=stderr \
-            -L "module-native-protocol-unix socket=$pulse_dir/pulse.sock" \
-            -L "module-null-sink sink_name=$PULSE_SINK" > "$output/pulseaudio.log" 2>&1 &
-        pulse_pid=$!
-        cleanup_audio() {
-            kill "$pulse_pid" 2>/dev/null || true
-            wait "$pulse_pid" 2>/dev/null || true
-            rm -rf "$pulse_dir"
-        }
-        trap cleanup_audio EXIT
-        for attempt in {1..50}; do
-            if pactl info >/dev/null 2>&1; then
-                break
-            fi
-            if ! kill -0 "$pulse_pid" 2>/dev/null; then
-                break
-            fi
-            sleep .2
-        done
-        pactl info || { cat "$output/pulseaudio.log"; exit 1; }
         xvfb-run -a -s '-screen 0 1600x1000x24 +extension GLX' python3 \
             "$source_dir/.github/native-linux/launchpad.py" "$runtime" \
             "$output/launcher" "$inputs/launcher-manifest.json"
