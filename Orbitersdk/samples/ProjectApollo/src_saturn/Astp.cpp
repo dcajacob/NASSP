@@ -28,7 +28,7 @@
 
 #define ORBITER_MODULE
 
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 
 #include "PanelSDK/PanelSDK.h"
@@ -39,15 +39,40 @@
 #include "sivb.h"
 #include "ASTP.h"
 
-HINSTANCE g_hDLL;
-
-static int refcount = 0;
 static MESHHANDLE hastp;
 
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#include "OrbiterNativeBuild.h"
+
+namespace {
+VESSEL *Create(OBJHANDLE vessel, int flightmodel)
+{
+	hastp = oapiLoadMeshGlobal("ProjectApollo/nASTP2");
+	return new ASTP(vessel, flightmodel);
+}
+
+void Destroy(VESSEL *vessel)
+{
+	delete static_cast<ASTP *>(vessel);
+}
+
+using Factory = orbiter::native::VesselFactory<Create, Destroy>;
+const OrbiterNativeModuleDescriptor descriptor = {
+	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+	sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP Apollo-Soyuz docking module",
+	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#else
 DLLCLBK void InitModule(HINSTANCE hModule)
 {
-	g_hDLL = hModule;
-
 	hastp = oapiLoadMeshGlobal("ProjectApollo/nASTP2");
 }
 
@@ -66,6 +91,8 @@ DLLCLBK void ovcExit(VESSEL *vessel)
 	if (vessel) delete (ASTP*)vessel;
 }
 
+
+#endif
 ASTP::ASTP (OBJHANDLE hObj, int fmodel)
 : Payload (hObj, fmodel),
 CSMToDMCommandConnector(this)

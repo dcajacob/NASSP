@@ -1252,7 +1252,7 @@ void MCC::pushCMCUplinkString(const char *str) {
 	}
 }
 
-// Push CM uplink sequence
+// Push LM uplink sequence
 void MCC::pushLGCUplinkString(const char *str) {
 	if (str == NULL) { return; } // Bail
 	int len = strlen(str);
@@ -1260,6 +1260,11 @@ void MCC::pushLGCUplinkString(const char *str) {
 	while (x < len) {
 		if (str[x] == '\n' || str[x] == '\r') { x++; continue; } // Ignore CR and LF if they are present (they should not be)
 		this->pushAGCUplinkKey(str[x], false);
+		if (x >= 3 && std::strncmp(str + x - 3, "V33E", 4) == 0) {
+			const char *next = str + x + 1;
+			while (*next == '\r' || *next == '\n') ++next;
+			if (*next == 'V') pushUplinkData(LM_PCM::MCC_WAIT_FOR_P27);
+		}
 		x++;
 	}
 }

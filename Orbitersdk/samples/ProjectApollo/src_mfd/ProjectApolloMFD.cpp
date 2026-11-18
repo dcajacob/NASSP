@@ -24,10 +24,10 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 
 #include "math.h"
-#include "windows.h"
+#include "NasspSocket.h"
 #include "nasspsound.h"
 #include "soundlib.h"
 #include "tracer.h"
@@ -40,8 +40,8 @@
 #include "saturn.h"
 #include "LEM.h"
 #include "Crawler.h"
-#include "MCCVessel.h"
-#include "MCC.h"
+#include "mccvessel.h"
+#include "mcc.h"
 #include "sivb.h"
 #include "iu.h"
 #include "papi.h"
@@ -51,6 +51,11 @@
 
 #include "MFDResource.h"
 #include "ProjectApolloMFD.h"
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeApolloRtccMfd.h"
+#include "Production/NativeAbi.h"
+#include "Production/ModuleBootstrap.h"
+#endif
 
 #include "../src_skylab/skylab.h"
 
@@ -58,10 +63,14 @@
 
 using namespace nassp;
 
+#include "NativeMfdVesselCommands.h"
+
 // ==============================================================
 // Global variables
 
+#if !defined(NASSP_NATIVE_LINUX)
 static HINSTANCE g_hDLL;
+#endif
 static int g_MFDmode; // identifier for new MFD mode
 
 #define SD_RECEIVE      0x00
@@ -115,15 +124,18 @@ static struct ProjectApolloMFDData {  // global data storage
 	int killrot;
 } g_Data;
 
-static WSADATA wsaData;
-static SOCKET m_socket;				
+static nassp::SocketRuntime socketRuntime;
+static nassp::SocketHandle m_socket = nassp::invalidSocket;
 static sockaddr_in clientService;
-static SOCKET close_Socket = INVALID_SOCKET;
 static char debugString[100];
 static char debugStringBuffer[100];
 static char debugWinsock[100];
 
+#if defined(NASSP_NATIVE_LINUX)
+void ProjectApolloMFDopcDLLInit()
+#else
 void ProjectApolloMFDopcDLLInit (HINSTANCE hDLL)
+#endif
 {
 	static char *name = "Project Apollo";      // MFD mode name
 	MFDMODESPECEX spec;
@@ -134,7 +146,9 @@ void ProjectApolloMFDopcDLLInit (HINSTANCE hDLL)
 
 	// Register the new MFD mode with Orbiter
 	g_MFDmode = oapiRegisterMFDMode (spec);
+#if !defined(NASSP_NATIVE_LINUX)
 	g_hDLL = hDLL;
+#endif
 
 	g_Data.prog = 0;
 	g_Data.progVessel = NULL;
@@ -150,8 +164,8 @@ void ProjectApolloMFDopcDLLInit (HINSTANCE hDLL)
 	//Init Emem
 	for(int i = 0; i < 24; i++)
 		g_Data.emem[i] = 0;
-	int iResult = WSAStartup( MAKEWORD(2,2), &wsaData );
-	if ( iResult != NO_ERROR ) {
+	int iResult = socketRuntime.Start();
+	if ( iResult != 0 ) {
 		sprintf(debugWinsock,"ERROR AT WSAStartup()");
 	}
 	else {
@@ -181,10 +195,27 @@ void ProjectApolloMFDopcDLLInit (HINSTANCE hDLL)
 	g_Data.SLUplinkResult = 0;
 }
 
+static void CloseUplinkSocket()
+{
+	if (m_socket == nassp::invalidSocket) return;
+#if defined(_WIN32)
+	closesocket(m_socket);
+#else
+	close(m_socket);
+#endif
+	m_socket = nassp::invalidSocket;
+}
+
+#if defined(NASSP_NATIVE_LINUX)
+void ProjectApolloMFDopcDLLExit()
+#else
 void ProjectApolloMFDopcDLLExit (HINSTANCE hDLL)
+#endif
 {
 	// Unregister the custom MFD mode when the module is unloaded
 	oapiUnregisterMFDMode (g_MFDmode);
+	CloseUplinkSocket();
+	g_Data = {};
 }
 
 int DoubleToBuffer(double x, double q, int m)
@@ -207,7 +238,6 @@ int DoubleToBuffer(double x, double q, int m)
 
 void send_agc_key(char key)	{
 
-	int bytesXmit = SOCKET_ERROR;
 	unsigned char cmdbuf[4];
 
 	if(g_Data.uplinkLEM > 0){
@@ -373,13 +403,13 @@ void uplink_aeaa_cmd(bool arm, bool set)
 void UplinkLMRTC(bool arm, bool set)
 {
 	if (g_Data.connStatus == 0) {
-		int bytesRecv = SOCKET_ERROR;
+
 		char addr[256];
 		m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (m_socket == INVALID_SOCKET) {
+		if (m_socket == nassp::invalidSocket) {
 			g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "ERROR AT SOCKET(): %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "ERROR AT SOCKET(): %d", nassp::LastSocketError());
+			CloseUplinkSocket();
 			return;
 		}
 		sprintf(addr, "127.0.0.1");
@@ -387,10 +417,10 @@ void UplinkLMRTC(bool arm, bool set)
 		clientService.sin_addr.s_addr = inet_addr(addr);
 		if (g_Data.uplinkLEM > 0) { clientService.sin_port = htons(14243); }
 		else { clientService.sin_port = htons(14242); }
-		if (connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService)) == SOCKET_ERROR) {
+		if (connect(m_socket, (sockaddr*)&clientService, sizeof(clientService)) < 0) {
 			g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %d", nassp::LastSocketError());
+			CloseUplinkSocket();
 			return;
 		}
 		sprintf(debugWinsock, "CONNECTED");
@@ -403,24 +433,24 @@ void UplinkLMRTC(bool arm, bool set)
 void UplinkData()
 {
 	if (g_Data.connStatus == 0) {
-		int bytesRecv = SOCKET_ERROR;
+
 		char addr[256];
 		char buffer[8];
 		m_socket = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );	
-		if ( m_socket == INVALID_SOCKET ) {
+		if ( m_socket == nassp::invalidSocket ) {
 			g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock,"ERROR AT SOCKET(): %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock,"ERROR AT SOCKET(): %d", nassp::LastSocketError());
+			CloseUplinkSocket();
 			return;
 		}
 		sprintf(addr, "127.0.0.1");
 		clientService.sin_family = AF_INET;
 		clientService.sin_addr.s_addr = inet_addr(addr);
 		if(g_Data.uplinkLEM > 0){	clientService.sin_port = htons( 14243 ); }else{ clientService.sin_port = htons( 14242 ); }
-		if (connect( m_socket, (SOCKADDR*) &clientService, sizeof(clientService)) == SOCKET_ERROR) {
+		if (connect( m_socket, (sockaddr*) &clientService, sizeof(clientService)) < 0) {
 			g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock,"FAILED TO CONNECT, ERROR %ld",WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock,"FAILED TO CONNECT, ERROR %d",nassp::LastSocketError());
+			CloseUplinkSocket();
 			return;
 		}
 		sprintf(debugWinsock, "CONNECTED");
@@ -434,7 +464,7 @@ void UplinkData()
 		int cnt  = (g_Data.emem[0]-(cnt2*10)) + cnt2*8;
 		
 		while (g_Data.uplinkState < cnt && cnt<=20 && cnt>=3) {
-			sprintf(buffer, "%ld", g_Data.emem[g_Data.uplinkState]);
+			sprintf(buffer, "%d", g_Data.emem[g_Data.uplinkState]);
 			uplink_word(buffer);
 			g_Data.uplinkState++;
 		}
@@ -451,14 +481,14 @@ void UpdateClock()
 {		
 	if (g_Data.connStatus == 0)
 	{
-		int bytesRecv = SOCKET_ERROR;
+
 		char addr[256];
 		char buffer[8];
 		m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (m_socket == INVALID_SOCKET) {
+		if (m_socket == nassp::invalidSocket) {
 			g_Data.updateClockReady = 0;
-			sprintf(debugWinsock, "ERROR AT SOCKET(): %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "ERROR AT SOCKET(): %d", nassp::LastSocketError());
+			CloseUplinkSocket();
 			return;
 		}
 		sprintf(addr, "127.0.0.1");
@@ -466,10 +496,10 @@ void UpdateClock()
 		clientService.sin_addr.s_addr = inet_addr(addr);
 		if (g_Data.uplinkLEM > 0) { clientService.sin_port = htons(14243); }
 		else { clientService.sin_port = htons(14242); }
-		if (connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService)) == SOCKET_ERROR) {
+		if (connect(m_socket, (sockaddr*)&clientService, sizeof(clientService)) < 0) {
 			g_Data.updateClockReady = 0;
-			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %d", nassp::LastSocketError());
+			CloseUplinkSocket();
 			return;
 		}
 		sprintf(debugWinsock, "CONNECTED");
@@ -524,13 +554,13 @@ void UpdateClock()
 		send_agc_key('5');
 		send_agc_key('E');	
 		send_agc_key(sign);
-		sprintf(buffer, "%ld", hours);
+		sprintf(buffer, "%d", hours);
 		uplink_word(buffer);
 		send_agc_key(sign);
-		sprintf(buffer, "%ld", minutes);
+		sprintf(buffer, "%d", minutes);
 		uplink_word(buffer);
 		send_agc_key(sign);
-		sprintf(buffer, "%ld", secs);
+		sprintf(buffer, "%d", secs);
 		uplink_word(buffer);
 
 		send_agc_key('V');
@@ -552,13 +582,13 @@ void UplinkSunburstSuborbitalAbort()
 
 	if (g_Data.connStatus == 0)
 	{
-		int bytesRecv = SOCKET_ERROR;
+
 		char addr[256];
 		m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (m_socket == INVALID_SOCKET) {
+		if (m_socket == nassp::invalidSocket) {
 			g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "ERROR AT SOCKET(): %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "ERROR AT SOCKET(): %d", nassp::LastSocketError());
+			CloseUplinkSocket();
 			return;
 		}
 		sprintf(addr, "127.0.0.1");
@@ -566,10 +596,10 @@ void UplinkSunburstSuborbitalAbort()
 		clientService.sin_addr.s_addr = inet_addr(addr);
 		if (g_Data.uplinkLEM > 0) { clientService.sin_port = htons(14243); }
 		else { clientService.sin_port = htons(14242); }
-		if (connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService)) == SOCKET_ERROR) {
+		if (connect(m_socket, (sockaddr*)&clientService, sizeof(clientService)) < 0) {
 			g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %d", nassp::LastSocketError());
+			CloseUplinkSocket();
 			return;
 		}
 		sprintf(debugWinsock, "CONNECTED");
@@ -587,13 +617,13 @@ void UplinkSunburstCOI()
 
 	if (g_Data.connStatus == 0)
 	{
-		int bytesRecv = SOCKET_ERROR;
+
 		char addr[256];
 		m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (m_socket == INVALID_SOCKET) {
+		if (m_socket == nassp::invalidSocket) {
 			g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "ERROR AT SOCKET(): %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "ERROR AT SOCKET(): %d", nassp::LastSocketError());
+			CloseUplinkSocket();
 			return;
 		}
 		sprintf(addr, "127.0.0.1");
@@ -601,10 +631,10 @@ void UplinkSunburstCOI()
 		clientService.sin_addr.s_addr = inet_addr(addr);
 		if (g_Data.uplinkLEM > 0) { clientService.sin_port = htons(14243); }
 		else { clientService.sin_port = htons(14242); }
-		if (connect(m_socket, (SOCKADDR*)&clientService, sizeof(clientService)) == SOCKET_ERROR) {
+		if (connect(m_socket, (sockaddr*)&clientService, sizeof(clientService)) < 0) {
 			g_Data.uplinkDataReady = 0;
-			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %ld", WSAGetLastError());
-			closesocket(m_socket);
+			sprintf(debugWinsock, "FAILED TO CONNECT, ERROR %d", nassp::LastSocketError());
+			CloseUplinkSocket();
 			return;
 		}
 		sprintf(debugWinsock, "CONNECTED");
@@ -621,7 +651,7 @@ void ProjectApolloMFDopcTimestep (double simt, double simdt, double mjd)
 	if (g_Data.connStatus > 0 && g_Data.uplinkBuffer.size() > 0) {
 		if (simt > g_Data.uplinkBufferSimt + 0.1) {
 			unsigned char data = g_Data.uplinkBuffer.front();
-			send(m_socket, (char *) &data, 1, 0);
+			send(m_socket, reinterpret_cast<const char *>(&data), 1, nassp::socketSendFlags);
 			g_Data.uplinkBuffer.pop();
 			g_Data.uplinkBufferSimt = simt;
 		}
@@ -631,7 +661,7 @@ void ProjectApolloMFDopcTimestep (double simt, double simdt, double mjd)
 			g_Data.uplinkDataReady = 0;				
 			g_Data.updateClockReady = 0;
 			g_Data.connStatus = 0;
-			closesocket(m_socket);
+			CloseUplinkSocket();
 		} else if (g_Data.connStatus == 2 && g_Data.updateClockReady == 2) {
 			UpdateClock();
 		}
@@ -665,8 +695,12 @@ ProjectApolloMFD::ProjectApolloMFD (DWORD w, DWORD h, VESSEL *vessel) : MFD2 (w,
 	our_vessel = NULL;
 	width = w;
 	height = h;
+#if defined(NASSP_NATIVE_LINUX)
+	hLogo = oapiLoadSurfaceEx("ProjectApollo/CSMPanel/Logo.bmp", OAPISURFACE_NOMIPMAPS);
+#else
 	HBITMAP hBmpLogo = LoadBitmap(g_hDLL, MAKEINTRESOURCE (IDB_LOGO));
 	hLogo = oapiCreateSurface(hBmpLogo);
+#endif
 	screen = 0;
 	debug_frozen = false;
 
@@ -781,8 +815,13 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 	char buffer[100];
 
 	SURFHANDLE s = skp->GetSurface();
+#if defined(NASSP_NATIVE_LINUX)
+	oapi::SdkRectangle src{ 0, 0, 255, 255 };
+	oapi::SdkRectangle dst{ 1, 1, static_cast<int>(width) - 2, static_cast<int>(height) - 2 };
+#else
 	RECT src{ 0, 0, 255, 255 };
 	RECT dst{ 1, 1, (LONG)width - 2, (LONG)height - 2 };
+#endif
 	oapiBlt(s, hLogo, &dst, &src);
 
 	// Draws the MFD title
@@ -793,14 +832,14 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 	skp->SetTextAlign(oapi::Sketchpad::CENTER);
 
 	if (!Supported) {
-		skp->SetTextColor(RGB(255, 0, 0));
+		skp->SetTextColor(oapiGetColour(255, 0, 0));
 		skp->Text(width / 2, (int)(height * 0.5), "Unsupported vessel", 18);
 		if (!crawler)
 			return true;
 	}
 
 	// Draw mission time
-	skp->SetTextColor (RGB(0, 255, 0));
+	skp->SetTextColor (oapiGetColour(0, 255, 0));
 	skp->Text(width / 2, (int) (height * 0.1), "Ground Elapsed Time", 19);
 
 	double mt = 0;
@@ -906,14 +945,14 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 		skp->Text((int)(width * 0.9), (int)(height * 0.85), buffer, strlen(buffer));
 
 		if (g_Data.killrot) {
-			skp->SetTextColor(RGB(255, 0, 0));
+			skp->SetTextColor(oapiGetColour(255, 0, 0));
 			skp->SetTextAlign(oapi::Sketchpad::CENTER);
 			skp->Text(width / 2, (int)(height * 0.9), "*** KILL ROTATION ACTIVE ***", 28);
 		}
 
 		char buffer2[100];
 		skp->SetTextAlign(oapi::Sketchpad::LEFT);
-		skp->SetTextColor(RGB(128, 128, 128));
+		skp->SetTextColor(oapiGetColour(128, 128, 128));
 		oapiGetObjectName(planet, buffer2, 100);
 		sprintf(buffer, "Reference: %s", buffer2);
 		skp->Text((int)(width * 0.05), (int)(height * 0.95), buffer, strlen(buffer));
@@ -937,19 +976,19 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 				skp->Text((int)(width * 0.6), (int)(height * 0.4), "OK", 2);
 			}
 			else if (ecs.crewStatus == ECS_CREWSTATUS_CRITICAL) {
-				skp->SetTextColor(RGB(255, 255, 0));
+				skp->SetTextColor(oapiGetColour(255, 255, 0));
 				skp->Text((int)(width * 0.6), (int)(height * 0.4), "CRITICAL", 8);
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 			else if (ecs.crewStatus == ECS_CREWSTATUS_CRITICAL_CO2) {
-				skp->SetTextColor(RGB(255, 255, 0));
+				skp->SetTextColor(oapiGetColour(255, 255, 0));
 				skp->Text((int)(width * 0.6), (int)(height * 0.4), "CRITICAL CO2", 12);
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 			else {
-				skp->SetTextColor(RGB(255, 0, 0));
+				skp->SetTextColor(oapiGetColour(255, 0, 0));
 				skp->Text((int)(width * 0.6), (int)(height * 0.4), "DEAD", 4);
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 
 			sprintf(buffer, "%d", ecs.crewNumber);
@@ -960,16 +999,16 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 
 			if (ecs.UCTAStatus >= 95.0)
 			{
-				skp->SetTextColor(RGB(255, 0, 0));
+				skp->SetTextColor(oapiGetColour(255, 0, 0));
 				skp->Text((int)(width * 0.6), (int)(height * 0.8), "FULL", 4);
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 			else if (ecs.UCTAStatus >= 85.0)
 			{
-				skp->SetTextColor(RGB(255, 255, 0));
+				skp->SetTextColor(oapiGetColour(255, 255, 0));
 				sprintf(buffer, "%.2f%%", ecs.UCTAStatus);
 				skp->Text((int)(width * 0.6), (int)(height * 0.8), buffer, strlen(buffer));
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 			else
 			{
@@ -1006,16 +1045,16 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 
 			if (ecs.UCTAStatus >= 95.0)
 			{
-				skp->SetTextColor(RGB(255, 0, 0));
+				skp->SetTextColor(oapiGetColour(255, 0, 0));
 				skp->Text((int)(width * 0.6), (int)(height * 0.8), "FULL", 4);
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 			else if (ecs.UCTAStatus >= 85.0)
 			{
-				skp->SetTextColor(RGB(255, 255, 0));
+				skp->SetTextColor(oapiGetColour(255, 255, 0));
 				sprintf(buffer, "%.2f%%", ecs.UCTAStatus);
 				skp->Text((int)(width * 0.6), (int)(height * 0.8), buffer, strlen(buffer));
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 			else
 			{
@@ -1028,19 +1067,19 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 				skp->Text((int)(width * 0.7), (int)(height * 0.4), "OK", 2);
 			}
 			else if (ecs.crewStatus == ECS_CREWSTATUS_CRITICAL) {
-				skp->SetTextColor(RGB(255, 255, 0));
+				skp->SetTextColor(oapiGetColour(255, 255, 0));
 				skp->Text((int)(width * 0.7), (int)(height * 0.4), "CRITICAL", 8);
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 			else if (ecs.crewStatus == ECS_CREWSTATUS_CRITICAL_CO2) {
-				skp->SetTextColor(RGB(255, 255, 0));
+				skp->SetTextColor(oapiGetColour(255, 255, 0));
 				skp->Text((int)(width * 0.7), (int)(height * 0.4), "CRITICAL CO2", 12);
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 			else {
-				skp->SetTextColor(RGB(255, 0, 0));
+				skp->SetTextColor(oapiGetColour(255, 0, 0));
 				skp->Text((int)(width * 0.7), (int)(height * 0.4), "DEAD", 4);
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 
 			sprintf(buffer, "%d", ecs.crewNumber);
@@ -1064,9 +1103,9 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 			}
 			else
 			{
-				skp->SetTextColor(RGB(255, 255, 0));
+				skp->SetTextColor(oapiGetColour(255, 255, 0));
 				skp->Text((int)(width * 0.6), (int)(height * 0.5), "Suited (Helmet/Gloves Off)", 26);
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 
 
@@ -1088,9 +1127,9 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 			}
 			else
 			{
-				skp->SetTextColor(RGB(255, 255, 0));
+				skp->SetTextColor(oapiGetColour(255, 255, 0));
 				skp->Text((int)(width * 0.6), (int)(height * 0.55), "Suited (Helmet/Gloves Off)", 26);
-				skp->SetTextColor(RGB(0, 255, 0));
+				skp->SetTextColor(oapiGetColour(0, 255, 0));
 			}
 		}
 		else
@@ -1307,7 +1346,7 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 		}
 
 		skp->SetTextAlign(oapi::Sketchpad::LEFT);
-		skp->SetTextColor(RGB(128, 128, 128));
+		skp->SetTextColor(oapiGetColour(128, 128, 128));
 		if (g_Data.uplinkVessel)
 		{
 			oapiGetObjectName(g_Data.uplinkVessel->GetHandle(), buffer, 100);
@@ -1364,41 +1403,41 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 		else if(g_Data.uplinkDataReady == 2) {
 			double linepos = 0.4;
 			skp->SetTextAlign(oapi::Sketchpad::LEFT);
-			sprintf(buffer, "304   %ld", g_Data.emem[0]);
+			sprintf(buffer, "304   %d", g_Data.emem[0]);
 			skp->Text((int)(width * 0.1), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-			sprintf(buffer, "305   %ld", g_Data.emem[1]);
+			sprintf(buffer, "305   %d", g_Data.emem[1]);
 			skp->Text((int)(width * 0.1), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-			sprintf(buffer, "306   %ld", g_Data.emem[2]);
+			sprintf(buffer, "306   %d", g_Data.emem[2]);
 			skp->Text((int)(width * 0.1), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-			sprintf(buffer, "307   %ld", g_Data.emem[3]);
+			sprintf(buffer, "307   %d", g_Data.emem[3]);
 			skp->Text((int)(width * 0.1), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-			sprintf(buffer, "310   %ld", g_Data.emem[4]);
+			sprintf(buffer, "310   %d", g_Data.emem[4]);
 			skp->Text((int)(width * 0.1), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-			sprintf(buffer, "311   %ld", g_Data.emem[5]);
+			sprintf(buffer, "311   %d", g_Data.emem[5]);
 			skp->Text((int)(width * 0.1), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-			sprintf(buffer, "312   %ld", g_Data.emem[6]);
+			sprintf(buffer, "312   %d", g_Data.emem[6]);
 			skp->Text((int)(width * 0.1), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-			sprintf(buffer, "313   %ld", g_Data.emem[7]);
+			sprintf(buffer, "313   %d", g_Data.emem[7]);
 			skp->Text((int)(width * 0.1), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-			sprintf(buffer, "314   %ld", g_Data.emem[8]);
+			sprintf(buffer, "314   %d", g_Data.emem[8]);
 			skp->Text((int)(width * 0.1), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-			sprintf(buffer, "315   %ld", g_Data.emem[9]);
+			sprintf(buffer, "315   %d", g_Data.emem[9]);
 			skp->Text((int)(width * 0.1), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
 			linepos = 0.4;
-			sprintf(buffer, "316   %ld", g_Data.emem[10]);
+			sprintf(buffer, "316   %d", g_Data.emem[10]);
 			skp->Text((int)(width * 0.55), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-			sprintf(buffer, "317   %ld", g_Data.emem[11]);
+			sprintf(buffer, "317   %d", g_Data.emem[11]);
 			skp->Text((int)(width * 0.55), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-			sprintf(buffer, "320   %ld", g_Data.emem[12]);
+			sprintf(buffer, "320   %d", g_Data.emem[12]);
 			skp->Text((int)(width * 0.55), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
 			if (g_Data.uplinkDataType >= UPLINK_SV) {
-				sprintf(buffer, "321   %ld", g_Data.emem[13]);
+				sprintf(buffer, "321   %d", g_Data.emem[13]);
 				skp->Text((int)(width * 0.55), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-				sprintf(buffer, "322   %ld", g_Data.emem[14]);
+				sprintf(buffer, "322   %d", g_Data.emem[14]);
 				skp->Text((int)(width * 0.55), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-				sprintf(buffer, "323   %ld", g_Data.emem[15]);
+				sprintf(buffer, "323   %d", g_Data.emem[15]);
 				skp->Text((int)(width * 0.55), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
-				sprintf(buffer, "324   %ld", g_Data.emem[16]);
+				sprintf(buffer, "324   %d", g_Data.emem[16]);
 				skp->Text((int)(width * 0.55), (int)(height* (linepos += 0.05)), buffer, strlen(buffer));
 			}
 		}
@@ -1413,7 +1452,7 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 			}
 		}
 		skp->SetTextAlign(oapi::Sketchpad::LEFT);
-		skp->SetTextColor(RGB(128, 128, 128));
+		skp->SetTextColor(oapiGetColour(128, 128, 128));
 		oapiGetObjectName(g_Data.vessel->GetHandle(), buffer, 100);
 		skp->Text((int)(width * 0.05), (int)(height * 0.95), buffer, strlen(buffer));
 		skp->SetTextAlign(oapi::Sketchpad::CENTER);
@@ -1710,13 +1749,13 @@ bool ProjectApolloMFD::Update (oapi::Sketchpad* skp)
 		}
 		else
 		{
-			skp->SetTextColor(RGB(255, 0, 0));
+			skp->SetTextColor(oapiGetColour(255, 0, 0));
 			skp->Text(width / 2, (int)(height * 0.3), "Skylab Not Selected", 19);
-			skp->SetTextColor(RGB(0, 255, 0));
+			skp->SetTextColor(oapiGetColour(0, 255, 0));
 		}
 		// Target Selection
 		skp->SetTextAlign(oapi::Sketchpad::RIGHT);
-		skp->SetTextColor(RGB(128, 128, 128));
+		skp->SetTextColor(oapiGetColour(128, 128, 128));
 		if (g_Data.uplinkVessel)
 		{
 			oapiGetObjectName(g_Data.uplinkVessel->GetHandle(), buffer, 100);
@@ -2026,9 +2065,10 @@ bool ProjectApolloMFD::SaturnResetFailureInput(unsigned n)
 
 void ProjectApolloMFD::SetRandomFailures(double FailureMultiplier)
 {
-	if (saturn == false) return;
+	if (!saturn) return;
 
-	saturn->Failures.SetRandomFailures(FailureMultiplier);
+	nassp::mfd::SetRandomFailures(saturn->Failures, FailureMultiplier);
+
 }
 
 void ProjectApolloMFD::SetAEAACommands(int arm, int set)
@@ -2091,8 +2131,10 @@ void ProjectApolloMFD::menuPressEnterOnDSKYDEDA()
 {
 	if (lem)
 	{
-		lem->DskySwitchEnter.SetState(true);
-		lem->DedaSwitchEnter.SetState(true);
+		nassp::mfd::PressSwitch(lem->DskySwitchEnter);
+
+		nassp::mfd::PressSwitch(lem->DedaSwitchEnter);
+
 	}
 }
 
@@ -2105,8 +2147,10 @@ void ProjectApolloMFD::menuPressEnterOnCMCLGC()
 
 	if (lem && saturn)
 	{
-		lem->DskySwitchEnter.SetState(true);
-		saturn->DskySwitchEnter.SetState(true);
+		nassp::mfd::PressSwitch(lem->DskySwitchEnter);
+
+		nassp::mfd::PressSwitch(saturn->DskySwitchEnter);
+
 	}
 
 	saturn = NULL;
@@ -2121,8 +2165,10 @@ void ProjectApolloMFD::menuPressPROOnCMCLGC()
 
 	if (lem && saturn)
 	{
-		lem->DskySwitchProceed.SetState(true);
-		saturn->DskySwitchProceed.SetState(true);
+		nassp::mfd::PressSwitch(lem->DskySwitchProceed);
+
+		nassp::mfd::PressSwitch(saturn->DskySwitchProceed);
+
 	}
 
 	saturn = NULL;
@@ -2216,6 +2262,7 @@ void ProjectApolloMFD::menuSaveEMSScroll()
 {
 	if (saturn)
 		saturn->SaveEMSScroll();
+
 }
 
 void ProjectApolloMFD::menuVAGCCoreDump()
@@ -2291,13 +2338,15 @@ void ProjectApolloMFD::menuConnectCSMO2Hose()
 
 		if (ecs.CSMO2HoseConnected)
 		{
-			saturn->lemECSConnector.DisconnectCSMO2Hose();
+			nassp::mfd::SetO2Hose(saturn->lemECSConnector, false);
+
 		}
 		else
 		{
 			if (saturn->ForwardHatch.IsOpen()) //TBD: Require LM hatch to be open as well
 			{
-				saturn->lemECSConnector.ConnectCSMO2Hose();
+				nassp::mfd::SetO2Hose(saturn->lemECSConnector, true);
+
 			}
 		}
 	}
@@ -2309,7 +2358,8 @@ void ProjectApolloMFD::menuJettisonEquipment()
 	{
 		if (!lem->ForwardHatch.GetJettisonStatus())
 		{
-			lem->ForwardHatch.JettisonEquipment();
+			nassp::mfd::JettisonEquipment(lem->ForwardHatch);
+
 		}
 	}
 }
@@ -2882,6 +2932,15 @@ void ProjectApolloMFD::RecallStatus (void)
 }
 
 // MFD message parser
+#if defined(NASSP_NATIVE_LINUX)
+oapi::CockpitMessageResult ProjectApolloMFD::MsgProc(UINT msg, UINT,
+	oapi::CockpitUnsignedParam dimensions, oapi::CockpitSignedParam vessel)
+{
+	if (msg != OAPI_MSG_MFD_OPENED) return 0;
+	return reinterpret_cast<oapi::CockpitMessageResult>(new ProjectApolloMFD(
+		dimensions & 0xffff, (dimensions >> 16) & 0xffff, reinterpret_cast<VESSEL*>(vessel)));
+}
+#else
 OAPI_MSGTYPE ProjectApolloMFD::MsgProc (UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam)
 {
 	switch (msg) {
@@ -2892,6 +2951,8 @@ OAPI_MSGTYPE ProjectApolloMFD::MsgProc (UINT msg, UINT mfd, WPARAM wparam, LPARA
 	}
 	return 0;
 }
+
+#endif
 
 bool SourceInput (void *id, char *str, void *data)
 {
@@ -3000,7 +3061,60 @@ bool AEAACommandsInput(void *id, char *str, void *data)
 
 ProjectApolloMFD::ScreenData ProjectApolloMFD::screenData = {0};
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK char *pacMFDGetDebugString()
 {
 	return debugStringBuffer;
 }
+#endif
+
+#if defined(NASSP_NATIVE_LINUX)
+namespace {
+void ForgetVessel(OBJHANDLE vessel)
+{
+    if (g_Data.progVessel && g_Data.progVessel->GetHandle() == vessel) g_Data.progVessel = nullptr;
+    if (g_Data.gorpVessel && g_Data.gorpVessel->GetHandle() == vessel) g_Data.gorpVessel = nullptr;
+    if (g_Data.SLVessel && g_Data.SLVessel->GetHandle() == vessel) g_Data.SLVessel = nullptr;
+    if (g_Data.vessel && g_Data.vessel->GetHandle() == vessel) g_Data.vessel = nullptr;
+    if (g_Data.uplinkVessel && g_Data.uplinkVessel->GetHandle() == vessel) g_Data.uplinkVessel = nullptr;
+}
+
+orbiter::production::NativeApolloMfdApi callbacks = {
+    sizeof(callbacks), ProjectApolloMFDopcTimestep, ForgetVessel, CloseUplinkSocket
+};
+
+int ORBITER_NATIVE_CALL Initialize(const OrbiterNativeHost* host, void** instance,
+    char* error, std::uint32_t capacity) noexcept
+{
+    if (!host || host->struct_size != sizeof(*host) || !host->context || !instance) {
+        std::snprintf(error, capacity, "Invalid Project Apollo MFD host");
+        return 1;
+    }
+    try {
+        ProjectApolloMFDopcDLLInit();
+        *instance = &callbacks;
+        return 0;
+    } catch (...) {
+        std::snprintf(error, capacity, "Cannot register Project Apollo MFD");
+        return 1;
+    }
+}
+
+void ORBITER_NATIVE_CALL Shutdown(void*) noexcept
+{
+    ProjectApolloMFDopcDLLExit();
+}
+
+const OrbiterNativeModuleDescriptor descriptor = {
+    sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+    sizeof(void*), ORBITER_NATIVE_PLUGIN, "NASSP Project Apollo MFD",
+    ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Initialize, Shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+    return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#endif

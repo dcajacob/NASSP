@@ -1050,7 +1050,7 @@ public:
 	///
 	/// \brief Triggers EMS scroll saving
 	///
-	virtual void SaveEMSScroll() { ems.WriteScrollToFile(); }	
+	virtual void SaveEMSScroll();
 
 	///
 	/// \brief Get settings for the Saturn payload.

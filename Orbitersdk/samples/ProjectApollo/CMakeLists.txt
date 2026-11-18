@@ -325,6 +325,25 @@ if(NASSP_BUILD_NATIVE_LINUX)
         target_link_options(${target} PRIVATE "-Wl,--no-undefined")
     endforeach()
 
+    add_library(NasspSat1bAbort1 MODULE src_saturn/Saturn1Abort.cpp)
+    add_library(NasspSat1bAbort2 MODULE src_saturn/Saturn1Abort2.cpp)
+    foreach(module IN ITEMS Sat5Abort1 Sat5Abort2 Sat5Abort3)
+        add_library(Nassp${module} MODULE "src_saturn/${module}.cpp")
+    endforeach()
+    foreach(module IN ITEMS Sat1bAbort1 Sat1bAbort2 Sat5Abort1 Sat5Abort2 Sat5Abort3)
+        set(target "Nassp${module}")
+        target_sources(${target} PRIVATE src_saturn/NativeAbortModule.cpp)
+        set_target_properties(${target} PROPERTIES
+            PREFIX "" OUTPUT_NAME "${module}" CXX_VISIBILITY_PRESET hidden
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+        )
+        target_compile_definitions(${target} PRIVATE NASSP_NATIVE_ABORT_MODULE="Apollo ${module}")
+        target_include_directories(${target} PRIVATE src_aux src_csm src_saturn)
+        target_link_libraries(${target} PRIVATE NasspVesselSystems)
+        target_link_options(${target} PRIVATE "-Wl,--no-undefined")
+    endforeach()
+    target_sources(NasspSat5Abort3 PRIVATE src_csm/smjc.cpp)
+
     add_library(NasspFloatBag MODULE src_landing/FloatBag.cpp)
     add_library(NasspLES MODULE src_saturn/LES.cpp)
     set_target_properties(NasspFloatBag PROPERTIES OUTPUT_NAME FloatBag)
@@ -440,6 +459,47 @@ if(NASSP_BUILD_NATIVE_LINUX)
         target_link_options(${target} PRIVATE "-Wl,--no-undefined")
     endforeach()
 
+    add_library(NasspEVA MODULE src_csm/eva.cpp)
+    add_library(NasspLEVA MODULE src_moon/leva.cpp)
+    add_library(NasspLRV MODULE src_moon/LRV.cpp)
+    set(alsep_modules AlsepStation AlsepRTG AlsepSBnd AlsepPSE AlsepLSM AlsepSWS AlsepSIDE)
+    foreach(module IN LISTS alsep_modules)
+        add_library(Nassp${module} MODULE "src_moon/${module}.cpp")
+    endforeach()
+    foreach(module IN ITEMS EVA LEVA LRV ${alsep_modules})
+        set(target "Nassp${module}")
+        target_sources(${target} PRIVATE src_moon/NativeSurfaceModule.cpp)
+        set_target_properties(${target} PROPERTIES
+            PREFIX "" OUTPUT_NAME "${module}" CXX_VISIBILITY_PRESET hidden
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+        )
+        target_compile_definitions(${target} PRIVATE NASSP_NATIVE_SURFACE_MODULE="Apollo ${module}")
+        target_include_directories(${target} PRIVATE
+            src_aux src_csm src_lm src_mfd src_moon src_saturn src_sys/PanelSDK/Internals
+        )
+        target_link_libraries(${target} PRIVATE NasspVesselSystems)
+        target_link_options(${target} PRIVATE "-Wl,--no-undefined")
+    endforeach()
+    foreach(module IN ITEMS LEVA LRV)
+        target_sources(Nassp${module} PRIVATE src_aux/CDK.cpp src_aux/OrbiterMath.cpp)
+        target_link_libraries(Nassp${module} PRIVATE NasspAudio)
+    endforeach()
+
+    add_library(NasspProjectApolloMFD MODULE
+        src_mfd/NativeMfdVesselCommands.cpp
+        src_mfd/ProjectApolloMFD.cpp
+        src_mfd/ProjectApolloMFDButtons.cpp
+    )
+    target_include_directories(NasspProjectApolloMFD PRIVATE
+        src_aux src_csm src_launch src_lm src_mfd src_rtccmfd src_saturn src_sys/PanelSDK/Internals
+    )
+    target_link_libraries(NasspProjectApolloMFD PRIVATE NasspGuidance NasspOrbMech NasspCockpitSupport)
+    target_link_options(NasspProjectApolloMFD PRIVATE "-Wl,--no-undefined")
+    set_target_properties(NasspProjectApolloMFD PROPERTIES
+        PREFIX "" OUTPUT_NAME ProjectApolloMFD CXX_VISIBILITY_PRESET hidden
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Plugin"
+    )
+
     add_library(NasspApolloRTCCMFD MODULE
         src_rtccmfd/ApollomfdButtons.cpp
         src_rtccmfd/ApolloRTCCMFD.cpp
@@ -460,6 +520,24 @@ if(NASSP_BUILD_NATIVE_LINUX)
         )
         target_link_options(${target} PRIVATE "-Wl,--no-undefined")
     endforeach()
+    add_library(NasspASTP MODULE src_saturn/Astp.cpp)
+    add_library(NasspSkylab MODULE
+        src_skylab/ATMDC.cpp
+        src_skylab/skylab.cpp
+        src_skylab/SkylabConnector.cpp
+        src_skylab/SkylabMesh.cpp
+    )
+    foreach(module IN ITEMS ASTP Skylab)
+        set_target_properties(Nassp${module} PROPERTIES
+            PREFIX "" OUTPUT_NAME "${module}" CXX_VISIBILITY_PRESET hidden
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"
+        )
+        target_link_libraries(Nassp${module} PRIVATE NasspVesselSystems)
+        target_link_options(Nassp${module} PRIVATE "-Wl,--no-undefined")
+    endforeach()
+    target_link_libraries(NasspSkylab PRIVATE NasspAudio)
+    target_include_directories(NasspASTP PRIVATE src_launch)
+    target_include_directories(NasspSkylab PRIVATE src_aux src_csm src_launch src_lm src_mfd)
     add_library(NasspCrawler MODULE src_launch/Crawler.cpp)
     add_library(NasspMSS MODULE src_launch/MSS.cpp)
     add_library(NasspML MODULE
@@ -495,7 +573,12 @@ if(NASSP_BUILD_NATIVE_LINUX)
     )
     add_library(NasspS1C MODULE src_saturn/s1c.cpp src_saturn/s1csystems.cpp)
     add_library(NasspSII MODULE src_saturn/sii.cpp src_saturn/siisystems.cpp src_saturn/j2engine.cpp)
-    foreach(module IN ITEMS Crawler MSS ML S1C SII)
+    add_library(NasspLCC MODULE
+        src_launch/LCC.cpp src_launch/LCC_MFD.cpp
+        src_launch/LCCMFDButtons.cpp src_launch/RCA110A.cpp
+    )
+    target_include_directories(NasspLCC PRIVATE src_rtccmfd)
+    foreach(module IN ITEMS Crawler MSS ML S1C SII LCC)
         set_target_properties(Nassp${module} PROPERTIES
             PREFIX "" OUTPUT_NAME "${module}"
             LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/NativeModules/Vessel/ProjectApollo"

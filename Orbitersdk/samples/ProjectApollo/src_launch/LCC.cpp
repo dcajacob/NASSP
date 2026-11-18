@@ -26,22 +26,22 @@
 #include "LCC.h"
 #include "LCC_MFD.h"
 #include "ML.h"
-#include "LC34.h"
-#include "LC37.h"
 #include "nassputils.h"
 
 using namespace nassp;
 
-#define ORBITER_MODULE
+#if defined(NASSP_NATIVE_LINUX)
+#include "Production/NativeVesselFactory.h"
+#endif
 
 LCC::LCC(OBJHANDLE hVessel, int flightmodel) : VESSEL4(hVessel, flightmodel)
 {
 	pPad = NULL;
 
-	sprintf_s(PadName, 256, "");
+	PadName[0] = '\0';
 
-	static char *name = "LCC";
-	MFDMODESPECEX spec;
+	static char name[] = "LCC";
+	MFDMODESPECEX spec{};
 	spec.name = name;
 	spec.key = OAPI_KEY_T;
 	spec.context = NULL;
@@ -95,7 +95,7 @@ void LCC::clbkLoadStateEx(FILEHANDLE scn, void *status)
 	char *line;
 
 	while (oapiReadScenario_nextline(scn, line)) {
-		if (!_strnicmp(line, "PAD_NAME", 8)) {
+		if (!strnicmp(line, "PAD_NAME", 8)) {
 			static_assert(sizeof(PadName) == 256, "PadName size changed, update sscanf format accordingly");
 			sscanf(line + 8, "%255s", PadName);
 		}
@@ -116,11 +116,12 @@ void LCC::SLCCCheckDiscreteInput(RCA110A *c)
 	}
 }
 
-void LCC::SLCCLoadProgram(const char *str)
+bool LCC::SLCCLoadProgram(const char *str)
 {
-	rca110a->ReadFile(str);
+	return rca110a->ReadFile(str);
 }
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK void InitModule(HINSTANCE hDLL)
 {
 }
@@ -129,12 +130,34 @@ DLLCLBK void ExitModule(HINSTANCE hDLL)
 {
 }
 
-DLLCLBK VESSEL* ovcInit(OBJHANDLE hVessel, int iFlightModel)
+#define LCC_CALLBACK DLLCLBK
+#else
+namespace {
+#define LCC_CALLBACK
+#endif
+
+LCC_CALLBACK VESSEL* ovcInit(OBJHANDLE hVessel, int iFlightModel)
 {
 	return new LCC(hVessel, iFlightModel);
 }
 
-DLLCLBK void ovcExit(VESSEL* pVessel)
+LCC_CALLBACK void ovcExit(VESSEL* pVessel)
 {
 	delete static_cast<LCC*>(pVessel);
 }
+
+#if defined(NASSP_NATIVE_LINUX)
+using Factory = orbiter::native::VesselFactory<ovcInit, ovcExit>;
+const OrbiterNativeModuleDescriptor descriptor = {
+    sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
+    sizeof(void*), ORBITER_NATIVE_VESSEL, "NASSP LCC",
+    ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
+};
+}
+
+extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
+OrbiterNativeQuery(std::uint32_t version) noexcept
+{
+    return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
+}
+#endif

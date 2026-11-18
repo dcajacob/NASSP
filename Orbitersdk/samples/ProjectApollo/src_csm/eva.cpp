@@ -27,7 +27,7 @@
 #define ORBITER_MODULE
 
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 
@@ -273,7 +273,11 @@ void EVA::SetAstroStage()
 	Astro = true;
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+VESSEL* CreateSurfaceVessel(OBJHANDLE hvessel, int flightmodel)
+#else
 DLLCLBK VESSEL* ovcInit(OBJHANDLE hvessel, int flightmodel)
+#endif
 {
 	if (!refcount++) {
 		hCMPEVA9 = oapiLoadMeshGlobal("ProjectApollo/CM-CMPEVA-9");
@@ -283,7 +287,11 @@ DLLCLBK VESSEL* ovcInit(OBJHANDLE hvessel, int flightmodel)
 	return new EVA(hvessel, flightmodel);
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+void DestroySurfaceVessel(VESSEL* vessel)
+#else
 DLLCLBK void ovcExit(VESSEL* vessel)
+#endif
 {
 	if (vessel) delete (EVA*)vessel;
 }

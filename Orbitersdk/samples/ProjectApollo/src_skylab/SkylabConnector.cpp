@@ -22,8 +22,8 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#include "Orbitersdk.h"
-#include "Skylab.h"
+#include "NasspOrbiterSdk.h"
+#include "skylab.h"
 #include "SkylabConnector.h"
 
 

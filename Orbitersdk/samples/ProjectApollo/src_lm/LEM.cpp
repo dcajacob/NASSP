@@ -1510,7 +1510,35 @@ void LEM::SetAnimations(double simdt) {
 // Timestep code.
 //
 
+void LEM::ProcessSurfaceEVA()
+{
+	if (EVA_IP[0]) {
+		if(!hLEVA[0]) {
+			ToggleEVA(true);
+		}
+	}
+	if (EVA_IP[1]) {
+		if (!hLEVA[1]) {
+			ToggleEVA(false);
+		}
+	}
+
+	if (ToggleEva && GroundContact() && CDRinPLSS > 0 && EVA_IP[0] == false){
+		ToggleEVA(true);
+	}
+	if (ToggleEva && GroundContact() && LMPinPLSS > 0 && EVA_IP[1] == false) {
+		ToggleEVA(false);
+	}
+	ToggleEva = false; //Always reset, in case the condition wasn't met
+}
+
 void LEM::clbkPreStep (double simt, double simdt, double mjd) {
+#if defined(NASSP_NATIVE_LINUX)
+	// Landed vessel creation needs the finalized state from the previous step.
+	if ((stage == 1 || stage == 5) && pMission->LMHasLegs())
+		ProcessSurfaceEVA();
+#endif
+
 
 	SetAnimations(simdt);
 
@@ -1736,24 +1764,9 @@ void LEM::clbkPostStep(double simt, double simdt, double mjd)
 
 	}else if (stage == 1 || stage == 5)	{
 
-		if (EVA_IP[0]) {
-			if(!hLEVA[0]) {
-				ToggleEVA(true);
-			}
-		}
-		if (EVA_IP[1]) {
-			if (!hLEVA[1]) {
-				ToggleEVA(false);
-			}
-		}
-
-		if (ToggleEva && GroundContact() && CDRinPLSS > 0 && EVA_IP[0] == false){
-			ToggleEVA(true);
-		}
-		if (ToggleEva && GroundContact() && LMPinPLSS > 0 && EVA_IP[1] == false) {
-			ToggleEVA(false);
-		}
-		ToggleEva = false; //Always reset, in case the condition wasn't met
+#if !defined(NASSP_NATIVE_LINUX)
+		ProcessSurfaceEVA();
+#endif
 
 		double vsAlt = GetAltitude(ALTMODE_GROUND);
 		if (!Landed && (GroundContact() || (vsAlt < 1.0))) {
@@ -2293,6 +2306,29 @@ void LEM::clbkSetClassCaps (FILEHANDLE cfg) {
 
 void LEM::clbkPostCreation()
 {
+#if defined(NASSP_NATIVE_LINUX)
+	// Landed saves use the mesh origin. Initialise the loaded mass and
+	// touchdown points before stepping, then anchor the shifted centre
+	// of mass at the corresponding point on the surface.
+	VESSELSTATUS2 surface = {};
+	surface.version = 2;
+	GetStatusEx(&surface);
+	if (surface.status == 1 && surface.rbody && !surface.base) {
+		VECTOR3 meshOrigin;
+		GetGlobalPos(meshOrigin);
+		UpdateMassAndCoG();
+
+		VECTOR3 centreOffset;
+		GlobalRot(currentCoG, centreOffset);
+		double radius;
+		oapiGlobalToEqu(surface.rbody, meshOrigin + centreOffset,
+			&surface.surf_lng, &surface.surf_lat, &radius);
+		surface.vrot.x = radius - oapiGetSize(surface.rbody) -
+			oapiSurfaceElevation(surface.rbody, surface.surf_lng, surface.surf_lat);
+		DefSetStateEx(&surface);
+	}
+#endif
+
 	//Set up systems
 	imu.clbkPostCreation();
 

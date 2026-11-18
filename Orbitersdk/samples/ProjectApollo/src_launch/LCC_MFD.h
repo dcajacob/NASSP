@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include "MFDAPI.h"
 #include "LCC.h"
+#include "MFDAPI.h"
 #include "LCCMFDButtons.h"
 
 
@@ -53,9 +53,14 @@ public:
 	void menuLoadProgram();
 
 	void set_SLCCDiscreteInput(int n, bool set);
-	void LoadCheckoutProgram(const char *str);
+	bool LoadCheckoutProgram(const char *str);
 
+#if defined(NASSP_NATIVE_LINUX)
+	static oapi::CockpitMessageResult MsgProc(UINT msg, UINT mfd,
+		oapi::CockpitUnsignedParam dimensions, oapi::CockpitSignedParam vessel);
+#else
 	static OAPI_MSGTYPE MsgProc(UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam);
+#endif
 protected:
 	const LCCMFDButtons m_buttonPages;
 

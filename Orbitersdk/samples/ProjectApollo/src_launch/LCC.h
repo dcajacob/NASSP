@@ -25,7 +25,7 @@
 #pragma once
 
 #include <bitset>
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "PadLCCInterface.h"
 #include "LCCPadInterface.h"
 
@@ -43,7 +43,7 @@ public:
 	void clbkLoadStateEx(FILEHANDLE scn, void *status);
 
 	void SetDiscreteInput(size_t n, bool set);
-	void SLCCLoadProgram(const char *str);
+	bool SLCCLoadProgram(const char *str);
 private:
 	char PadName[256];
 	int mfdID;

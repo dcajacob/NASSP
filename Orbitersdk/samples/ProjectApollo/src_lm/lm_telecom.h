@@ -265,8 +265,10 @@ protected:
 	nassp::Socket telemetryClient;
 	void ReportSocketError(const char* operation, int error);
 	void DisconnectTelemetryClient();
-	void ConsumeMccByte();
+	void ConsumeMccByte(double simt);
 	bool UplinkEnabled() const;
+	static constexpr unsigned char MCC_WAIT_FOR_P27 = 0xff;
+	double mccNextLoadTime = -1.0;
 	int conn_state;                 // Connection State
 	int uplink_state;               // Uplink State
 	void perform_io(double simt);   // Get data from here to there

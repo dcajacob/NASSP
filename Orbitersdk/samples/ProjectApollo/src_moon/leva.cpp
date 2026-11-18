@@ -26,7 +26,7 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
 #include "stdio.h"
 #include "math.h"
 
@@ -365,10 +365,15 @@ void LEVA::DrawName()
 	oapiSetSurfaceColourKey(plss_tex, 0xFF0000);
 	oapiSetSurfaceColourKey(rcu_tex, 0xFF0000);
 
-	RECT plss_src = { 150,640,362,704 };
-	RECT plss_tgt = { 0,0,424,64 };
-	RECT rcu_src = { 415,8,463,196 };
-	RECT rcu_tgt = { 0,0,48,376 };
+#if defined(NASSP_NATIVE_LINUX)
+	using SuitTextureRect = oapi::SdkRectangle;
+#else
+	using SuitTextureRect = RECT;
+#endif
+	SuitTextureRect plss_src = { 150,640,362,704 };
+	SuitTextureRect plss_tgt = { 0,0,424,64 };
+	SuitTextureRect rcu_src = { 415,8,463,196 };
+	SuitTextureRect rcu_tgt = { 0,0,48,376 };
 
 	if (hTex[0]) oapiBlt(plss_tex, hTex[0], &plss_tgt, &plss_src);
 	if (hTex[1]) oapiBlt(rcu_tex, hTex[1], &rcu_tgt, &rcu_src);
@@ -398,8 +403,10 @@ void LEVA::DrawName()
 	if (hTex[0]) oapiBlt(hTex[0], plss_tex, &plss_src, &plss_tgt);
 	if (hTex[1]) oapiBlt(hTex[1], rcu_tex, &rcu_src, &rcu_tgt);
 
+#if !defined(NASSP_NATIVE_LINUX)
 	oapiDestroySurface(hTex[0]);
 	oapiDestroySurface(hTex[1]);
+#endif
 	oapiDestroySurface(plss_tex);
 	oapiDestroySurface(rcu_tex);
 }
@@ -839,7 +846,7 @@ void LEVA::SetMissionPath()
 {
 	char MissionName[24];
 
-	_snprintf(MissionName, 23, "Apollo%d", ApolloNo);
+	snprintf(MissionName, sizeof(MissionName), "Apollo%d", ApolloNo);
 	soundlib.SetSoundLibMissionPath(MissionName);
 }
 
@@ -1081,7 +1088,11 @@ void LEVA::clbkSaveState(FILEHANDLE scn)
 	}
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+VESSEL *CreateSurfaceVessel (OBJHANDLE hvessel, int flightmodel)
+#else
 DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
+#endif
 {
 	if (!refcount++) {
 		hCDREVA = oapiLoadMeshGlobal("ProjectApollo/sat5AstroS_CDR");
@@ -1107,7 +1118,11 @@ DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 	return new LEVA (hvessel, flightmodel);
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+void DestroySurfaceVessel (VESSEL *vessel)
+#else
 DLLCLBK void ovcExit (VESSEL *vessel)
+#endif
 {
 	LEVA *sv = (LEVA *) vessel;
 
@@ -1115,7 +1130,9 @@ DLLCLBK void ovcExit (VESSEL *vessel)
 		delete sv;
 }
 
+#if !defined(NASSP_NATIVE_LINUX)
 DLLCLBK void InitModule (HINSTANCE hModule)
 {
 
 }
+#endif

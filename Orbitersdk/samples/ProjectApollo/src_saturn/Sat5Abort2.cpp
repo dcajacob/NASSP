@@ -24,13 +24,14 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#include <algorithm>
 #include "stdio.h"
 #include "nasspdefs.h"
 #include "papi.h"
 #include "OrbiterMath.h"
 
-#include "Sat5Abort2.h"
+#include "sat5abort2.h"
 
 const VECTOR3 OFS_STAGE1 =  { 0, 0, -8.935};
 const VECTOR3 OFS_STAGE2 =  { 0, 0, 9.25-12.25};
@@ -310,7 +311,7 @@ void Sat5Abort2::clbkPreStep(double simt, double simdt, double mjd) {
 				if (thg_sep)
 					SetThrusterGroupLevel(thg_sep, 1);
 
-				panelProc = min(RotationLimit, panelProc + simdt / 40.0);
+				panelProc = (std::min)(RotationLimit, panelProc + simdt / 40.0);
 				SetAnimation(panelAnim, panelProc);
 			}
 			else {
@@ -476,23 +477,23 @@ void Sat5Abort2::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
 
 	while (oapiReadScenario_nextline(scn, line))
 	{
-		if (!_strnicmp(line, "SM", 2))
+		if (!strnicmp(line, "SM", 2))
 		{
 			int i;
 			sscanf(line + 2, "%d", &i);
 			SmPresent = (i != 0);
 		}
-		else if (!_strnicmp(line, "LOWRES", 6))
+		else if (!strnicmp(line, "LOWRES", 6))
 		{
 			int i;
 			sscanf(line + 6, "%d", &i);
 			LowRes = (i != 0);
 		}
-		else if (!_strnicmp(line, "PAYLOAD", 7))
+		else if (!strnicmp(line, "PAYLOAD", 7))
 		{
 			sscanf(line + 7, "%d", &PayloadType);
 		}
-		else if (!_strnicmp(line, "INTERSTAGE", 10))
+		else if (!strnicmp(line, "INTERSTAGE", 10))
 		{
 			sscanf(line + 10, "%d", &InterStage);
 		}
@@ -501,7 +502,7 @@ void Sat5Abort2::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
 			sscanf(line + 9, "%f", &flt);
 			panelProc = flt;
 		}
-		else if (!_strnicmp(line, "PANELSOPENED", 12))
+		else if (!strnicmp(line, "PANELSOPENED", 12))
 		{
 			int i;
 			sscanf(line + 12, "%d", &i);
@@ -620,7 +621,11 @@ void Sat5Abort2::HidePanelMeshes()
 // API interface
 // ==============================================================
 
+#if defined(NASSP_NATIVE_LINUX)
+VESSEL *CreateAbortVessel(OBJHANDLE hvessel, int flightmodel)
+#else
 DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
+#endif
 {
 	if (!refcount++) {
 		hsat5intstglow = oapiLoadMeshGlobal("ProjectApollo/LowRes/sat5intstg");
@@ -653,7 +658,11 @@ DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 	return new Sat5Abort2 (hvessel, flightmodel);
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+void DestroyAbortVessel(VESSEL *vessel)
+#else
 DLLCLBK void ovcExit(VESSEL *vessel)
+#endif
 {
 	if (vessel) delete (Sat5Abort2*)vessel;
 }

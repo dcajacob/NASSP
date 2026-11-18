@@ -87,6 +87,8 @@ void SMJC::SaveState(FILEHANDLE scn, char *start_str)
 	oapiWriteScenario_string(scn, "RELAYS", buffer);
 	TD2.SaveState(scn, "TD2_BEGIN", "TD_END");
 	TD3.SaveState(scn, "TD3_BEGIN", "TD_END");
+	if (auto *timer = TranslationCutoffTimer())
+		timer->SaveState(scn, "TD4_BEGIN", "TD_END");
 
 	oapiWriteLine(scn, SMJC_END_STRING);
 }
@@ -111,6 +113,10 @@ void SMJC::LoadState(FILEHANDLE scn)
 		}
 		else if (!strnicmp(line, "TD3_BEGIN", sizeof("TD3_BEGIN"))) {
 			TD3.LoadState(scn, "TD_END");
+		}
+		else if (!strnicmp(line, "TD4_BEGIN", sizeof("TD4_BEGIN"))) {
+			if (auto *timer = TranslationCutoffTimer())
+				timer->LoadState(scn, "TD_END");
 		}
 	}
 }

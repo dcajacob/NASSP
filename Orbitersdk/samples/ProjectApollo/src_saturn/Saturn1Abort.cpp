@@ -24,7 +24,8 @@
 
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
-#include "Orbitersdk.h"
+#include "NasspOrbiterSdk.h"
+#include <algorithm>
 #include "stdio.h"
 #include "nasspdefs.h"
 #include "papi.h"
@@ -267,7 +268,7 @@ void Sat1Abort1::clbkPreStep(double simt, double simdt, double mjd) {
 				if (thg_sep)
 					SetThrusterGroupLevel(thg_sep, 1);
 
-				panelProc = min(RotationLimit, panelProc + simdt / 5.0);
+				panelProc = (std::min)(RotationLimit, panelProc + simdt / 5.0);
 				SetAnimation(panelAnim, panelProc);
 			}
 		}
@@ -306,19 +307,19 @@ void Sat1Abort1::clbkLoadStateEx(FILEHANDLE scn, void *vstatus)
 
 	while (oapiReadScenario_nextline(scn, line))
 	{
-		if (!_strnicmp(line, "SM", 2))
+		if (!strnicmp(line, "SM", 2))
 		{
 			int i;
 			sscanf(line + 2, "%d", &i);
 			SmPresent = (i != 0);
 		}
-		else if (!_strnicmp(line, "LOWRES", 6))
+		else if (!strnicmp(line, "LOWRES", 6))
 		{
 			int i;
 			sscanf(line + 6, "%d", &i);
 			LowRes = (i != 0);
 		}
-		else if (!_strnicmp(line, "PAYLOAD", 7))
+		else if (!strnicmp(line, "PAYLOAD", 7))
 		{
 			sscanf(line + 7, "%d", &PayloadType);
 		}
@@ -395,7 +396,11 @@ void Sat1Abort1::AddSepJunk() {
 // ==============================================================
 
 
+#if defined(NASSP_NATIVE_LINUX)
+VESSEL *CreateAbortVessel(OBJHANDLE hvessel, int flightmodel)
+#else
 DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
+#endif
 {
 	if (!refcount++) {
 		hSat1stg1low = oapiLoadMeshGlobal("ProjectApollo/LowRes/nsat1stg1");
@@ -423,7 +428,11 @@ DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
 
 }
 
+#if defined(NASSP_NATIVE_LINUX)
+void DestroyAbortVessel(VESSEL *vessel)
+#else
 DLLCLBK void ovcExit(VESSEL *vessel)
+#endif
 {
 	if (vessel) delete (Sat1Abort1*)vessel;
 }

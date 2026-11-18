@@ -292,16 +292,8 @@ bool RTCC::CalculationMTP_C_PRIME(int fcn, void*&pad, char * upString, char * up
 	}
 	break;
 	case 6: //TLI Evaluation
-	{
-		SaturnV *SatV = (SaturnV*)calcParams.src;
-		LVDCSV *lvdc = (LVDCSV*)SatV->iu->GetLVDC();
-
-		if (lvdc->LVDC_Timebase == 5)
-		{
-			scrubbed = true;
-		}
-	}
-	break;
+		scrubbed = SaturnVTliWasScrubbed(upMessage);
+		break;
 	case 9:  //MISSION CP BLOCK DATA 1 (Prelim)
 	case 10: //MISSION CP BLOCK DATA 1
 	case 11: //MISSION CP BLOCK DATA 2
