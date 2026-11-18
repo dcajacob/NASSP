@@ -57,7 +57,7 @@ case "${3:-}" in
         ;;
     flight)
         run_flight() (
-            local case_name=$1 ticks=$2 step=$3 render_every=$4 keymap_profile=$5
+            local case_name=$1 ticks=$2 step=$3 render_every=$4 keymap_profile=$5 input_case=$6
             local keymap=()
             # Some original scripts send native numeric-keypad RCS controls.
             if [[ "$keymap_profile" == package ]]; then
@@ -65,23 +65,31 @@ case "${3:-}" in
             fi
             mkdir -p "$output/flight/$case_name"
             cd "$output/flight/$case_name"
-            cp "$inputs/flight/$case_name/"* .
-            printf 'Replaying %s at %s seconds per step\n' "$case_name" "$step"
-            env -u WAYLAND_DISPLAY -u LD_LIBRARY_PATH LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 \
+            cp "$inputs/flight/$input_case/"* .
+            run_session() (
+                cd "$1"
+                printf 'Replaying %s at %s seconds per step\n' "$case_name/$1" "$3"
+                env -u WAYLAND_DISPLAY -u LD_LIBRARY_PATH LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 \
                 xvfb-run -a -s '-screen 0 1600x1000x24 +extension GLX' stdbuf -oL -eL "$runtime/engine/run-orbiter" \
                 --assets "$runtime/resources" --data "$runtime/celestial-data" \
                 --modules "$runtime/engine/NativeModules" --planets "$runtime/planet-archives" \
                 --config "$runtime/Orbiter.cfg" "${keymap[@]}" \
                 --xrsound-assets "$runtime/resources" --scenario input.scn --save saved.scn \
-                --replay replay.csv --ticks "$ticks" --fixed-step "$step" \
-                --render-every "$render_every" --run < /dev/null > console.log 2>&1
+                --replay replay.csv --ticks "$2" --fixed-step "$3" \
+                --render-every "$4" --run < /dev/null > console.log 2>&1
+            )
+            run_session . "$ticks" "$step" "$render_every"
+            if [[ "$input_case" == runtime-release-apollo7-countdown-sps3-scs-burn-rate-mode ]]; then
+                python3 "$source_dir/.github/native-linux/prepare_sps3_followon.py" saved.scn followon
+                run_session followon 65000 .125 257
+            fi
         )
         suite="${4:-baseline}"
         matched=false
-        while read -r group name ticks step render_every keymap_profile; do
+        while read -r group name ticks step render_every keymap_profile input_case; do
             if [[ "$group" == "$suite" ]]; then
                 matched=true
-                run_flight "$name" "$ticks" "$step" "$render_every" "$keymap_profile"
+                run_flight "$name" "$ticks" "$step" "$render_every" "$keymap_profile" "${input_case:-$name}"
             fi
         done < "$source_dir/.github/native-linux/replays.tsv"
         if ! "$matched"; then

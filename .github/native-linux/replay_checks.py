@@ -2,6 +2,7 @@ import csv
 import math
 
 from mission_checks import EXPECTATIONS, verify_replay
+from apollo7_checks import SPS3, verify_sps3
 
 
 def rows(run, filename):
@@ -214,6 +215,7 @@ CHECKS = {
 
 
 CHECKS.update(dict.fromkeys(EXPECTATIONS, verify_replay))
+CHECKS.update({SPS3: verify_sps3, f"{SPS3}-finer": verify_sps3})
 
 def verify_mission_replays(flight, cases):
     replays = {case: CHECKS[case](flight / case) for case in cases}

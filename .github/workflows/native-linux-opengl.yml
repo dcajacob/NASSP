@@ -29,6 +29,7 @@ jobs:
           - apollo11-entry
           - apollo7-ascent
           - apollo7-sps3-scs-burn-rate-mode
+          - apollo7-sps3-scs-finer
           - apollo7-sps4-p40-burn
           - apollo7-sps5-manual-tvc-burn-secondary-open-loop
           - apollo7-sps6-p40-burn

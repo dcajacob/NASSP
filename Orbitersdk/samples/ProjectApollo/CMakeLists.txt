@@ -568,7 +568,10 @@ if(NASSP_BUILD_NATIVE_LINUX)
         DESTINATION "Doc/Project Apollo - NASSP/Checklists" COMPONENT ChecklistAssets
         FILES_MATCHING PATTERN "*.xls"
     )
-    install(FILES "${NASSP_SOURCE_ROOT}/../../../Script/ProjectApollo/apollo10-entry-replay.lua"
+    install(FILES
+        "${NASSP_SOURCE_ROOT}/../../../Script/ProjectApollo/apollo10-entry-replay.lua"
+        "${NASSP_SOURCE_ROOT}/../../../Script/ProjectApollo/apollo7-countdown-sps3-scs-burn-rate-mode.lua"
+        "${NASSP_SOURCE_ROOT}/../../../Script/ProjectApollo/apollo7-sps3-postburn-replay.lua"
         DESTINATION "Script/ProjectApollo" COMPONENT ApolloReplayAssets
     )
     add_library(NasspS1C MODULE src_saturn/s1c.cpp src_saturn/s1csystems.cpp)
