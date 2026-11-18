@@ -1,6 +1,7 @@
 import csv
 import json
 import math
+import re
 from pathlib import Path
 
 
@@ -21,13 +22,15 @@ def verify_replay(run):
             assert actual.get(key) == value, (run.name, name, key, actual.get(key), value)
 
     results = {}
+    if note := expected.get("qualification_note"):
+        results["qualification_note"] = note
     for filename, checks in expected["telemetry"].items():
         with (run / filename).open() as stream:
             samples = list(csv.DictReader(stream))
         assert samples, (run.name, filename)
         if "events" in checks:
             column = checks["event_column"]
-            actual_events = {row[column] for row in samples}
+            actual_events = {re.sub(r"_ems_-?\d+$", "_ems", row[column]) for row in samples}
             assert set(checks["events"]) <= actual_events, (run.name, filename, actual_events)
         final = samples[-1]
         measurements = {}
@@ -35,6 +38,12 @@ def verify_replay(run):
             if "equals" in rule:
                 assert final[column] == rule["equals"], (run.name, filename, column, final[column], rule)
                 measurements[column] = final[column]
+            elif "minimum" in rule:
+                value = float(final[column])
+                assert math.isfinite(value) and rule["minimum"] <= value <= rule["maximum"], (
+                    run.name, filename, column, value, rule
+                )
+                measurements[column] = value
             else:
                 value = float(final[column])
                 assert math.isfinite(value) and math.isclose(

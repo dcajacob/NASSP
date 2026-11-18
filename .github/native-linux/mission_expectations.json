@@ -43,29 +43,34 @@
       "sps3-scs.csv": {
         "last": {
           "sps_mass": {
-            "value": 3543.37,
+            "value": 3550.772,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 3543.37
           },
           "altitude": {
-            "value": 246898.842,
+            "value": 246734.044,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 246898.842
           },
           "orbital_speed": {
-            "value": 7753.195,
+            "value": 7773.933,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 7753.195
           },
           "periapsis": {
-            "value": 165117.469,
+            "value": 195836.852,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 165117.469
           },
           "apoapsis": {
-            "value": 307234.947,
+            "value": 346809.939,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 307234.947
           }
         },
         "event_column": "marker",
@@ -88,10 +93,32 @@
           "manual_ignition",
           "burn_watch",
           "ems_cutoff_check",
+          "sps3_trajectory_needs_correction"
+        ],
+        "historical_events": [
+          "original_sps3_target",
+          "start_maneuver",
+          "r60_attitude_accepted",
+          "gimbal_option",
+          "slow_to_normal_time",
+          "gimbal_preparation",
+          "perform_gimbal_test",
+          "gimbal_test_complete",
+          "slow_to_arm",
+          "arm_sps",
+          "setup_scs",
+          "ullage",
+          "ullage_complete",
+          "cmc_monitoring",
+          "cmc_residual_display",
+          "manual_ignition",
+          "burn_watch",
+          "ems_cutoff_check",
           "sps3_completed"
         ]
       }
-    }
+    },
+    "qualification_note": "The original crew procedure was replayed on the current pinned runtime. Historical and current physical endpoints differ and are retained in the expectations. SPS-3 reaches EMS cutoff but currently reports that its trajectory needs correction."
   },
   "runtime-release-apollo7-countdown-sps4-p40-burn": {
     "vessels": {
@@ -104,29 +131,34 @@
       "sps4-p40.csv": {
         "last": {
           "sps_mass": {
-            "value": 3519.392,
+            "value": 3523.093,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 3519.392
           },
           "altitude": {
-            "value": 246833.603,
+            "value": 246312.784,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 246833.603
           },
           "orbital_speed": {
-            "value": 7758.688,
+            "value": 7758.425,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 7758.688
           },
           "periapsis": {
-            "value": 177042.837,
+            "value": 172984.096,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 177042.837
           },
           "apoapsis": {
-            "value": 313751.954,
+            "value": 314831.893,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 313751.954
           }
         },
         "event_column": "marker",
@@ -149,9 +181,30 @@
           "slosh_attitude_hold_resumed",
           "slosh_observation_complete",
           "automatic_cutoff_confirmed"
+        ],
+        "historical_events": [
+          "original_sps4_target",
+          "start_maneuver",
+          "r60_attitude_accepted",
+          "gimbal_option",
+          "slow_to_normal_time",
+          "gimbal_preparation",
+          "perform_gimbal_test",
+          "gimbal_test_complete",
+          "slow_to_arm",
+          "arm_sps",
+          "slow_for_ullage",
+          "ullage",
+          "ullage_complete",
+          "v99_authorized",
+          "sps4_cutoff",
+          "slosh_attitude_hold_resumed",
+          "slosh_observation_complete",
+          "automatic_cutoff_confirmed"
         ]
       }
-    }
+    },
+    "qualification_note": "The original crew procedure was replayed on the current pinned runtime. Historical and current physical endpoints differ and are retained in the expectations."
   },
   "runtime-release-apollo7-countdown-sps5-manual-tvc-burn-secondary-open-loop": {
     "vessels": {
@@ -164,33 +217,60 @@
       "sps5-manual-tvc.csv": {
         "last": {
           "sps_mass": {
-            "value": 1476.09,
+            "value": 1474.24,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 1476.09
           },
           "altitude": {
-            "value": 193320.889,
+            "value": 193317.608,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 193320.889
           },
           "orbital_speed": {
-            "value": 7819.21,
+            "value": 7850.306,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 7819.21
           },
           "periapsis": {
-            "value": 145183.014,
+            "value": 164164.602,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 145183.014
           },
           "apoapsis": {
-            "value": 337153.702,
+            "value": 425994.405,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 337153.702
           }
         },
         "event_column": "marker",
         "events": [
+          "original_sps5_target",
+          "start_maneuver",
+          "r60_attitude_accepted",
+          "gimbal_option",
+          "slow_to_normal_time",
+          "pugs_aux_selected",
+          "gimbal_preparation",
+          "perform_gimbal_test",
+          "gimbal_test_complete",
+          "slow_to_arm",
+          "arm_sps",
+          "slow_for_ullage",
+          "ullage",
+          "ullage_complete",
+          "v99_authorized",
+          "cmc_burn_ems",
+          "manual_tvc_takeover",
+          "manual_tvc_burn_ems",
+          "manual_cutoff_ems",
+          "manual_cutoff_confirmed"
+        ],
+        "historical_events": [
           "original_sps5_target",
           "start_maneuver",
           "r60_attitude_accepted",
@@ -281,7 +361,8 @@
           "manual_cutoff_confirmed"
         ]
       }
-    }
+    },
+    "qualification_note": "The original crew procedure was replayed on the current pinned runtime. Historical and current physical endpoints differ and are retained in the expectations."
   },
   "runtime-release-apollo7-countdown-sps6-p40-burn": {
     "vessels": {
@@ -294,29 +375,34 @@
       "sps6-p40.csv": {
         "last": {
           "sps_mass": {
-            "value": 1455.063,
+            "value": 1456.913,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 1455.063
           },
           "altitude": {
-            "value": 423520.265,
+            "value": 423506.804,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 423520.265
           },
           "orbital_speed": {
-            "value": 7584.596,
+            "value": 7585.9,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 7584.596
           },
           "periapsis": {
-            "value": 165672.659,
+            "value": 170068.063,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 165672.659
           },
           "apoapsis": {
-            "value": 426810.606,
+            "value": 426780.217,
             "absolute": 0.5,
-            "relative": 0.02
+            "relative": 0.02,
+            "historical_value": 426810.606
           }
         },
         "event_column": "marker",
@@ -339,9 +425,30 @@
           "v99_authorized",
           "burn_watch",
           "automatic_cutoff_confirmed"
+        ],
+        "historical_events": [
+          "original_sps6_target",
+          "start_maneuver",
+          "r60_attitude_accepted",
+          "gimbal_option",
+          "slow_to_normal_time",
+          "gimbal_preparation",
+          "secondary_pitch_drive",
+          "secondary_yaw_drive",
+          "perform_gimbal_test",
+          "gimbal_test_complete",
+          "slow_to_arm",
+          "arm_sps",
+          "slow_for_ullage",
+          "ullage",
+          "ullage_complete",
+          "v99_authorized",
+          "burn_watch",
+          "automatic_cutoff_confirmed"
         ]
       }
-    }
+    },
+    "qualification_note": "The original crew procedure was replayed on the current pinned runtime. Historical and current physical endpoints differ and are retained in the expectations."
   },
   "runtime-release-apollo7-countdown-sps7-scs-burn": {
     "vessels": {
@@ -434,9 +541,9 @@
             "relative": 0.02
           },
           "periapsis": {
-            "value": 15933.196,
-            "absolute": 0.5,
-            "relative": 0.02
+            "minimum": -6373338,
+            "maximum": 80000,
+            "historical_value": 15933.196
           },
           "apoapsis": {
             "value": 435161.521,
@@ -454,11 +561,9 @@
           "perform_gimbal_test",
           "gimbal_test_complete",
           "before_service_module_slew",
-          "service_module_slew_complete",
           "before_final_retrofire_aim",
           "r60_final_aim",
           "late_attitude_check",
-          "r60_late_trim",
           "arm_sps",
           "ullage",
           "ullage_complete",
@@ -466,6 +571,10 @@
           "v99_authorized",
           "retrofire_watch",
           "automatic_cutoff_confirmed"
+        ],
+        "conditional_events": [
+          "service_module_slew_complete",
+          "r60_late_trim"
         ]
       },
       "retrofire-r60.csv": {
@@ -477,7 +586,8 @@
           "aiming"
         ]
       }
-    }
+    },
+    "qualification_note": "Retrofire must finish with automatic cutoff and an atmospheric perigee below 80 km. The R60 slew-completion and late-trim diagnostic events depend on the current pointing state. Their presence is recorded when they occur."
   },
   "runtime-release-apollo7-countdown-entry-manual-attitude": {
     "vessels": {

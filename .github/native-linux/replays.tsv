@@ -61,7 +61,7 @@ apollo12-rendezvous	apollo12-intrepid-cdh-propellant-accounting	12600	.03125	126
 apollo12-rendezvous	apollo12-intrepid-preserved-tpi-flight	12600	.03125	12600	package
 apollo12-docking	a12-intrepid-imu-preserved-csm-probe-capture	24900	.0625	24900	package
 apollo12-docking	a12-intrepid-imu-preserved-hard-dock	330	.0625	330	package
-apollo12-docking	a12-intrepid-imu-preserved-intrepid-jettison	30960	.0625	30960	package
+apollo12-docking	a12-intrepid-imu-preserved-intrepid-jettison	30960	.03125	30960	package
 apollo12-disposal	a12-intrepid-imu-preserved-p30-p42-v99-burn	30200	.015625	30200	package
 apollo12-disposal	a12-intrepid-imu-preserved-p30-p42-v99-impact	10000	.25	10000	package
 apollo12-tei	apollo12-yankee-clipper-tei45-p40-native	20800	.0625	20800	package

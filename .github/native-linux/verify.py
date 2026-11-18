@@ -113,6 +113,9 @@ def main(manifest_path, output, suite="baseline"):
     results["flight_replays"] = replays
     (output / "results.json").write_text(json.dumps(results, indent=2) + "\n")
     print(f"{len(replays)} flight replays passed ({suite}).")
+    for case, result in replays.items():
+        if note := result.get("qualification_note"):
+            print(f"{case} — {note}")
 
 
 if __name__ == "__main__":

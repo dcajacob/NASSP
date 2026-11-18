@@ -114,3 +114,10 @@ includes the OpenGL surface tile crash fix, its source patch, and build
 provenance. Apply it after the base runtime when reproducing CI locally.
 The patch checks for surface and cloud textures before drawing tiles. Apollo 7's
 original rendering cadence exposed this crash during the burn replays.
+
+Apollo 7's older manual burn procedures are replayed against the current
+engine. Their historical and current physical endpoints are recorded in the
+expectations. SPS-3 reaches EMS cutoff and currently reports that its
+trajectory needs correction. The CI summary and JSON preserve this known
+result. Passing these checkpoint regression checks establishes repeatable
+current behavior for these inputs.
