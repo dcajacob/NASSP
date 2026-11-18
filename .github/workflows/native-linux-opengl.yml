@@ -1,0 +1,103 @@
+name: Native Linux OpenGL
+
+on:
+  pull_request:
+    branches:
+      - codex/native-linux-apollo11-baseline
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-linux-opengl-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-linux:
+    name: Build, Launchpad and flight replays
+    runs-on: ubuntu-24.04
+    # The pinned Orbiter runtime and SDK were built on Ubuntu 26.04.
+    container: ubuntu:26.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Install build and virtual desktop dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build python3 git rsync curl unzip zstd ca-certificates \
+            zlib1g-dev libglu1-mesa-dev libgl-dev libglx-mesa0 libgl1-mesa-dri libegl1 libopengl0 \
+            libqt6widgets6 libxcb-cursor0 libxtst6 fonts-dejavu-core \
+            xvfb xauth x11-utils pulseaudio pulseaudio-utils
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Fetch and verify Orbiter runtime, SDK and replay inputs
+        env:
+          FIXTURE_URL: https://github.com/dcajacob/NASSP/releases/download/native-linux-ci-inputs-v1/nassp-native-ci-inputs-v1.tar.zst
+          FIXTURE_SHA256: 26d5891ea54a01ab8d007bed3ab2e9f5ed46ff8cd315921c57ca0e334faf37bd
+          TERRAIN_URL: https://github.com/dcajacob/NASSP/releases/download/native-linux-ci-inputs-v1/nassp-native-ci-terrain-v1.tar.zst
+          TERRAIN_SHA256: 00e2e3d7198684a58ec4c96a148a485759d1695667e030416399a017dbe977db
+          STOCK_URL: https://github.com/dcajacob/orbiter-cross-platform/releases/download/production-inputs-v2/production-stock-data-v1.zip
+          STOCK_SHA256: b70a4065ceda469e4b0f35d3d8935138483873fdb8d8eb2dd6b99829f8ce0cb3
+          KERNEL_SHA256: f98bd1a789fca05e0a1148db6d4b6d20ff7146896864bb04e4aac9c190371f83
+        run: |
+          mkdir -p "$RUNNER_TEMP/nassp-inputs"
+          cd "$RUNNER_TEMP/nassp-inputs"
+          curl --fail --location --retry 3 --output fixture.tar.zst "$FIXTURE_URL"
+          printf '%s  fixture.tar.zst\n' "$FIXTURE_SHA256" | sha256sum -c -
+          tar --zstd -xf fixture.tar.zst
+          rm fixture.tar.zst
+          curl --fail --location --retry 3 --output terrain.tar.zst "$TERRAIN_URL"
+          printf '%s  terrain.tar.zst\n' "$TERRAIN_SHA256" | sha256sum -c -
+          tar --zstd -xf terrain.tar.zst -C runtime/planet-archives
+          rm terrain.tar.zst
+          curl --fail --location --retry 3 --output stock.zip "$STOCK_URL"
+          printf '%s  stock.zip\n' "$STOCK_SHA256" | sha256sum -c -
+          kernel=runtime/celestial-data/Kernels/orbiter.bsp
+          mkdir -p "$(dirname "$kernel")"
+          unzip -p stock.zip Kernels/orbiter.bsp > "$kernel"
+          printf '%s  %s\n' "$KERNEL_SHA256" "$kernel" | sha256sum -c -
+          rm stock.zip
+
+      - name: Build NASSP from the PR
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
+        run: |
+          mkdir -p "$RUNNER_TEMP/nassp-results"
+          bash .github/native-linux/run.sh "$RUNNER_TEMP/nassp-inputs" "$RUNNER_TEMP/nassp-results" build \
+            2>&1 | tee "$RUNNER_TEMP/nassp-results/build.log"
+
+      - name: Check the Orbiter Launchpad
+        id: launcher
+        run: bash .github/native-linux/run.sh "$RUNNER_TEMP/nassp-inputs" "$RUNNER_TEMP/nassp-results" launcher
+
+      - name: Fly the replay scenarios
+        if: ${{ !cancelled() && (steps.launcher.outcome == 'success' || steps.launcher.outcome == 'failure') }}
+        run: bash .github/native-linux/run.sh "$RUNNER_TEMP/nassp-inputs" "$RUNNER_TEMP/nassp-results" flight
+
+      - name: Verify and summarize results
+        run: |
+          python3 .github/native-linux/verify.py "$RUNNER_TEMP/nassp-inputs/launcher-manifest.json" \
+            "$RUNNER_TEMP/nassp-results" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test results and logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-linux-opengl-results
+          retention-days: 14
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/nassp-results/*.json
+            ${{ runner.temp }}/nassp-results/*.log
+            ${{ runner.temp }}/nassp-results/launcher/
+            ${{ runner.temp }}/nassp-results/flight/
