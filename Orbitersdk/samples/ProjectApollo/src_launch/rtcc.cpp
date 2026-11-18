@@ -33,6 +33,8 @@ See http://nassp.sourceforge.net/license/ for more details.
 #include "CSMcomputer.h"
 #include "papi.h"
 #include "saturn.h"
+#include "LVDC.h"
+#include "iu.h"
 #include "LEMcomputer.h"
 #include "LEM.h"
 #include "sivb.h"
@@ -1819,6 +1821,38 @@ void RTCC::ExpendableWeightsTable::LoadState(FILEHANDLE scn, char* end_str)
 			data.push_back(temp);
 		}
 	}
+}
+
+bool RTCC::SaturnVTliWasScrubbed(char *message)
+{
+	auto *source = calcParams.src;
+	auto *saturn = source && nassp::utils::IsVessel(source, nassp::utils::SaturnV)
+		? static_cast<Saturn *>(source) : nullptr;
+	IU *instrumentUnit = saturn ? saturn->GetIU() : nullptr;
+	// The IU remains with the S-IVB after the command module separates.
+	if (!instrumentUnit && mcc)
+	{
+		OBJHANDLE handle = oapiGetVesselByName(mcc->LVName);
+		auto *stage = handle ? oapiGetVesselInterface(handle) : nullptr;
+		if (stage && nassp::utils::IsVessel(stage, nassp::utils::SaturnV_SIVB))
+		{
+			instrumentUnit = static_cast<SIVB *>(stage)->GetIU();
+		}
+	}
+
+	if (auto *lvdc = instrumentUnit ? static_cast<LVDCSV *>(instrumentUnit->GetLVDC()) : nullptr)
+	{
+		return lvdc->LVDC_Timebase == 5;
+	}
+	if (saturn && saturn->eventControl.TLI_DONE != MINUS_INFINITY)
+	{
+		return false;
+	}
+	if (message)
+	{
+		sprintf(message, "TLI evaluation unavailable: no Saturn V LVDC");
+	}
+	return true;
 }
 
 RTCC::RTCC() :

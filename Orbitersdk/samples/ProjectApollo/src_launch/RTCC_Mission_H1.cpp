@@ -437,16 +437,8 @@ bool RTCC::CalculationMTP_H1(int fcn, void*& pad, char* upString, char* upDesc, 
 	}
 	break;
 	case 15: //TLI Evaluation
-	{
-		SaturnV* SatV = (SaturnV*)calcParams.src;
-		LVDCSV* lvdc = (LVDCSV*)SatV->iu->GetLVDC();
-
-		if (lvdc->LVDC_Timebase == 5)
-		{
-			scrubbed = true;
-		}
-	}
-	break;
+		scrubbed = SaturnVTliWasScrubbed(upMessage);
+		break;
 	case 16: //Block Data 1
 	case 17: //Block Data 2
 	{

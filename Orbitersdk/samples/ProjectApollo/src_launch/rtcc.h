@@ -5239,6 +5239,7 @@ private:
 	void papiWriteScenario_REFS(FILEHANDLE scn, char *item, int tab, int i, REFSMMATData in);
 	bool papiReadScenario_REFS(char *line, char *item, int &tab, int &i, REFSMMATData &out);
 
+	bool SaturnVTliWasScrubbed(char *message);
 	bool CalculationMTP_B(int fcn, void*&pad, char * upString = NULL, char * upDesc = NULL, char * upMessage = NULL);
 	bool CalculationMTP_C(int fcn, void*&pad, char * upString = NULL, char * upDesc = NULL, char * upMessage = NULL);
 	bool CalculationMTP_C_PRIME(int fcn, void*&pad, char * upString = NULL, char * upDesc = NULL, char * upMessage = NULL);
