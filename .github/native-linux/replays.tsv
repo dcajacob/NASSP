@@ -22,6 +22,7 @@ apollo11-entry	apollo11-entry	32640	0.03125	8192	default
 apollo11-entry	apollo11-splashdown	4288	0.015625	8192	default
 apollo7-ascent	apollo7-original-crew-ascent-current	16000	.0625	16000	package
 apollo7-sps3-scs-burn-rate-mode	runtime-release-apollo7-countdown-sps3-scs-burn-rate-mode	100000	.0625	125	default
+apollo7-sps3-scs-finer	runtime-release-apollo7-countdown-sps3-scs-burn-rate-mode-finer	200000	.03125	125	default	runtime-release-apollo7-countdown-sps3-scs-burn-rate-mode
 apollo7-sps4-p40-burn	runtime-release-apollo7-countdown-sps4-p40-burn	75000	.0625	257	default
 apollo7-sps5-manual-tvc-burn-secondary-open-loop	runtime-release-apollo7-countdown-sps5-manual-tvc-burn-secondary-open-loop	75000	.0625	257	default
 apollo7-sps6-p40-burn	runtime-release-apollo7-countdown-sps6-p40-burn	75000	.0625	257	default

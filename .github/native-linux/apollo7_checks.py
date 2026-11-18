@@ -1,0 +1,91 @@
+"""SPS-3 must meet the maneuver PAD and continue from its actual flown save."""
+import csv
+import math
+from pathlib import Path
+
+
+SPS3 = "runtime-release-apollo7-countdown-sps3-scs-burn-rate-mode"
+PAD_PERIGEE_M = 175838.224380
+PAD_APOGEE_M = 309338.700664
+PAD_TOLERANCE_M = 15000
+
+
+def rows(path):
+    with Path(path).open() as stream:
+        result = list(csv.DictReader(stream))
+    assert result, path
+    return result
+
+
+def check_orbit(perigee, apogee):
+    assert math.isfinite(perigee) and abs(perigee - PAD_PERIGEE_M) < PAD_TOLERANCE_M, perigee
+    assert math.isfinite(apogee) and abs(apogee - PAD_APOGEE_M) < PAD_TOLERANCE_M, apogee
+
+
+def verify_sps3(run):
+    samples = rows(run / "sps3-scs.csv")
+    assert samples[-1]["marker"] == "sps3_completed", samples[-1]
+    assert not any(row["marker"] == "sps3_trajectory_needs_correction" for row in samples)
+    final = samples[-1]
+    check_orbit(float(final["periapsis"]), float(final["apoapsis"]))
+    used = float(samples[0]["sps_mass"]) - float(final["sps_mass"])
+    assert 300 < used < 360, used
+
+    telemetry = rows(run / "sps3-qualification.csv")
+    events = {row["marker"]: row for row in telemetry}
+    begin, end = events["ullage"], events["ullage_complete"]
+    duration = float(end["relative_to_tig"]) - float(begin["relative_to_tig"])
+    assert 15 <= duration <= 15.3, duration
+    impulse = float(end["ullage_impulse_m_s"])
+    assert 1 < impulse < 3, impulse  # Reject the old step-dependent weak ullage.
+    ignition = events["manual_ignition"]
+    for row in (end, ignition):
+        assert 0 <= float(row["attitude_error_deg"]) < 2, row
+        assert 0 <= float(row["rate_deg_s"]) < .5, row
+    assert 0 <= float(ignition["relative_to_tig"]) < .1, ignition
+    burning = next(row for row in telemetry if float(row["sps_level"]) > .5)
+    assert .9 <= float(burning["relative_to_tig"]) < 1.2, burning
+    for name in ("ems_cutoff_check", "sps3_completed"):
+        row = events[name]
+        assert float(row["ems_fps"]) <= 0 and float(row["sps_level"]) == 0, row
+
+    followon = run / "followon"
+    saved = (run / "saved.scn").read_text(encoding="latin-1")
+    expected_input = saved.replace(
+        "  Script ProjectApollo/apollo7-countdown-sps3-scs-burn-rate-mode\n",
+        "  Script ProjectApollo/apollo7-sps3-postburn-replay\n",
+    )
+    assert expected_input != saved
+    assert (followon / "input.scn").read_text(encoding="latin-1") == expected_input
+    log = (followon / "console.log").read_text(errors="replace")
+    assert "Native OpenGL renderer:" in log and "LuaCall" not in log
+    assert "Saved finalized production scenario:" in log
+    final_save = (followon / "saved.scn").read_text(encoding="latin-1")
+    csm = final_save.split("\nAS-205:", 1)[1].split("\nEND\n", 1)[0]
+    assert "STATUS Orbiting Earth\n" in csm and "  STAGE 30\n" in csm
+
+    continuation = rows(followon / "postburn.csv")
+    stages = {row["event"]: row for row in continuation}
+    initial, complete = stages["reloaded_sps3"], stages["post_sps3_continuation_complete"]
+    shutdown = stages["p00_shutdown_complete"]
+    elapsed = float(complete["elapsed_s"]) - float(shutdown["elapsed_s"])
+    clock_elapsed = float(complete["agc_get_s"]) - float(shutdown["agc_get_s"])
+    assert 1800 <= elapsed <= 1803 and abs(clock_elapsed - elapsed) < 2, (elapsed, clock_elapsed)
+    assert abs(float(initial["sps_mass"]) - float(final["sps_mass"])) < .005
+    for row in continuation:
+        assert abs(float(row["sps_mass"]) - float(initial["sps_mass"])) < .005, row
+        check_orbit(float(row["periapsis_m"]), float(row["apoapsis_m"]))
+        if row["event"] in ("p00_shutdown_complete", "post_sps3_coast", "post_sps3_continuation_complete"):
+            assert row["program"] == "0", row
+    for key, original in (("periapsis_m", "periapsis"), ("apoapsis_m", "apoapsis")):
+        assert abs(float(complete[key]) - float(final[original])) < 100, (key, complete[key], final[original])
+    return {
+        "perigee_km": float(final["periapsis"]) / 1000,
+        "apogee_km": float(final["apoapsis"]) / 1000,
+        "sps_used_kg": used,
+        "ullage_impulse_m_s": impulse,
+        "ullage_attitude_error_deg": float(end["attitude_error_deg"]),
+        "ignition_attitude_error_deg": float(ignition["attitude_error_deg"]),
+        "linked_postburn_coast_s": elapsed,
+        "postburn_program": int(complete["program"]),
+    }

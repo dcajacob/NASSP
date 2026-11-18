@@ -52,12 +52,13 @@ OpenGL. For 26 scenarios the job also resizes the simulation window, resumes
 with the keyboard, checks that simulation time advances in a quicksave, and
 verifies the native XRSound PulseAudio backend.
 
-The workflow builds from the same PR in parallel jobs and runs 70 fixed-step
+The workflow builds from the same PR in parallel jobs and runs 71 fixed-step
 flight replays from the pinned saves:
 
 - Apollo 5 orbital insertion, the first descent-engine burn and cutoff,
   alternate descent and staging sequence, and final ascent-engine depletion.
-- Apollo 7 crew ascent, SPS-3 through SPS-8 burns, and Earth entry.
+- Apollo 7 crew ascent, SPS-3 at 62.5 ms and 31.25 ms with a linked post-burn
+  reload and 30-minute P00 coast after each burn, SPS-4 through SPS-8, and Earth entry.
 - Apollo 8 ullage at two step sizes and the first midcourse checkpoint.
 - Apollo 9 launch, SPS burns, docked DPS and undocked LM burns, rendezvous,
   docking, retrofire and AGC-guided entry through splashdown.
@@ -115,9 +116,29 @@ provenance. Apply it after the base runtime when reproducing CI locally.
 The patch checks for surface and cloud textures before drawing tiles. Apollo 7's
 original rendering cadence exposed this crash during the burn replays.
 
-Apollo 7's older manual burn procedures are replayed against the current
-engine. Their historical and current physical endpoints are recorded in the
-expectations. SPS-3 reaches EMS cutoff and currently reports that its
-trajectory needs correction. The CI summary and JSON preserve this known
-result. Passing these checkpoint regression checks establishes repeatable
-current behavior for these inputs.
+Apollo 7 SPS-3 uses the crew procedure in
+`Script/ProjectApollo/apollo7-countdown-sps3-scs-burn-rate-mode.lua`, installed
+from the PR after the frozen replay assets. The old replay held DIRECT ULLAGE
+for the full 15 seconds, bypassing pitch/yaw stabilization. Its weak,
+step-dependent thrust had masked the resulting pointing error. With the
+correct continuous direct thrust, that procedure missed the maneuver PAD orbit.
+The corrected procedure uses the normal THC forward command for four-jet,
+15-second ullage, with LOW rate and LIM CYCLE OFF as specified by the Apollo 7
+SPS-3 checklist. DIRECT ULLAGE is used only briefly for the manual ignition
+interlock. The full-thrust implementation remains in place.
+
+Both SPS-3 step sizes must meet the original PAD orbit limits of 175.838 km
+perigee and 309.339 km apogee, each within 15 km. The checks also require full
+ullage impulse, less than two degrees of attitude loss, ignition at TIG, and
+EMS cutoff with no continuing SPS fuel consumption. A correction-needed
+result fails CI. The runner then reloads the newly flown save, changing only
+its script, and verifies SPS shutdown, return to P00, AGC clock advancement
+and orbital stability during a 30-minute coast. The subsequent SPS-4 through
+SPS-8 and entry jobs remain checkpoint regressions from their pinned saves.
+
+The older SPS-4 through SPS-7 procedures still record their historical and
+current physical endpoints in the expectations. Passing those checkpoint
+checks establishes repeatable current behavior for those inputs.
+
+The replay table's optional seventh column selects an existing input fixture.
+SPS-3 uses it to fly the identical pre-burn state at both step sizes.
