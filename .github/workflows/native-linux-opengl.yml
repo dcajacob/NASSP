@@ -15,11 +15,17 @@ concurrency:
 
 jobs:
   native-linux:
-    name: Build, Launchpad and flight replays
+    name: Native Linux OpenGL (${{ matrix.suite }})
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [baseline, apollo5, apollo10-lunar, apollo10-entry, apollo11-lunar, apollo11-return, apollo11-entry]
     runs-on: ubuntu-24.04
     # The pinned Orbiter runtime and SDK were built on Ubuntu 26.04.
     container: ubuntu:26.04
-    timeout-minutes: 60
+    timeout-minutes: 75
+    env:
+      REPLAY_SUITE: ${{ matrix.suite }}
     defaults:
       run:
         shell: bash
@@ -68,7 +74,20 @@ jobs:
           printf '%s  %s\n' "$KERNEL_SHA256" "$kernel" | sha256sum -c -
           rm stock.zip
 
+      - name: Fetch and verify the additional Apollo replays
+        if: matrix.suite != 'baseline'
+        env:
+          APOLLO_REPLAYS_URL: https://github.com/dcajacob/NASSP/releases/download/native-linux-ci-inputs-v1/nassp-native-ci-apollo-replays-v2.tar.zst
+          APOLLO_REPLAYS_SHA256: dca7b28fa1543cee718c599c2a71449ae0b40c73b50cb50e5e7839c938e482ae
+        run: |
+          cd "$RUNNER_TEMP/nassp-inputs"
+          curl --fail --location --retry 3 --output apollo-replays.tar.zst "$APOLLO_REPLAYS_URL"
+          printf '%s  apollo-replays.tar.zst\n' "$APOLLO_REPLAYS_SHA256" | sha256sum -c -
+          tar --zstd -xf apollo-replays.tar.zst
+          rm apollo-replays.tar.zst
+
       - name: Build NASSP from the PR
+        id: build
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
         run: |
@@ -78,22 +97,23 @@ jobs:
 
       - name: Check the Orbiter Launchpad
         id: launcher
+        if: matrix.suite == 'baseline'
         run: bash .github/native-linux/run.sh "$RUNNER_TEMP/nassp-inputs" "nassp-results" launcher
 
       - name: Fly the replay scenarios
-        if: ${{ !cancelled() && (steps.launcher.outcome == 'success' || steps.launcher.outcome == 'failure') }}
-        run: bash .github/native-linux/run.sh "$RUNNER_TEMP/nassp-inputs" "nassp-results" flight
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: bash .github/native-linux/run.sh "$RUNNER_TEMP/nassp-inputs" "nassp-results" flight "$REPLAY_SUITE"
 
       - name: Verify and summarize results
         run: |
           python3 .github/native-linux/verify.py "$RUNNER_TEMP/nassp-inputs/launcher-manifest.json" \
-            "nassp-results" | tee -a "$GITHUB_STEP_SUMMARY"
+            "nassp-results" "$REPLAY_SUITE" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload test results and logs
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: native-linux-opengl-results
+          name: ${{ matrix.suite == 'baseline' && 'native-linux-opengl-results' || format('native-linux-opengl-{0}-results', matrix.suite) }}
           retention-days: 14
           if-no-files-found: ignore
           path: |

@@ -14,7 +14,7 @@ case "${3:-}" in
             -DORBITER_NATIVE_SOURCE_DIR="$inputs/sdk" -DORBITER_NATIVE_BUILD_DIR="$runtime/engine"
         cmake --build "$output/build" --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-2}"
         rsync -a "$output/build/NativeModules/" "$runtime/engine/NativeModules/"
-        for component in SaturnPanelAssets LunarPanelAssets Apollo11Assets ChecklistAssets; do
+        for component in SaturnPanelAssets LunarPanelAssets Apollo11Assets ChecklistAssets ApolloReplayAssets; do
             cmake --install "$output/build" --prefix "$runtime/resources" --component "$component"
         done
         ;;
@@ -53,28 +53,40 @@ case "${3:-}" in
         ;;
     flight)
         run_flight() (
-            local case_name=$1 ticks=$2 step=$3
+            local case_name=$1 ticks=$2 step=$3 render_every=$4 keymap_profile=$5
+            local keymap=()
+            # Some original scripts send native numeric-keypad RCS controls.
+            if [[ "$keymap_profile" == package ]]; then
+                keymap=(--keymap "$runtime/Keymap.cfg")
+            fi
             mkdir -p "$output/flight/$case_name"
             cd "$output/flight/$case_name"
-            cp "$inputs/flight/$case_name/"{input.scn,replay.csv} .
+            cp "$inputs/flight/$case_name/"* .
             printf 'Replaying %s at %s seconds per step\n' "$case_name" "$step"
             env -u WAYLAND_DISPLAY -u LD_LIBRARY_PATH LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 \
                 xvfb-run -a -s '-screen 0 1600x1000x24 +extension GLX' stdbuf -oL -eL "$runtime/engine/run-orbiter" \
                 --assets "$runtime/resources" --data "$runtime/celestial-data" \
                 --modules "$runtime/engine/NativeModules" --planets "$runtime/planet-archives" \
-                --config "$runtime/Orbiter.cfg" --keymap "$runtime/Keymap.cfg" \
+                --config "$runtime/Orbiter.cfg" "${keymap[@]}" \
                 --xrsound-assets "$runtime/resources" --scenario input.scn --save saved.scn \
                 --replay replay.csv --ticks "$ticks" --fixed-step "$step" \
-                --render-every "$ticks" --run > console.log 2>&1
+                --render-every "$render_every" --run < /dev/null > console.log 2>&1
         )
-        run_flight a12-intrepid-imu-preserved-capcom-load 7800 0.03125
-        run_flight apollo8-ullage-fixed-125ms-axial 40 0.125
-        run_flight apollo8-ullage-fixed-60hz-axial 300 0.0166666666666667
-        run_flight apollo8-flown-first-midcourse-fixed 17200 1
-        run_flight apollo12-intrepid-guided-approach-reload-shutdown 3840 0.03125
+        suite="${4:-baseline}"
+        matched=false
+        while read -r group name ticks step render_every keymap_profile; do
+            if [[ "$group" == "$suite" ]]; then
+                matched=true
+                run_flight "$name" "$ticks" "$step" "$render_every" "$keymap_profile"
+            fi
+        done < "$source_dir/.github/native-linux/replays.tsv"
+        if ! "$matched"; then
+            echo "Unknown replay suite: $suite" >&2
+            exit 2
+        fi
         ;;
     *)
-        echo "Usage: $0 INPUTS OUTPUT {build|launcher|flight}" >&2
+        echo "Usage: $0 INPUTS OUTPUT {build|launcher|flight} [suite]" >&2
         exit 2
         ;;
 esac

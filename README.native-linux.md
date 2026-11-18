@@ -50,11 +50,24 @@ verifies the input archives and Orbiter SPICE kernel checksums before use.
 The Qt Launchpad opens 53 frozen scenarios under Xvfb and Mesa software
 OpenGL. For 26 scenarios the job also resizes the simulation window, resumes
 with the keyboard, checks that simulation time advances in a quicksave, and
-verifies the native XRSound PulseAudio backend. Five fixed-step flight
-replays cover Apollo 8 ullage at two step sizes and the first midcourse
-checkpoint, plus Apollo 12 P27 uplink and the Intrepid approach, touchdown,
-and shutdown. The run attaches launcher logs, replay saves and telemetry,
-and a JSON result summary as `native-linux-opengl-results`.
+verifies the native XRSound PulseAudio backend.
+
+The workflow builds from the same PR in parallel jobs and runs 22 fixed-step
+flight replays from the pinned saves:
+
+- Apollo 5 orbital insertion, the first descent-engine burn and cutoff,
+  alternate descent and staging sequence, and final ascent-engine depletion.
+- Apollo 8 ullage at two step sizes and the first midcourse checkpoint.
+- Apollo 10 MCC-2, Snoopy's lunar low pass and docking, and entry through
+  splashdown at 0.25 s and 0.0625 s from the same pre-entry state.
+- Apollo 11 TLI completion, Eagle's landing, ascent and docking, Columbia's
+  P40 trans-Earth injection and midcourse correction with AGC readback,
+  and AGC-guided entry, parachute deployment, splashdown and main chute release.
+- Apollo 12 P27 uplink and Intrepid's approach, touchdown and shutdown.
+
+The baseline job attaches `native-linux-opengl-results`. The other jobs
+attach `native-linux-opengl-<suite>-results`. Each artifact includes the
+build log, replay saves and telemetry, and a JSON result summary.
 
 To run the same checks on Ubuntu 26.04, extract the CI input archive into a scratch
 directory, unpack the terrain archive under `runtime/planet-archives`, and add `Kernels/orbiter.bsp` from the workflow's stock
@@ -67,4 +80,15 @@ for phase in build launcher flight; do
   bash .github/native-linux/run.sh /path/to/inputs /path/to/results "$phase" || exit
 done
 python3 .github/native-linux/verify.py /path/to/inputs/launcher-manifest.json /path/to/results
+```
+
+For the additional missions, unpack `nassp-native-ci-apollo-replays-v2.tar.zst`
+into the same inputs directory. Use a fresh results directory per suite.
+After `build`, run the selected suite with the fourth argument to the replay
+runner and the third argument to the verifier. Suite names are in
+`.github/native-linux/replays.tsv`.
+
+```sh
+bash .github/native-linux/run.sh /path/to/inputs /path/to/results flight apollo10-entry
+python3 .github/native-linux/verify.py /path/to/inputs/launcher-manifest.json /path/to/results apollo10-entry
 ```
