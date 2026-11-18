@@ -19,7 +19,52 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [baseline, apollo5, apollo10-lunar, apollo10-entry, apollo11-lunar, apollo11-return, apollo11-entry]
+        suite:
+          - baseline
+          - apollo5
+          - apollo10-lunar
+          - apollo10-entry
+          - apollo11-lunar
+          - apollo11-return
+          - apollo11-entry
+          - apollo7-ascent
+          - apollo7-sps3-scs-burn-rate-mode
+          - apollo7-sps4-p40-burn
+          - apollo7-sps5-manual-tvc-burn-secondary-open-loop
+          - apollo7-sps6-p40-burn
+          - apollo7-sps7-scs-burn
+          - apollo7-sps8-p40-burn
+          - apollo7-entry
+          - apollo9-ascent
+          - apollo9-sps1-inertial-burn
+          - apollo9-sps2-p40-coarse-aligned
+          - apollo9-sps3-p40-secondary-tvc
+          - apollo9-sps4-p40-direct-rhc
+          - apollo9-sps5-p40-native
+          - apollo9-dps
+          - apollo9-rendezvous
+          - apollo9-gumdrop-sps6-p40-native
+          - apollo9-gumdrop-sps7-p40-native
+          - apollo9-gumdrop-retrofire-balanced-p40-native
+          - apollo9-entry
+          - apollo12-flown-ascent-with-tower-jettison
+          - apollo12-flown-tli
+          - apollo12-flown-csm-separation
+          - apollo12-flown-sivb-clearance
+          - apollo12-mcc2-p40-docked
+          - apollo12-mcc3-p40-finer
+          - apollo12-mcc4-p40-docked
+          - apollo12-loi1-verified-orbit
+          - apollo12-loi2-p40-warm
+          - apollo12-doi
+          - apollo12-ascent
+          - apollo12-rendezvous
+          - apollo12-docking
+          - apollo12-disposal
+          - apollo12-tei
+          - apollo12-yankee-clipper-mcc5-p40-timed-valve-cutoff
+          - apollo12-yankee-clipper-balanced-mcc7-p41-paired-jets
+          - apollo12-entry
     runs-on: ubuntu-24.04
     # The pinned Orbiter runtime and SDK were built on Ubuntu 26.04.
     container: ubuntu:26.04
@@ -85,6 +130,18 @@ jobs:
           printf '%s  apollo-replays.tar.zst\n' "$APOLLO_REPLAYS_SHA256" | sha256sum -c -
           tar --zstd -xf apollo-replays.tar.zst
           rm apollo-replays.tar.zst
+
+      - name: Fetch and verify Apollo 7, 9 and 12 replays
+        if: startsWith(matrix.suite, 'apollo7') || startsWith(matrix.suite, 'apollo9') || startsWith(matrix.suite, 'apollo12')
+        env:
+          MISSION_REPLAYS_URL: https://github.com/dcajacob/NASSP/releases/download/native-linux-ci-inputs-v1/nassp-native-ci-apollo7912-v1.tar.zst
+          MISSION_REPLAYS_SHA256: ad5db0be887006431d41511c7cf5eb00bbfbf0683d0aefdcef1980469fb3ad54
+        run: |
+          cd "$RUNNER_TEMP/nassp-inputs"
+          curl --fail --location --retry 3 --output mission-replays.tar.zst "$MISSION_REPLAYS_URL"
+          printf '%s  mission-replays.tar.zst\n' "$MISSION_REPLAYS_SHA256" | sha256sum -c -
+          tar --zstd -xf mission-replays.tar.zst
+          rm mission-replays.tar.zst
 
       - name: Build NASSP from the PR
         id: build

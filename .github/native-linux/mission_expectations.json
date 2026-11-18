@@ -1,0 +1,2393 @@
+{
+  "apollo7-original-crew-ascent-current": {
+    "vessels": {
+      "AS-205": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "21"
+      }
+    },
+    "telemetry": {
+      "crew-ascent.csv": {
+        "last": {
+          "mass_kg": {
+            "value": 31060.175,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "altitude_m": {
+            "value": 229830.86,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "tower_vessel": {
+            "equals": "0"
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "before-jettison",
+          "after-jettison",
+          "ascent"
+        ]
+      }
+    }
+  },
+  "runtime-release-apollo7-countdown-sps3-scs-burn-rate-mode": {
+    "vessels": {
+      "AS-205": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      }
+    },
+    "telemetry": {
+      "sps3-scs.csv": {
+        "last": {
+          "altitude": {
+            "value": 246898.842,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "marker",
+        "events": [
+          "original_sps3_target",
+          "start_maneuver",
+          "r60_attitude_accepted",
+          "gimbal_option",
+          "slow_to_normal_time",
+          "gimbal_preparation",
+          "perform_gimbal_test",
+          "gimbal_test_complete",
+          "slow_to_arm",
+          "arm_sps",
+          "setup_scs",
+          "ullage",
+          "ullage_complete",
+          "cmc_monitoring",
+          "cmc_residual_display",
+          "manual_ignition",
+          "burn_watch",
+          "ems_cutoff_check",
+          "sps3_completed"
+        ]
+      }
+    }
+  },
+  "runtime-release-apollo7-countdown-sps4-p40-burn": {
+    "vessels": {
+      "AS-205": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      }
+    },
+    "telemetry": {
+      "sps4-p40.csv": {
+        "last": {
+          "altitude": {
+            "value": 246833.603,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "marker",
+        "events": [
+          "original_sps4_target",
+          "start_maneuver",
+          "r60_attitude_accepted",
+          "gimbal_option",
+          "slow_to_normal_time",
+          "gimbal_preparation",
+          "perform_gimbal_test",
+          "gimbal_test_complete",
+          "slow_to_arm",
+          "arm_sps",
+          "slow_for_ullage",
+          "ullage",
+          "ullage_complete",
+          "v99_authorized",
+          "sps4_cutoff",
+          "slosh_attitude_hold_resumed",
+          "slosh_observation_complete",
+          "automatic_cutoff_confirmed"
+        ]
+      }
+    }
+  },
+  "runtime-release-apollo7-countdown-sps5-manual-tvc-burn-secondary-open-loop": {
+    "vessels": {
+      "AS-205": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      }
+    },
+    "telemetry": {
+      "sps5-manual-tvc.csv": {
+        "last": {
+          "altitude": {
+            "value": 193320.889,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "marker",
+        "events": [
+          "original_sps5_target",
+          "start_maneuver",
+          "r60_attitude_accepted",
+          "gimbal_option",
+          "slow_to_normal_time",
+          "pugs_aux_selected",
+          "gimbal_preparation",
+          "perform_gimbal_test",
+          "gimbal_test_complete",
+          "slow_to_arm",
+          "arm_sps",
+          "slow_for_ullage",
+          "ullage",
+          "ullage_complete",
+          "v99_authorized",
+          "cmc_burn_ems_17384",
+          "cmc_burn_ems_17373",
+          "cmc_burn_ems_17123",
+          "cmc_burn_ems_16929",
+          "cmc_burn_ems_16706",
+          "cmc_burn_ems_16483",
+          "cmc_burn_ems_16231",
+          "cmc_burn_ems_16034",
+          "cmc_burn_ems_15809",
+          "cmc_burn_ems_15584",
+          "cmc_burn_ems_15330",
+          "cmc_burn_ems_15132",
+          "cmc_burn_ems_14905",
+          "cmc_burn_ems_14678",
+          "cmc_burn_ems_14421",
+          "cmc_burn_ems_14221",
+          "cmc_burn_ems_13992",
+          "cmc_burn_ems_13763",
+          "cmc_burn_ems_13504",
+          "cmc_burn_ems_13302",
+          "cmc_burn_ems_13071",
+          "cmc_burn_ems_12840",
+          "cmc_burn_ems_12608",
+          "cmc_burn_ems_12375",
+          "cmc_burn_ems_12142",
+          "cmc_burn_ems_11908",
+          "cmc_burn_ems_11674",
+          "cmc_burn_ems_11439",
+          "cmc_burn_ems_11204",
+          "cmc_burn_ems_10968",
+          "cmc_burn_ems_10731",
+          "cmc_burn_ems_10494",
+          "cmc_burn_ems_10257",
+          "cmc_burn_ems_10019",
+          "cmc_burn_ems_9780",
+          "cmc_burn_ems_9541",
+          "cmc_burn_ems_9301",
+          "cmc_burn_ems_9060",
+          "cmc_burn_ems_8819",
+          "manual_tvc_takeover",
+          "manual_tvc_burn_ems_8002",
+          "manual_tvc_burn_ems_7971",
+          "manual_tvc_burn_ems_7941",
+          "manual_tvc_burn_ems_7850",
+          "manual_tvc_burn_ems_7606",
+          "manual_tvc_burn_ems_7361",
+          "manual_tvc_burn_ems_7116",
+          "manual_tvc_burn_ems_6871",
+          "manual_tvc_burn_ems_6624",
+          "manual_tvc_burn_ems_6377",
+          "manual_tvc_burn_ems_6130",
+          "manual_tvc_burn_ems_5882",
+          "manual_tvc_burn_ems_5633",
+          "manual_tvc_burn_ems_5384",
+          "manual_tvc_burn_ems_5134",
+          "manual_tvc_burn_ems_4883",
+          "manual_tvc_burn_ems_4632",
+          "manual_tvc_burn_ems_4381",
+          "manual_tvc_burn_ems_4128",
+          "manual_tvc_burn_ems_3875",
+          "manual_tvc_burn_ems_3621",
+          "manual_tvc_burn_ems_3367",
+          "manual_tvc_burn_ems_3112",
+          "manual_tvc_burn_ems_2856",
+          "manual_tvc_burn_ems_2600",
+          "manual_tvc_burn_ems_2343",
+          "manual_tvc_burn_ems_2086",
+          "manual_tvc_burn_ems_1827",
+          "manual_tvc_burn_ems_1569",
+          "manual_tvc_burn_ems_1309",
+          "manual_tvc_burn_ems_1049",
+          "manual_cutoff_ems_984",
+          "manual_cutoff_confirmed"
+        ]
+      }
+    }
+  },
+  "runtime-release-apollo7-countdown-sps6-p40-burn": {
+    "vessels": {
+      "AS-205": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      }
+    },
+    "telemetry": {
+      "sps6-p40.csv": {
+        "last": {
+          "altitude": {
+            "value": 423520.265,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "marker",
+        "events": [
+          "original_sps6_target",
+          "start_maneuver",
+          "r60_attitude_accepted",
+          "gimbal_option",
+          "slow_to_normal_time",
+          "gimbal_preparation",
+          "secondary_pitch_drive",
+          "secondary_yaw_drive",
+          "perform_gimbal_test",
+          "gimbal_test_complete",
+          "slow_to_arm",
+          "arm_sps",
+          "slow_for_ullage",
+          "ullage",
+          "ullage_complete",
+          "v99_authorized",
+          "burn_watch",
+          "automatic_cutoff_confirmed"
+        ]
+      }
+    }
+  },
+  "runtime-release-apollo7-countdown-sps7-scs-burn": {
+    "vessels": {
+      "AS-205": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      }
+    },
+    "telemetry": {
+      "sps7-scs.csv": {
+        "last": {
+          "altitude": {
+            "value": 418047.817,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "marker",
+        "events": [
+          "original_sps7_target",
+          "start_maneuver",
+          "r60_slew_progress",
+          "r60_attitude_accepted",
+          "gimbal_option",
+          "slow_to_normal_time",
+          "gimbal_preparation",
+          "secondary_pitch_drive",
+          "secondary_yaw_drive",
+          "perform_gimbal_test",
+          "gimbal_test_complete",
+          "slow_to_arm",
+          "arm_sps",
+          "setup_scs",
+          "ullage",
+          "ullage_complete",
+          "cmc_monitoring",
+          "cmc_residual_display",
+          "manual_ignition",
+          "burn_watch",
+          "ems_cutoff_confirmed"
+        ]
+      }
+    }
+  },
+  "runtime-release-apollo7-countdown-sps8-p40-burn": {
+    "vessels": {
+      "AS-205": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      }
+    },
+    "telemetry": {
+      "retrofire-burn.csv": {
+        "last": {
+          "altitude": {
+            "value": 375327.601,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "marker",
+        "events": [
+          "original_sps6_target",
+          "r60_attitude_accepted",
+          "gimbal_option",
+          "slow_to_normal_time",
+          "gimbal_preparation",
+          "perform_gimbal_test",
+          "gimbal_test_complete",
+          "before_service_module_slew",
+          "service_module_slew_complete",
+          "before_final_retrofire_aim",
+          "r60_final_aim",
+          "late_attitude_check",
+          "r60_late_trim",
+          "arm_sps",
+          "ullage",
+          "ullage_complete",
+          "retrofire_ready_to_ignite",
+          "v99_authorized",
+          "retrofire_watch",
+          "automatic_cutoff_confirmed"
+        ]
+      },
+      "retrofire-r60.csv": {
+        "last": {},
+        "event_column": "marker",
+        "events": [
+          "slew",
+          "aligned",
+          "aiming"
+        ]
+      }
+    }
+  },
+  "runtime-release-apollo7-countdown-entry-manual-attitude": {
+    "vessels": {
+      "AS-205": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "46"
+      }
+    },
+    "telemetry": {
+      "deorbit-to-entry.csv": {
+        "last": {
+          "altitude": {
+            "value": 1.9293,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "airspeed": {
+            "value": 0.1089,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "drogue": {
+            "equals": "1"
+          },
+          "main": {
+            "equals": "1"
+          },
+          "program": {
+            "equals": "67"
+          }
+        },
+        "event_column": "marker",
+        "events": [
+          "p63_manual_entry_from_flown_retrofire",
+          "entry_program_63",
+          "descent",
+          "entry_interface",
+          "entry_program_64",
+          "entry_program_67",
+          "manual_attitude_complete",
+          "els_armed",
+          "splashdown"
+        ]
+      }
+    }
+  },
+  "apollo9-flown-ascent-with-tower-jettison": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "21"
+      }
+    },
+    "telemetry": {
+      "ascent.csv": {
+        "last": {
+          "mass_kg": {
+            "value": 133731.601,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "altitude_m": {
+            "value": 193044.943,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "earth_speed_m_s": {
+            "value": 7789.050142,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "escape_tower": {
+            "equals": "false"
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "tower-attached",
+          "tower-jettison",
+          "parking-orbit"
+        ]
+      }
+    }
+  },
+  "apollo9-sps1-inertial-burn": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Spider"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "0:0,Gumdrop"
+      }
+    },
+    "telemetry": {
+      "sps-inertial.csv": {
+        "last": {
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "program": {
+            "equals": "40"
+          }
+        }
+      },
+      "sps1-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 11.376126,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      }
+    }
+  },
+  "apollo9-sps2-p40-coarse-aligned": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Spider"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "0:0,Gumdrop"
+      }
+    },
+    "telemetry": {
+      "sps2-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 277.902733,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "near-burn-attitude",
+          "coarse-platform-alignment",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      }
+    }
+  },
+  "apollo9-sps3-p40-secondary-tvc": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Spider"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "0:0,Gumdrop"
+      }
+    },
+    "telemetry": {
+      "sps3-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 793.703191,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "near-burn-attitude",
+          "coarse-platform-alignment",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      },
+      "steering.csv": {
+        "last": {
+          "throttle": {
+            "value": 0.013441,
+            "absolute": 0.002,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo9-sps4-p40-direct-rhc": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Spider"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "0:0,Gumdrop"
+      }
+    },
+    "telemetry": {
+      "sps4-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 94.462167,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "near-burn-attitude",
+          "coarse-platform-alignment",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      },
+      "steering.csv": {
+        "last": {
+          "throttle": {
+            "value": 0.013441,
+            "absolute": 0.002,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo9-sps5-p40-native": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Spider"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "0:0,Gumdrop"
+      }
+    },
+    "telemetry": {
+      "sps5-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 174.182267,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "near-burn-attitude",
+          "coarse-platform-alignment",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      },
+      "steering.csv": {
+        "last": {
+          "throttle": {
+            "value": 0.013441,
+            "absolute": 0.002,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo9-spider-docked-dps-active-imu": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Spider"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "0:0,Gumdrop"
+      }
+    },
+    "telemetry": {
+      "docked-dps-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "engine_level": {
+            "value": 0.004893,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 543.60406,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "along_m_s": {
+            "value": 543.59785,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "proceed-5018",
+          "flight",
+          "proceed-5019",
+          "proceed-9940",
+          "ignition",
+          "cutoff"
+        ]
+      }
+    }
+  },
+  "apollo9-spider-manual-dps-insertion": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "0"
+      }
+    },
+    "telemetry": {
+      "insertion-dps.csv": {
+        "last": {
+          "engine": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 11.167795,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "along_m_s": {
+            "value": 11.14806,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "flight",
+          "E-5018",
+          "P-5019",
+          "V33E-5025",
+          "ignition-request",
+          "manual-start",
+          "ignition",
+          "verified-manual-cutoff"
+        ]
+      }
+    }
+  },
+  "apollo9-spider-csi-with-staging": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "csi-staging-burn.csv": {
+        "last": {
+          "program": {
+            "equals": "41"
+          },
+          "aps_fuel_kg": {
+            "value": 1882.40833,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 10.37784,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "along_target_m_s": {
+            "value": 10.37485,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "perigee_m": {
+            "value": 225911.538,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apogee_m": {
+            "value": 276441.651,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "stage_detached": {
+            "equals": "1"
+          },
+          "vehicle_mass_kg": {
+            "value": 4351.4766,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo9-spider-cdh-flight": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "cdh-burn.csv": {
+        "last": {
+          "program": {
+            "equals": "41"
+          },
+          "aps_fuel_kg": {
+            "value": 1882.40833,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 10.52092,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "along_target_m_s": {
+            "value": 10.51935,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "perigee_m": {
+            "value": 224597.46,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apogee_m": {
+            "value": 241828.723,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo9-spider-rtcc-tpi-flight": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "tpi-burn.csv": {
+        "last": {
+          "program": {
+            "equals": "41"
+          },
+          "aps_fuel_kg": {
+            "value": 1882.40833,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 6.32249,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "along_target_m_s": {
+            "value": 6.31969,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "perigee_m": {
+            "value": 237539.789,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apogee_m": {
+            "value": 246907.115,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo9-gumdrop-spider-hard-dock": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Spider"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "2",
+        "DOCKINFO": "0:0,Gumdrop"
+      }
+    },
+    "telemetry": {
+      "probe-retraction.csv": {
+        "last": {
+          "port_offset_m": {
+            "value": 0.5,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "command",
+        "events": [
+          "retract",
+          "latched"
+        ]
+      }
+    }
+  },
+  "apollo9-gumdrop-sps6-p40-native": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "sps6-orbit.csv": {
+        "last": {
+          "perigee_nm": {
+            "value": 101.922706476,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apogee_nm": {
+            "value": 133.857255543,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      },
+      "sps6-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 23.959895,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "near-burn-attitude",
+          "coarse-platform-alignment",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      },
+      "steering.csv": {
+        "last": {
+          "throttle": {
+            "value": 0.011143,
+            "absolute": 0.002,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo9-gumdrop-sps7-p40-native": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "sps7-orbit.csv": {
+        "last": {
+          "perigee_nm": {
+            "value": 100.064443721,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apogee_nm": {
+            "value": 211.611356517,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      },
+      "sps7-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 67.901558,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "near-burn-attitude",
+          "coarse-platform-alignment",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      },
+      "steering.csv": {
+        "last": {
+          "throttle": {
+            "value": 0.011143,
+            "absolute": 0.002,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo9-gumdrop-retrofire-balanced-p40-native": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "retrofire-orbit.csv": {
+        "last": {
+          "perigee_nm": {
+            "value": -9.749348292,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apogee_nm": {
+            "value": 211.146834362,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      },
+      "retrofire-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 96.573004,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "near-burn-attitude",
+          "coarse-platform-alignment",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      },
+      "steering.csv": {
+        "last": {
+          "throttle": {
+            "value": 0.011143,
+            "absolute": 0.002,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo9-gumdrop-balanced-return-guided-entry-and-splashdown": {
+    "vessels": {
+      "Gumdrop": {
+        "STATUS": "Landed Earth",
+        "STAGE": "47"
+      },
+      "Spider": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "guided-entry.csv": {
+        "last": {
+          "program": {
+            "equals": "67"
+          },
+          "altitude_m": {
+            "value": 1.993,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "speed_m_s": {
+            "value": 411.264,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "mass_kg": {
+            "value": 5559.906,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "ground_contact": {
+            "equals": "true"
+          }
+        }
+      }
+    }
+  },
+  "apollo12-flown-ascent-with-tower-jettison": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "21"
+      }
+    },
+    "telemetry": {
+      "ascent.csv": {
+        "last": {
+          "mass_kg": {
+            "value": 135656.9,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "altitude_m": {
+            "value": 193121.697,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "earth_speed_m_s": {
+            "value": 7788.285437,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "escape_tower": {
+            "equals": "false"
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "tower-attached",
+          "tower-jettison",
+          "parking-orbit"
+        ]
+      }
+    }
+  },
+  "apollo12-flown-tli": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "21"
+      }
+    },
+    "telemetry": {
+      "tli.csv": {
+        "last": {
+          "altitude_m": {
+            "value": 546441.627,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "earth_speed_m_s": {
+            "value": 10653.213115,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "mass_kg": {
+            "value": 61741.099,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "parking-orbit-reload",
+          "coast",
+          "j2-restart",
+          "burn",
+          "j2-cutoff",
+          "post-tli-coast"
+        ]
+      }
+    }
+  },
+  "apollo12-flown-csm-separation": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "1:0,AS-507-S4BSTG"
+      }
+    },
+    "telemetry": {
+      "csm-separation.csv": {
+        "last": {
+          "mass_kg": {
+            "value": 33001.409,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "altitude_m": {
+            "value": 6727617.371,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "post-tli-reload",
+          "at-stock-tde-epoch",
+          "csm-away",
+          "after-separation-coast"
+        ]
+      }
+    }
+  },
+  "apollo12-flown-sivb-clearance": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "1:0,AS-507-S4BSTG"
+      }
+    },
+    "telemetry": {
+      "sivb-clearance.csv": {
+        "last": {
+          "range_m": {
+            "value": 30.216294492,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "separation-reload",
+          "translate-forward",
+          "translation-cutoff",
+          "clear"
+        ]
+      }
+    }
+  },
+  "apollo12-mcc2-p40-docked": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Intrepid"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Earth",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "0:0,Yankee-Clipper"
+      }
+    },
+    "telemetry": {
+      "mcc2-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 25.184673,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      }
+    }
+  },
+  "apollo12-mcc3-p40-finer": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Sun",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Intrepid"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Sun",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "0:0,Yankee-Clipper"
+      }
+    },
+    "telemetry": {
+      "mcc3-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 4.152894,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      }
+    }
+  },
+  "apollo12-mcc4-p40-docked": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Intrepid"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "0:0,Yankee-Clipper"
+      }
+    },
+    "telemetry": {
+      "mcc4-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 2.602387,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      }
+    }
+  },
+  "apollo12-loi1-verified-orbit": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Intrepid"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "0:0,Yankee-Clipper"
+      }
+    },
+    "telemetry": {
+      "loi1-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 893.044166,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "near-burn-attitude",
+          "coarse-platform-alignment",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      },
+      "lunar-orbit.csv": {
+        "last": {
+          "perilune_nm": {
+            "value": 58.367811728,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apolune_nm": {
+            "value": 163.254579447,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      },
+      "steering.csv": {
+        "last": {
+          "throttle": {
+            "value": 0.016801,
+            "absolute": 0.002,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo12-loi2-p40-warm": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Intrepid"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "0",
+        "DOCKINFO": "0:0,Yankee-Clipper"
+      }
+    },
+    "telemetry": {
+      "loi2-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 42.121484,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "near-burn-attitude",
+          "coarse-platform-alignment",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      },
+      "lunar-orbit.csv": {
+        "last": {
+          "perilune_nm": {
+            "value": 57.148086707,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apolune_nm": {
+            "value": 59.008317344,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      },
+      "steering.csv": {
+        "last": {
+          "throttle": {
+            "value": 0.013441,
+            "absolute": 0.002,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo12-intrepid-crewed-doi": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "0"
+      }
+    },
+    "telemetry": {
+      "doi-flight.csv": {
+        "last": {
+          "throttle": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 21.258017,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "align",
+          "start-command",
+          "burn",
+          "ignition",
+          "cutoff"
+        ]
+      }
+    }
+  },
+  "apollo12-intrepid-p12-ascent-correct-dap-and-rls": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "ascent.csv": {
+        "last": {
+          "program": {
+            "equals": "12"
+          },
+          "landed": {
+            "equals": "false"
+          },
+          "altitude_m": {
+            "value": 18415.226,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "mass_kg": {
+            "value": 2588.499,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "speed_m_s": {
+            "value": 1685.869,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "perilune_m": {
+            "value": 15562.495,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apolune_m": {
+            "value": 82249.428,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo12-countdown-p12-orbit-and-aps-cutoff": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "verified-orbit.csv": {
+        "last": {
+          "program": {
+            "equals": "12"
+          },
+          "perilune_m": {
+            "value": 15648.088,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apolune_m": {
+            "value": 86392.467,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "altitude_m": {
+            "value": 20877.495,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "mass_kg": {
+            "value": 2564.893,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "range_to_descent_stage_m": {
+            "value": 588030.904,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "aps_level": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo12-intrepid-p41-short-hold-csi": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "csi-burn.csv": {
+        "last": {
+          "program": {
+            "equals": "41"
+          },
+          "aps_fuel_kg": {
+            "value": 122.00727,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 13.90775,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "prograde_m_s": {
+            "value": 13.90103,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "perilune_m": {
+            "value": 76402.723,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apolune_m": {
+            "value": 90653.642,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo12-intrepid-cdh-propellant-accounting": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "cdh-burn.csv": {
+        "last": {
+          "program": {
+            "equals": "41"
+          },
+          "aps_fuel_kg": {
+            "value": 96.66165,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 2.791,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "along_target_m_s": {
+            "value": 2.79098,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "perilune_m": {
+            "value": 76606.975,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apolune_m": {
+            "value": 79444.09,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      },
+      "propellant-impulse.csv": {
+        "last": {
+          "aps_propellant_kg": {
+            "value": 96.6616538,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo12-intrepid-preserved-tpi-flight": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "tpi-burn.csv": {
+        "last": {
+          "program": {
+            "equals": "41"
+          },
+          "aps_fuel_kg": {
+            "value": 63.91617,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 8.18166,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "along_target_m_s": {
+            "value": 8.17424,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "perilune_m": {
+            "value": 77135.494,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "apolune_m": {
+            "value": 110907.087,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "a12-intrepid-imu-preserved-csm-probe-capture": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Intrepid"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2",
+        "DOCKINFO": "0:0,Yankee-Clipper"
+      }
+    },
+    "telemetry": {
+      "docking-approach.csv": {
+        "last": {
+          "range_m": {
+            "value": 0.499992,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "translate-to-axis",
+          "final-approach",
+          "hard-dock"
+        ]
+      }
+    }
+  },
+  "a12-intrepid-imu-preserved-hard-dock": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30",
+        "DOCKINFO": "0:0,Intrepid"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2",
+        "DOCKINFO": "0:0,Yankee-Clipper"
+      }
+    },
+    "telemetry": {
+      "probe-retraction.csv": {
+        "last": {
+          "port_offset_m": {
+            "value": 0.5,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "command",
+        "events": [
+          "retract",
+          "latched"
+        ]
+      }
+    }
+  },
+  "a12-intrepid-imu-preserved-intrepid-jettison": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "jettison-and-separation.csv": {
+        "last": {
+          "range_m": {
+            "value": 110.025768,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "aiming",
+          "aligned",
+          "slew-check",
+          "before-jettison",
+          "ring-released",
+          "coasting-clear",
+          "before-rcs-separation",
+          "rcs-cutoff",
+          "separation-verified"
+        ]
+      }
+    }
+  },
+  "a12-intrepid-imu-preserved-p30-p42-v99-burn": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "historical-p42.csv": {
+        "last": {
+          "program": {
+            "equals": "42"
+          },
+          "aps_kg": {
+            "value": 19.407508,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "aps_level": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "range_m": {
+            "value": 10564.61107,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "perilune_m": {
+            "value": -114554.4126,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "a12-intrepid-imu-preserved-p30-p42-v99-impact": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "intrepid-impact.csv": {
+        "last": {
+          "ground_contact": {
+            "equals": "true"
+          }
+        }
+      }
+    }
+  },
+  "apollo12-yankee-clipper-tei45-p40-native": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Moon",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "steering.csv": {
+        "last": {
+          "throttle": {
+            "value": 0.013929,
+            "absolute": 0.002,
+            "relative": 0.02
+          }
+        }
+      },
+      "tei45-escape.csv": {
+        "last": {
+          "perilune_nm": {
+            "value": 61.415177799,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        }
+      },
+      "tei45-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 924.829023,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "near-burn-attitude",
+          "coarse-platform-alignment",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      }
+    }
+  },
+  "apollo12-yankee-clipper-mcc5-p40-timed-valve-cutoff": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Sun",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "mcc5-p40.csv": {
+        "last": {
+          "program": {
+            "equals": "40"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 3.017862,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "near-burn-attitude",
+          "coarse-platform-alignment",
+          "live-platform-reference",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P40-selection-attempt-1",
+          "P40-selected",
+          "P40-tracking",
+          "select-manual-attitude-maneuver",
+          "answer-5025",
+          "answer-9940",
+          "pre-thrust pilot-valve cutoff command",
+          "ignition",
+          "cutoff",
+          "post-burn-coast"
+        ]
+      },
+      "steering.csv": {
+        "last": {
+          "throttle": {
+            "value": 0.012682,
+            "absolute": 0.002,
+            "relative": 0.02
+          }
+        }
+      }
+    }
+  },
+  "apollo12-yankee-clipper-balanced-mcc7-p41-paired-jets": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Orbiting Earth",
+        "STAGE": "30"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "mcc7-p41.csv": {
+        "last": {
+          "program": {
+            "equals": "41"
+          },
+          "sps": {
+            "value": 0.0,
+            "absolute": 0.002,
+            "relative": 0.02
+          },
+          "impulse_m_s": {
+            "value": 0.676314,
+            "absolute": 0.5,
+            "relative": 0.02
+          }
+        },
+        "event_column": "event",
+        "events": [
+          "after-mcc-target-readback",
+          "P30-accept-33",
+          "P30-accept-81",
+          "P30-accept-42",
+          "P30-accept-45",
+          "P30-sequence-finished",
+          "P41-selection-attempt-1",
+          "P41-selected",
+          "accept-manual-attitude",
+          "P41-tracking",
+          "translation-start",
+          "translation-cutoff",
+          "post-translation"
+        ]
+      }
+    }
+  },
+  "apollo12-yankee-clipper-balanced-guided-entry-and-splashdown": {
+    "vessels": {
+      "Yankee-Clipper": {
+        "STATUS": "Landed Earth",
+        "STAGE": "47"
+      },
+      "Intrepid": {
+        "STATUS": "Orbiting Moon",
+        "CONFIGURATION": "2"
+      }
+    },
+    "telemetry": {
+      "guided-entry.csv": {
+        "last": {
+          "program": {
+            "equals": "67"
+          },
+          "altitude_m": {
+            "value": 1.995,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "speed_m_s": {
+            "value": 447.45,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "mass_kg": {
+            "value": 5593.474,
+            "absolute": 0.5,
+            "relative": 0.02
+          },
+          "ground_contact": {
+            "equals": "true"
+          }
+        }
+      }
+    }
+  }
+}

@@ -52,18 +52,24 @@ OpenGL. For 26 scenarios the job also resizes the simulation window, resumes
 with the keyboard, checks that simulation time advances in a quicksave, and
 verifies the native XRSound PulseAudio backend.
 
-The workflow builds from the same PR in parallel jobs and runs 22 fixed-step
+The workflow builds from the same PR in parallel jobs and runs 70 fixed-step
 flight replays from the pinned saves:
 
 - Apollo 5 orbital insertion, the first descent-engine burn and cutoff,
   alternate descent and staging sequence, and final ascent-engine depletion.
+- Apollo 7 crew ascent, SPS-3 through SPS-8 burns, and Earth entry.
 - Apollo 8 ullage at two step sizes and the first midcourse checkpoint.
+- Apollo 9 launch, SPS burns, docked DPS and undocked LM burns, rendezvous,
+  docking, retrofire and AGC-guided entry through splashdown.
 - Apollo 10 MCC-2, Snoopy's lunar low pass and docking, and entry through
   splashdown at 0.25 s and 0.0625 s from the same pre-entry state.
 - Apollo 11 TLI completion, Eagle's landing, ascent and docking, Columbia's
   P40 trans-Earth injection and midcourse correction with AGC readback,
   and AGC-guided entry, parachute deployment, splashdown and main chute release.
-- Apollo 12 P27 uplink and Intrepid's approach, touchdown and shutdown.
+- Apollo 12 ascent and TLI, CSM separation, translunar corrections, LOI,
+  Intrepid DOI, landing and ascent, rendezvous and docking, LM jettison and
+  disposal impact, TEI, return corrections and AGC-guided entry and splashdown.
+  The existing P27 uplink and guided landing reload checks also run.
 
 The baseline job attaches `native-linux-opengl-results`. The other jobs
 attach `native-linux-opengl-<suite>-results`. Each artifact includes the
@@ -92,3 +98,13 @@ runner and the third argument to the verifier. Suite names are in
 bash .github/native-linux/run.sh /path/to/inputs /path/to/results flight apollo10-entry
 python3 .github/native-linux/verify.py /path/to/inputs/launcher-manifest.json /path/to/results apollo10-entry
 ```
+
+
+The additional Apollo 7, 9 and 12 fixtures come from
+`nassp-native-ci-apollo7912-v1.tar.zst`. Their expected vessel states,
+telemetry events and final physical measurements are recorded in
+`.github/native-linux/mission_expectations.json`. Each measurement specifies
+absolute and relative tolerances. The job fails on missing events, invalid
+vessel state, Lua errors, or measurements outside those tolerances.
+
+Launcher and replay audio use a private PulseAudio virtual output set to 5%.

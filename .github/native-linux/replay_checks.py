@@ -1,6 +1,8 @@
 import csv
 import math
 
+from mission_checks import EXPECTATIONS, verify_replay
+
 
 def rows(run, filename):
     with (run / filename).open() as stream:
@@ -210,6 +212,8 @@ CHECKS = {
     "apollo11-splashdown": apollo11_splashdown,
 }
 
+
+CHECKS.update(dict.fromkeys(EXPECTATIONS, verify_replay))
 
 def verify_mission_replays(flight, cases):
     replays = {case: CHECKS[case](flight / case) for case in cases}
