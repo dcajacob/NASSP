@@ -4,6 +4,8 @@ import re
 import sys
 from pathlib import Path
 
+from replay_checks import verify_mission_replays
+
 
 def erasable(path):
     agc = path.read_text().split("\nIntrepid:", 1)[1].split("\nAGC_BEGIN\n", 1)[1].split("\nAGC_END", 1)[0]
@@ -40,11 +42,6 @@ def events_at(path):
 
 def verify_flights(flight):
     results = {}
-    for directory in sorted(flight.iterdir()):
-        log = (directory / "console.log").read_text()
-        assert "LuaCall" not in log and "Saved finalized production scenario:" in log, directory
-        assert (directory / "saved.scn").is_file(), directory
-
     name = "a12-intrepid-imu-preserved-capcom-load"
     results[name] = verify_p27(flight / name)
 
@@ -76,8 +73,7 @@ def verify_flights(flight):
     return results
 
 
-def main(manifest_path, output):
-    output = Path(output)
+def verify_launcher(manifest_path, output):
     manifest = json.loads(Path(manifest_path).read_text())
     launcher = json.loads((output / "launcher/results.json").read_text())
     assert len(manifest) == len({row["path"] for row in launcher}) == len(launcher) == 53
@@ -89,14 +85,34 @@ def main(manifest_path, output):
     interactive = sum(row["simulated_seconds"] is not None for row in launcher)
     assert interactive == 26
 
-    replays = verify_flights(output / "flight")
-    (output / "results.json").write_text(json.dumps({
-        "launcher_passed": len(launcher),
-        "interactive_launcher_passed": interactive,
-        "flight_replays": replays,
-    }, indent=2) + "\n")
     print(f"{len(launcher)} native OpenGL launcher checks passed, including {interactive} interactive checks.")
-    print(f"{len(replays)} flight replays passed.")
+    return {"launcher_passed": len(launcher), "interactive_launcher_passed": interactive}
+
+
+def main(manifest_path, output, suite="baseline"):
+    output = Path(output)
+    flight = output / "flight"
+    cases = []
+    for line in Path(__file__).with_name("replays.tsv").read_text().splitlines():
+        group, case, *_ = line.split("\t")
+        if group == suite:
+            cases.append(case)
+    assert cases and set(cases) == {directory.name for directory in flight.iterdir() if directory.is_dir()}, suite
+    for case in cases:
+        directory = flight / case
+        log = (directory / "console.log").read_text(errors="replace")
+        assert "Native OpenGL renderer:" in log and "LuaCall" not in log, case
+        assert "Saved finalized production scenario:" in log, case
+        assert b"END_SHIPS" in (directory / "saved.scn").read_bytes(), case
+    if suite == "baseline":
+        results = verify_launcher(manifest_path, output)
+        replays = verify_flights(flight)
+    else:
+        results = {}
+        replays = verify_mission_replays(flight, cases)
+    results["flight_replays"] = replays
+    (output / "results.json").write_text(json.dumps(results, indent=2) + "\n")
+    print(f"{len(replays)} flight replays passed ({suite}).")
 
 
 if __name__ == "__main__":
