@@ -53,7 +53,12 @@ case "${3:-}" in
         ;;
     flight)
         run_flight() (
-            local case_name=$1 ticks=$2 step=$3 render_every=$4
+            local case_name=$1 ticks=$2 step=$3 render_every=$4 keymap_profile=$5
+            local keymap=()
+            # Some original scripts send native numeric-keypad RCS controls.
+            if [[ "$keymap_profile" == package ]]; then
+                keymap=(--keymap "$runtime/Keymap.cfg")
+            fi
             mkdir -p "$output/flight/$case_name"
             cd "$output/flight/$case_name"
             cp "$inputs/flight/$case_name/"* .
@@ -62,17 +67,17 @@ case "${3:-}" in
                 xvfb-run -a -s '-screen 0 1600x1000x24 +extension GLX' stdbuf -oL -eL "$runtime/engine/run-orbiter" \
                 --assets "$runtime/resources" --data "$runtime/celestial-data" \
                 --modules "$runtime/engine/NativeModules" --planets "$runtime/planet-archives" \
-                --config "$runtime/Orbiter.cfg" --keymap "$runtime/Keymap.cfg" \
+                --config "$runtime/Orbiter.cfg" "${keymap[@]}" \
                 --xrsound-assets "$runtime/resources" --scenario input.scn --save saved.scn \
                 --replay replay.csv --ticks "$ticks" --fixed-step "$step" \
                 --render-every "$render_every" --run < /dev/null > console.log 2>&1
         )
         suite="${4:-baseline}"
         matched=false
-        while read -r group name ticks step render_every; do
+        while read -r group name ticks step render_every keymap_profile; do
             if [[ "$group" == "$suite" ]]; then
                 matched=true
-                run_flight "$name" "$ticks" "$step" "$render_every"
+                run_flight "$name" "$ticks" "$step" "$render_every" "$keymap_profile"
             fi
         done < "$source_dir/.github/native-linux/replays.tsv"
         if ! "$matched"; then
