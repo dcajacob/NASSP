@@ -19,4 +19,4 @@ apollo11-lunar	apollo11-docking	7840	0.0625	4096	default
 apollo11-return	apollo11-tei	17440	0.03125	2048	default
 apollo11-return	apollo11-midcourse	15360	0.015625	8192	default
 apollo11-entry	apollo11-entry	32640	0.03125	8192	default
-apollo11-entry	apollo11-splashdown	4800	0.015625	8192	default
+apollo11-entry	apollo11-splashdown	4288	0.015625	8192	default

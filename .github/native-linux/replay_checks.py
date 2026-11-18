@@ -179,9 +179,15 @@ def apollo11_entry(run):
 def apollo11_splashdown(run):
     columbia = vessel(run, "Columbia")
     assert columbia["STATUS"] == "Landed Earth" and columbia["STAGE"] == "47"
-    contact = rows(run, "splashdown.csv")[-1]
-    assert contact["event"] == "splashdown" and contact["ground_contact"] == contact["main_attached"] == "true"
-    return {"splashdown_speed_m_s": near(contact["groundspeed_m_s"], 8.31, 0.3)}
+    events = {row["event"]: row for row in rows(run, "splashdown.csv")}
+    contact, released = events["splashdown"], events["main-chutes-released"]
+    assert contact["ground_contact"] == contact["main_attached"] == "true"
+    assert released["ground_contact"] == "true" and released["main_attached"] == "false"
+    delay = float(released["t"]) - float(contact["t"])
+    return {
+        "splashdown_speed_m_s": near(contact["groundspeed_m_s"], 8.31, 0.3),
+        "chute_release_delay_s": near(delay, 12, 0.2),
+    }
 
 
 CHECKS = {

@@ -77,8 +77,8 @@ jobs:
       - name: Fetch and verify the additional Apollo replays
         if: matrix.suite != 'baseline'
         env:
-          APOLLO_REPLAYS_URL: https://github.com/dcajacob/NASSP/releases/download/native-linux-ci-inputs-v1/nassp-native-ci-apollo-replays-v1.tar.zst
-          APOLLO_REPLAYS_SHA256: 7a56319f2178762c47f3f10dc01a989b2a06d779ea7e5c3d6c2cc275f549e8e9
+          APOLLO_REPLAYS_URL: https://github.com/dcajacob/NASSP/releases/download/native-linux-ci-inputs-v1/nassp-native-ci-apollo-replays-v2.tar.zst
+          APOLLO_REPLAYS_SHA256: dca7b28fa1543cee718c599c2a71449ae0b40c73b50cb50e5e7839c938e482ae
         run: |
           cd "$RUNNER_TEMP/nassp-inputs"
           curl --fail --location --retry 3 --output apollo-replays.tar.zst "$APOLLO_REPLAYS_URL"

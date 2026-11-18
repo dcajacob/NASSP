@@ -62,7 +62,7 @@ flight replays from the pinned saves:
   splashdown at 0.25 s and 0.0625 s from the same pre-entry state.
 - Apollo 11 TLI completion, Eagle's landing, ascent and docking, Columbia's
   P40 trans-Earth injection and midcourse correction with AGC readback,
-  and AGC-guided entry, parachute deployment and splashdown.
+  and AGC-guided entry, parachute deployment, splashdown and main chute release.
 - Apollo 12 P27 uplink and Intrepid's approach, touchdown and shutdown.
 
 The baseline job attaches `native-linux-opengl-results`. The other jobs
@@ -82,7 +82,7 @@ done
 python3 .github/native-linux/verify.py /path/to/inputs/launcher-manifest.json /path/to/results
 ```
 
-For the additional missions, unpack `nassp-native-ci-apollo-replays-v1.tar.zst`
+For the additional missions, unpack `nassp-native-ci-apollo-replays-v2.tar.zst`
 into the same inputs directory. Use a fresh results directory per suite.
 After `build`, run the selected suite with the fourth argument to the replay
 runner and the third argument to the verifier. Suite names are in
