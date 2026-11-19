@@ -45,7 +45,12 @@ The Linux workflow checks out `dcajacob/orbiter-cross-platform` at the full comm
 `.github/native-linux/orbiter-revision`. It builds Orbiter, the OpenGL renderer,
 Qt Launchpad, Earth and Moon modules and matching SDK together on Ubuntu 26.04.
 Stage2010 and VesselBuilder1 are rebuilt from checksum-verified sources with the
-Linux port changes in `.github/native-linux/ports`. Every test job verifies the
+Linux port changes in `.github/native-linux/ports`. The Stage2010 source archive
+contains the unmodified `stage.cpp` and readme from BrianJ’s September 2010
+[Orbiter Forum download](https://www.orbiter-forum.com/resources/stage-dll-for-orbiter-2010.1628/).
+The original download has SHA-256
+`e8398c557fb6e69032f6fff29c2066a99b50f45b6f5139542f5f6bf1e58ef920`.
+Every test job verifies the
 shared build and compiles the NASSP modules from its own checkout against that SDK.
 The NASSP input archives supply the frozen scenarios, terrain, configuration and
 replays. The workflow excludes the former executable, renderer and SDK.

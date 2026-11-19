@@ -34,10 +34,10 @@ cmake -S "$source_dir/Utils/Launchpad" -B launchpad "${base[@]}" -DORBITER_GLFW_
 cmake --build launchpad --target orbiter-launchpad
 
 # The frozen scenarios also fly these third-party vessels. Rebuild their Linux ports for this SDK.
-curl -fLsS --retry 3 https://www.orbiter-forum.com/resources/stage-dll-for-orbiter-2010.1628/download -o stage.zip
+cp "$ports/Stage2010/upstream-source.zip" stage.zip
 curl -fLsS --retry 3 https://codeload.github.com/fredenigma/VesselBuilder1/tar.gz/4f332ec4e6fa80e1a63d8d920bb50e033c5b67f6 -o vesselbuilder.tar.gz
 sha256sum --check <<'SHA'
-e8398c557fb6e69032f6fff29c2066a99b50f45b6f5139542f5f6bf1e58ef920  stage.zip
+f3424c4f21d476cf9bae26e07a92a6b3f995752c9fea2ad4470288bdccb3d46f  stage.zip
 8440295a404b00cf681a9555e44a88d2f2208f60170255a83b3766e565c4f105  vesselbuilder.tar.gz
 SHA
 mkdir Stage2010 VesselBuilder1
