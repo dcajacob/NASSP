@@ -6,6 +6,11 @@ work=$(realpath -m "$2")
 ports=$(realpath "$(dirname "$0")/ports")
 revision=$(git -C "$source_dir" rev-parse HEAD)
 test "$revision" = "$(cat "$ports/../orbiter-revision")"
+# Orbiter verifies the complete Dragonfly sources against their historical Git tree.
+dragonfly=f725194209634f7fd5d1d44d426cfa9b5e303e37
+if ! git -C "$source_dir" cat-file -e "$dragonfly^{commit}" 2>/dev/null; then
+    git -C "$source_dir" fetch --no-tags --depth=1 origin "$dragonfly"
+fi
 mkdir "$work"
 cd "$work"
 export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-4}
