@@ -1,0 +1,454 @@
+diff --git a/AirfoilsManager.cpp b/AirfoilsManager.cpp
+index 7d38ca4..041c6c4 100644
+--- a/AirfoilsManager.cpp
++++ b/AirfoilsManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/AnimationManager.cpp b/AnimationManager.cpp
+index d05150e..bb701c9 100644
+--- a/AnimationManager.cpp
++++ b/AnimationManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/AttachmentManager.cpp b/AttachmentManager.cpp
+index 462b61a..fded115 100644
+--- a/AttachmentManager.cpp
++++ b/AttachmentManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/CameraManager.cpp b/CameraManager.cpp
+index 60fcd22..33c1df6 100644
+--- a/CameraManager.cpp
++++ b/CameraManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/ConfigurationManager.cpp b/ConfigurationManager.cpp
+index 9e407c1..62c5dcf 100644
+--- a/ConfigurationManager.cpp
++++ b/ConfigurationManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/ConfigurationManager.h b/ConfigurationManager.h
+index 102fb87..ade7e8c 100644
+--- a/ConfigurationManager.h
++++ b/ConfigurationManager.h
+@@ -1,0 +2 @@
++#include "ItemType.h"
+diff --git a/ControlSurfacesManager.cpp b/ControlSurfacesManager.cpp
+index 7a40f05..e608934 100644
+--- a/ControlSurfacesManager.cpp
++++ b/ControlSurfacesManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/DialogControl.h b/DialogControl.h
+index fdee901..3179ba8 100644
+--- a/DialogControl.h
++++ b/DialogControl.h
+@@ -4 +4 @@
+-enum ItemType { MESH, DOCK, ATTACHMENT, LIGHTS, CAMERA, SPECIAL, SETTINGS,ROOTS,NONE,ANIMATIONS,ANIM_COMP,PROPELLANT,EXTEX,THRUSTERS,THRUSTERGROUPS,PARTICLES,TOUCHDOWNPOINTS,AIRFOILS,CTRLSURFACES,VCPOS,VCMFD,VCHUD,VC,BEACONS,VARIABLEDRAG,CONFIGURATIONS,EVENTS };
++#include "ItemType.h"
+diff --git a/DockManager.cpp b/DockManager.cpp
+index 0c92ab1..c95c57b 100644
+--- a/DockManager.cpp
++++ b/DockManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/EventManager.cpp b/EventManager.cpp
+index 3794edc..0e2ee4f 100644
+--- a/EventManager.cpp
++++ b/EventManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+@@ -8,0 +11 @@
++#ifdef _WIN32
+@@ -9,0 +13 @@
++#endif
+@@ -423 +427 @@ void Reconfiguration::ConsumeEvent() {
+-	VB1->ConfigMng->ApplyConfiguration(newconfig);
++	VB1->EvMng->RequestConfiguration(newconfig);
+@@ -489,0 +494 @@ void PlaySoundEvent::ConsumeEvent() {
++#ifdef _WIN32
+@@ -490,0 +496,3 @@ void PlaySoundEvent::ConsumeEvent() {
++#else
++	VB1->Log->Log("VesselBuilder sound event unavailable: %s", soundfile.c_str());
++#endif
+@@ -822,0 +831,6 @@ void EventManager::DeleteEvent(Event* ev) {
++void EventManager::RequestConfiguration(UINT configuration) {
++	if (!configurationPending) {
++		pendingConfiguration = configuration;
++		configurationPending = true;
++	}
++}
+@@ -824,3 +838,11 @@ void EventManager::PreStep(double simt, double simdt, double mjd) {
+-	for (UINT i = 0; i < Events.size(); i++) {
+-		if (!Events[i]->IsEnabled()) { continue; }
+-		Events[i]->EventPreStep(simt, simdt, mjd);
++	for (UINT i = 0; i < Events.size() && !configurationPending; ++i) {
++		if (Events[i]->IsEnabled()) {
++			Events[i]->EventPreStep(simt, simdt, mjd);
++		}
++	}
++	if (configurationPending) {
++		// Applying a configuration can delete every event in this list.
++		// Wait until the triggering event's callback has returned.
++		const UINT configuration = pendingConfiguration;
++		configurationPending = false;
++		VB1->ConfigMng->ApplyConfiguration(configuration);
+@@ -828 +849,0 @@ void EventManager::PreStep(double simt, double simdt, double mjd) {
+-	return;
+@@ -831,2 +852 @@ void EventManager::ConsumeBufferedKey(DWORD key, bool down, char *kstate) {
+-	if (Events.size() <= 0) { return; }
+-	for (UINT i = 0; i < Events.size(); i++) {
++	for (UINT i = 0; i < Events.size() && !configurationPending; ++i) {
+@@ -841,2 +861 @@ void EventManager::DockEvent(int dock, OBJHANDLE mate) {
+-	if (Events.size() <= 0) { return; }
+-	for (UINT i = 0; i < Events.size(); i++) {
++	for (UINT i = 0; i < Events.size() && !configurationPending; ++i) {
+diff --git a/EventManager.h b/EventManager.h
+index 95fe014..ff0524b 100644
+--- a/EventManager.h
++++ b/EventManager.h
+@@ -247,0 +248,3 @@ class EventManager {
++	bool configurationPending = false;
++	UINT pendingConfiguration = 0;
++
+@@ -268,0 +272 @@ public:
++	void RequestConfiguration(UINT configuration);
+diff --git a/ExTexManager.cpp b/ExTexManager.cpp
+index 2d1961e..7ba606c 100644
+--- a/ExTexManager.cpp
++++ b/ExTexManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/GeneralSettingsManager.cpp b/GeneralSettingsManager.cpp
+index aad63e7..4c807d2 100644
+--- a/GeneralSettingsManager.cpp
++++ b/GeneralSettingsManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/LaserManager.cpp b/LaserManager.cpp
+index 1e23fec..d708739 100644
+--- a/LaserManager.cpp
++++ b/LaserManager.cpp
+@@ -157 +157 @@ void LaserManager::DeleteLaser(LASER_HANDLE &lh){
+-	(Laser*)lh = NULL;
++	lh = nullptr;
+diff --git a/LightsManager.cpp b/LightsManager.cpp
+index 8fda0d8..d12d427 100644
+--- a/LightsManager.cpp
++++ b/LightsManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/MeshManager.cpp b/MeshManager.cpp
+index 3918a04..8f95d2f 100644
+--- a/MeshManager.cpp
++++ b/MeshManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+@@ -3,0 +6 @@
++#ifdef _WIN32
+@@ -4,0 +8 @@
++#endif
+@@ -47,0 +52 @@ void RotateMeshLoading(MESHHANDLE mesh, MATRIX3 rm) {
++#ifdef _WIN32
+@@ -115,0 +121 @@ void LoadMeshClbk(MESHHANDLE msh_h, bool firstload) {
++#ifdef _WIN32
+@@ -116,0 +123,3 @@ void LoadMeshClbk(MESHHANDLE msh_h, bool firstload) {
++#else
++	WD3D9 = false;
++#endif
+@@ -123,0 +133,8 @@ void LoadMeshClbk(MESHHANDLE msh_h, bool firstload) {
++#else
++MESHHANDLE LoadOrientedMesh(const char* name, const MATRIX3& rotation)
++{
++	auto mesh = oapiLoadMesh(name);
++	if (mesh) RotateMeshLoading(mesh, rotation);
++	return mesh;
++}
++#endif
+@@ -181,0 +199 @@ void MeshManager::PreLoadMesh(string meshname, VECTOR3 dir, VECTOR3 rot) {
++#ifdef _WIN32
+@@ -182,0 +201,3 @@ void MeshManager::PreLoadMesh(string meshname, VECTOR3 dir, VECTOR3 rot) {
++#else
++		if (auto mesh = LoadOrientedMesh(meshname.c_str(), g_RM)) oapiDeleteMesh(mesh);
++#endif
+@@ -204,0 +226 @@ void MeshManager::PreLoadMeshes() {
++#ifdef _WIN32
+@@ -205,0 +228,3 @@ void MeshManager::PreLoadMeshes() {
++#else
++			msh_defs[i].msh_h = LoadOrientedMesh(msh_defs[i].meshname.c_str(), g_RM);
++#endif
+@@ -424,0 +450 @@ bool MeshManager::ChangeMeshFile(def_idx idx, string newmeshname) {
++#ifdef _WIN32
+@@ -425,0 +452,3 @@ bool MeshManager::ChangeMeshFile(def_idx idx, string newmeshname) {
++#else
++	msh_defs[idx].msh_h = LoadOrientedMesh(newmeshname.c_str(), g_RM);
++#endif
+diff --git a/MeshManager.h b/MeshManager.h
+index dc3f5f1..b9d6456 100644
+--- a/MeshManager.h
++++ b/MeshManager.h
+@@ -7 +7 @@ struct MSH_DEF {
+-	msh_idx msh_idx;
++	::msh_idx msh_idx;
+diff --git a/ParticleManager.cpp b/ParticleManager.cpp
+index b40cd6b..50b72e9 100644
+--- a/ParticleManager.cpp
++++ b/ParticleManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/PropellantManager.cpp b/PropellantManager.cpp
+index e9c61fd..6b8ad3f 100644
+--- a/PropellantManager.cpp
++++ b/PropellantManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/ThrusterManager.cpp b/ThrusterManager.cpp
+index b85a261..5d34663 100644
+--- a/ThrusterManager.cpp
++++ b/ThrusterManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+@@ -517 +519 @@ void ThrusterGroupManager::UndefineGroup(THGROUP_TYPE thgt) {
+-	Thrusters[thgt].clear();//indeciso, serve? oppure è meglio lasciare quelli se magari ne devo aggiungere 1?
++	Thrusters[thgt].clear();//indeciso, serve? oppure ï¿½ meglio lasciare quelli se magari ne devo aggiungere 1?
+diff --git a/TouchdownPointsManager.cpp b/TouchdownPointsManager.cpp
+index fa1882c..ee0be6f 100644
+--- a/TouchdownPointsManager.cpp
++++ b/TouchdownPointsManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/VBVector.h b/VBVector.h
+index 7a18fbd..46b4e08 100644
+--- a/VBVector.h
++++ b/VBVector.h
+@@ -12,0 +13 @@ using namespace std;
++#ifdef _WIN32
+@@ -13,0 +15 @@ extern HWND _orbiter_window;
++#endif
+@@ -27,3 +29 @@ public:
+-	virtual ~VBVector(){
+-		vec.~vector();
+-	}
++	virtual ~VBVector() = default;
+@@ -36,0 +37 @@ public:
++#ifdef _WIN32
+@@ -37,0 +39 @@ public:
++#endif
+@@ -46,0 +49 @@ public:
++#ifdef _WIN32
+@@ -47,0 +51 @@ public:
++#endif
+@@ -55 +59,3 @@ public:
+-				MessageBox(_orbiter_window, cbuf, "WARNING!", MB_OK);
++	#ifdef _WIN32
++			MessageBox(_orbiter_window, cbuf, "WARNING!", MB_OK);
++#endif
+@@ -85,0 +92 @@ public:
++		return *this;
+@@ -97,0 +105 @@ public:
++#ifdef _WIN32
+@@ -99 +107,2 @@ public:
+-			return 0;
++#endif
++			return vec.end();
+diff --git a/VCManager.cpp b/VCManager.cpp
+index ff37043..9289348 100644
+--- a/VCManager.cpp
++++ b/VCManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+diff --git a/VariableDragManager.cpp b/VariableDragManager.cpp
+index 5cbae0a..5b9c1fb 100644
+--- a/VariableDragManager.cpp
++++ b/VariableDragManager.cpp
+@@ -1,0 +2 @@
++#ifdef _WIN32
+@@ -2,0 +4 @@
++#endif
+@@ -40 +42 @@ void VariableDragManager::DefineVarDef(def_idx d_idx) {
+-	double *state_ptr = VB1->AnimMng->GetAnimStatePtr(vard_def[d_idx].anim_idx);
++	const double *state_ptr = VB1->AnimMng->GetAnimStatePtr(vard_def[d_idx].anim_idx);
+diff --git a/VesselBuilder1.cpp b/VesselBuilder1.cpp
+index fb8b889..fda09a6 100644
+--- a/VesselBuilder1.cpp
++++ b/VesselBuilder1.cpp
+@@ -2,0 +3 @@
++#ifdef _WIN32
+@@ -3,0 +5 @@
++#endif
+@@ -11,0 +14 @@
++#ifdef _WIN32
+@@ -17,0 +21 @@
++#endif
+@@ -37,0 +42 @@
++#ifdef _WIN32
+@@ -38,0 +44,3 @@
++#else
++#include "Production/NativeVesselFactory.h"
++#endif
+@@ -45,0 +54 @@
++#ifdef _WIN32
+@@ -46,0 +56 @@ HINSTANCE hDLL;
++#endif
+@@ -50,0 +61 @@ using namespace std;
++#ifdef _WIN32
+@@ -65,0 +77 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
++#endif
+@@ -69,0 +82 @@ VesselBuilder1::VesselBuilder1(OBJHANDLE hObj,int fmodel):VESSEL4(hObj,fmodel){
++#ifdef _WIN32
+@@ -70,0 +84 @@ VesselBuilder1::VesselBuilder1(OBJHANDLE hObj,int fmodel):VESSEL4(hObj,fmodel){
++#endif
+@@ -73,0 +88 @@ VesselBuilder1::VesselBuilder1(OBJHANDLE hObj,int fmodel):VESSEL4(hObj,fmodel){
++#ifdef _WIN32
+@@ -74,0 +90 @@ VesselBuilder1::VesselBuilder1(OBJHANDLE hObj,int fmodel):VESSEL4(hObj,fmodel){
++#endif
+@@ -80,0 +97 @@ VesselBuilder1::VesselBuilder1(OBJHANDLE hObj,int fmodel):VESSEL4(hObj,fmodel){
++#ifdef _WIN32
+@@ -84,0 +102,3 @@ VesselBuilder1::VesselBuilder1(OBJHANDLE hObj,int fmodel):VESSEL4(hObj,fmodel){
++#else
++	OrbiterRoot = orbiter::production::GetNativeRenderContext().programFiles->Root().string();
++#endif
+@@ -121,0 +142 @@ VesselBuilder1::VesselBuilder1(OBJHANDLE hObj,int fmodel):VESSEL4(hObj,fmodel){
++#ifdef _WIN32
+@@ -124,0 +146 @@ VesselBuilder1::VesselBuilder1(OBJHANDLE hObj,int fmodel):VESSEL4(hObj,fmodel){
++#endif
+@@ -143,0 +166 @@ VesselBuilder1::VesselBuilder1(OBJHANDLE hObj,int fmodel):VESSEL4(hObj,fmodel){
++#ifdef _WIN32
+@@ -144,0 +168 @@ VesselBuilder1::VesselBuilder1(OBJHANDLE hObj,int fmodel):VESSEL4(hObj,fmodel){
++#endif
+@@ -151,0 +176 @@ VesselBuilder1::~VesselBuilder1(){
++#ifdef _WIN32
+@@ -158,0 +184 @@ VesselBuilder1::~VesselBuilder1(){
++#endif
+@@ -203,0 +230 @@ VesselBuilder1::~VesselBuilder1(){
++#ifdef _WIN32
+@@ -204,0 +232 @@ VesselBuilder1::~VesselBuilder1(){
++#endif
+@@ -216,0 +245 @@ void VesselBuilder1::GetOrbiterDirs() {
++#ifdef _WIN32
+@@ -290,0 +320,8 @@ void VesselBuilder1::GetOrbiterDirs() {
++#else
++	const std::filesystem::path root(OrbiterRoot);
++	meshdir = (root / "Meshes").string() + "/";
++	configdir = (root / "Config").string() + "/";
++	texturedir = (root / "Textures").string() + "/";
++	texture2dir = (root / "Textures2").string() + "/";
++	scenariodir = (root / "Scenarios").string() + "/";
++#endif
+@@ -411,2 +448,2 @@ void VesselBuilder1::clbkLoadStateEx(FILEHANDLE scn,void *vs)
+-			for (UINT i = 0; i < events_consumed.size(); i++) {
+-				EvMng->SetEventConsumed(i, true);
++			for (UINT event : events_consumed) {
++				if (event < EvMng->GetEventsCount()) EvMng->SetEventConsumed(event, true);
+@@ -420,2 +457,2 @@ void VesselBuilder1::clbkLoadStateEx(FILEHANDLE scn,void *vs)
+-			for (UINT i = 0; i < events_to_reconsume.size(); i++) {
+-				EvMng->ConsumeEvent(i);
++			for (UINT event : events_to_reconsume) {
++				if (event < EvMng->GetEventsCount()) EvMng->ConsumeEvent(event);
+@@ -733,0 +771 @@ int VesselBuilder1::clbkConsumeBufferedKey(DWORD key, bool down, char *kstate)
++#ifdef _WIN32
+@@ -754,0 +793 @@ int VesselBuilder1::clbkConsumeBufferedKey(DWORD key, bool down, char *kstate)
++#endif
+@@ -1228,0 +1268 @@ void VesselBuilder1::CreateFollowMe() {
++#ifdef _WIN32
+@@ -1229,0 +1270 @@ void VesselBuilder1::CreateFollowMe() {
++#endif
+@@ -1245,0 +1287 @@ void VesselBuilder1::DeleteFollowMe(bool reset) {
++#ifdef _WIN32
+@@ -1246,0 +1289 @@ void VesselBuilder1::DeleteFollowMe(bool reset) {
++#endif
+@@ -1278,0 +1322 @@ void VesselBuilder1::UpdateFollowMe() {
++#ifdef _WIN32
+@@ -1281,0 +1326 @@ void VesselBuilder1::UpdateFollowMe() {
++#endif
+@@ -1437,0 +1483 @@ void VesselBuilder1::AddDefaultRCS() {
++#ifdef _WIN32
+@@ -1441,0 +1488 @@ void VesselBuilder1::AddDefaultRCS() {
++#endif
+@@ -1454,0 +1502 @@ void VesselBuilder1::SetParkingBrakes(bool set) {
++#ifdef _WIN32
+@@ -1473,0 +1522 @@ void VesselBuilder1::UnregisterMFD() {
++#endif
+@@ -1583,0 +1633 @@ VBVector <string> VesselBuilder1::ReadMeshTextures(string filename) {
++#ifdef _WIN32
+@@ -1587,0 +1638,6 @@ VBVector <string> VesselBuilder1::ReadMeshTextures(string filename) {
++#else
++	const auto* files = orbiter::production::GetNativeRenderContext().programFiles;
++	const std::string relative = "Meshes/" + filename + ext;
++	if (!files->Contains(relative)) return texture_names;
++	const std::string fn = files->Resolve(relative).string();
++#endif
+@@ -1811,0 +1868 @@ void VesselBuilder1::SoftDockTest() {
++#ifdef _WIN32
+@@ -1822,0 +1880,26 @@ DLLCLBK void ovcExit(VESSEL *vessel){if(vessel)delete(VesselBuilder1*)vessel;}
++#else
++namespace {
++VESSEL* createVessel(OBJHANDLE vessel, int flightmodel)
++{
++	return new VesselBuilder1(vessel, flightmodel);
++}
++
++void destroyVessel(VESSEL* vessel)
++{
++	delete static_cast<VesselBuilder1*>(vessel);
++}
++
++using Factory = orbiter::native::VesselFactory<createVessel, destroyVessel>;
++const OrbiterNativeModuleDescriptor descriptor = {
++	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
++	sizeof(void*), ORBITER_NATIVE_VESSEL, "VesselBuilder1",
++	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
++};
++}
++
++extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
++OrbiterNativeQuery(std::uint32_t version) noexcept
++{
++	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
++}
++#endif
+diff --git a/VesselBuilder1.h b/VesselBuilder1.h
+index 61945ff..d76a21a 100644
+--- a/VesselBuilder1.h
++++ b/VesselBuilder1.h
+@@ -48,0 +49 @@
++#ifdef _WIN32
+@@ -49,0 +51,3 @@
++#else
++#include "NativeSdk.h"
++#endif

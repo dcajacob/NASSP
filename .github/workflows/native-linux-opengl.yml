@@ -2,75 +2,109 @@ name: Native Linux OpenGL
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     branches:
       - codex/native-linux-apollo11-baseline
+  push:
+    branches: [codex/native-linux-apollo11-baseline]
+    paths: [.github/native-linux/**, .github/workflows/native-linux-opengl.yml]
   workflow_dispatch:
+    inputs:
+      full:
+        description: Run the complete mission replay matrix
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
   group: native-linux-opengl-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event.action != 'labeled' }}
 
 jobs:
+  orbiter:
+    name: Build pinned Orbiter and matching SDK
+    runs-on: ubuntu-24.04
+    container: ubuntu:26.04
+    timeout-minutes: 60
+    if: github.event.action != 'labeled' || github.event.label.name == 'full-native-linux'
+    outputs:
+      revision: ${{ steps.pin.outputs.revision }}
+      archive_sha256: ${{ steps.package.outputs.sha256 }}
+      suites: ${{ steps.suites.outputs.suites }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install build dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends build-essential git cmake ninja-build pkg-config curl python3 \
+            ca-certificates zstd patch unzip qt6-base-dev libgl-dev libglu1-mesa-dev zlib1g-dev xorg-dev \
+            libwayland-dev wayland-protocols libxkbcommon-dev
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/native-linux
+      - name: Read the pinned Orbiter revision
+        id: pin
+        run: |
+          revision=$(cat .github/native-linux/orbiter-revision)
+          [[ "$revision" =~ ^[a-f0-9]{40}$ ]]
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: dcajacob/orbiter-cross-platform
+          ref: ${{ steps.pin.outputs.revision }}
+          path: orbiter-source
+          persist-credentials: false
+      - name: Build the shared runtime and SDK from Orbiter
+        id: package
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/orbiter-source"
+          bash .github/native-linux/build-orbiter.sh "$PWD/orbiter-source" "$RUNNER_TEMP/shared-orbiter"
+          archive=orbiter-host.tar.zst
+          mv "$RUNNER_TEMP/shared-orbiter/$archive" "$archive"
+          echo "sha256=$(sha256sum "$archive" | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: shared-orbiter-runtime-sdk
+          path: orbiter-host.tar.zst
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+      - name: Select mission suites
+        id: suites
+        env:
+          FULL: ${{ inputs.full || contains(github.event.pull_request.labels.*.name, 'full-native-linux') }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          suites = ["lunar-smoke"]
+          if os.environ["FULL"] == "true":
+              rows = Path(".github/native-linux/replays.tsv").read_text().splitlines()
+              suites = list(dict.fromkeys(row.split()[0] for row in rows if row.strip()))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              print("suites=" + json.dumps(suites), file=out)
+          PYTHON
+
   native-linux:
+    needs: orbiter
     name: Native Linux OpenGL (${{ matrix.suite }})
     strategy:
       fail-fast: false
       matrix:
-        suite:
-          - baseline
-          - apollo5
-          - apollo10-lunar
-          - apollo10-entry
-          - apollo11-lunar
-          - apollo11-return
-          - apollo11-entry
-          - apollo7-ascent
-          - apollo7-sps3-scs-burn-rate-mode
-          - apollo7-sps3-scs-finer
-          - apollo7-sps4-p40-burn
-          - apollo7-sps5-manual-tvc-burn-secondary-open-loop
-          - apollo7-sps6-p40-burn
-          - apollo7-sps7-scs-burn
-          - apollo7-sps8-p40-burn
-          - apollo7-entry
-          - apollo9-ascent
-          - apollo9-sps1-inertial-burn
-          - apollo9-sps2-p40-coarse-aligned
-          - apollo9-sps3-p40-secondary-tvc
-          - apollo9-sps4-p40-direct-rhc
-          - apollo9-sps5-p40-native
-          - apollo9-dps
-          - apollo9-rendezvous
-          - apollo9-gumdrop-sps6-p40-native
-          - apollo9-gumdrop-sps7-p40-native
-          - apollo9-gumdrop-retrofire-balanced-p40-native
-          - apollo9-entry
-          - apollo12-flown-ascent-with-tower-jettison
-          - apollo12-flown-tli
-          - apollo12-flown-csm-separation
-          - apollo12-flown-sivb-clearance
-          - apollo12-mcc2-p40-docked
-          - apollo12-mcc3-p40-finer
-          - apollo12-mcc4-p40-docked
-          - apollo12-loi1-verified-orbit
-          - apollo12-loi2-p40-warm
-          - apollo12-doi
-          - apollo12-ascent
-          - apollo12-rendezvous
-          - apollo12-docking
-          - apollo12-disposal
-          - apollo12-tei
-          - apollo12-yankee-clipper-mcc5-p40-timed-valve-cutoff
-          - apollo12-yankee-clipper-balanced-mcc7-p41-paired-jets
-          - apollo12-entry
+        suite: ${{ fromJSON(needs.orbiter.outputs.suites) }}
     runs-on: ubuntu-24.04
     # The pinned Orbiter runtime and SDK were built on Ubuntu 26.04.
     container: ubuntu:26.04
     timeout-minutes: 75
     env:
+      ORBITER_REVISION: ${{ needs.orbiter.outputs.revision }}
       REPLAY_SUITE: ${{ matrix.suite }}
     defaults:
       run:
@@ -92,8 +126,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Fetch and verify Orbiter runtime, SDK and replay inputs
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-orbiter-runtime-sdk
+          path: shared-host
+
+      - name: Verify matching Orbiter host and SDK and fetch mission data
         env:
+          HOST_SHA256: ${{ needs.orbiter.outputs.archive_sha256 }}
           FIXTURE_URL: https://github.com/dcajacob/NASSP/releases/download/native-linux-ci-inputs-v1/nassp-native-ci-inputs-v1.tar.zst
           FIXTURE_SHA256: 26d5891ea54a01ab8d007bed3ab2e9f5ed46ff8cd315921c57ca0e334faf37bd
           TERRAIN_URL: https://github.com/dcajacob/NASSP/releases/download/native-linux-ci-inputs-v1/nassp-native-ci-terrain-v1.tar.zst
@@ -106,7 +146,14 @@ jobs:
           cd "$RUNNER_TEMP/nassp-inputs"
           curl --fail --location --retry 3 --output fixture.tar.zst "$FIXTURE_URL"
           printf '%s  fixture.tar.zst\n' "$FIXTURE_SHA256" | sha256sum -c -
-          tar --zstd -xf fixture.tar.zst
+          # The old archive still supplies the frozen scenarios, settings and flight data.
+          tar --zstd --exclude='./runtime/engine' --exclude='./sdk' -xf fixture.tar.zst
+          test ! -e runtime/engine
+          test ! -e sdk
+          host="$GITHUB_WORKSPACE/shared-host/orbiter-host.tar.zst"
+          printf '%s  %s\n' "$HOST_SHA256" "$host" | sha256sum -c -
+          tar --zstd -xf "$host"
+          test "$(cat orbiter-source.txt)" = "$ORBITER_REVISION"
           rm fixture.tar.zst
           curl --fail --location --retry 3 --output terrain.tar.zst "$TERRAIN_URL"
           printf '%s  terrain.tar.zst\n' "$TERRAIN_SHA256" | sha256sum -c -
@@ -121,7 +168,7 @@ jobs:
           rm stock.zip
 
       - name: Fetch and verify the additional Apollo replays
-        if: matrix.suite != 'baseline'
+        if: matrix.suite != 'baseline' && matrix.suite != 'lunar-smoke'
         env:
           APOLLO_REPLAYS_URL: https://github.com/dcajacob/NASSP/releases/download/native-linux-ci-inputs-v1/nassp-native-ci-apollo-replays-v2.tar.zst
           APOLLO_REPLAYS_SHA256: dca7b28fa1543cee718c599c2a71449ae0b40c73b50cb50e5e7839c938e482ae
@@ -129,7 +176,7 @@ jobs:
           cd "$RUNNER_TEMP/nassp-inputs"
           curl --fail --location --retry 3 --output apollo-replays.tar.zst "$APOLLO_REPLAYS_URL"
           printf '%s  apollo-replays.tar.zst\n' "$APOLLO_REPLAYS_SHA256" | sha256sum -c -
-          tar --zstd -xf apollo-replays.tar.zst
+          tar --zstd --exclude='runtime/engine' --exclude='sdk' -xf apollo-replays.tar.zst
           rm apollo-replays.tar.zst
 
       - name: Fetch and verify Apollo 7, 9 and 12 replays
@@ -141,21 +188,10 @@ jobs:
           cd "$RUNNER_TEMP/nassp-inputs"
           curl --fail --location --retry 3 --output mission-replays.tar.zst "$MISSION_REPLAYS_URL"
           printf '%s  mission-replays.tar.zst\n' "$MISSION_REPLAYS_SHA256" | sha256sum -c -
-          tar --zstd -xf mission-replays.tar.zst
+          tar --zstd --exclude='runtime/engine' --exclude='sdk' -xf mission-replays.tar.zst
           rm mission-replays.tar.zst
 
-      - name: Fetch and verify the surface texture crash fix
-        env:
-          OPENGL_FIX_URL: https://github.com/dcajacob/NASSP/releases/download/native-linux-ci-inputs-v1/nassp-native-ci-opengl-surface-v2.tar.zst
-          OPENGL_FIX_SHA256: 5a118041be1fc80328f12ed3c0c5a1bfc7a297ca954181dd44b9eba924095b7c
-        run: |
-          cd "$RUNNER_TEMP/nassp-inputs"
-          curl --fail --location --retry 3 --output opengl-fix.tar.zst "$OPENGL_FIX_URL"
-          printf '%s  opengl-fix.tar.zst\n' "$OPENGL_FIX_SHA256" | sha256sum -c -
-          tar --zstd -xf opengl-fix.tar.zst
-          rm opengl-fix.tar.zst
-
-      - name: Build NASSP from the PR
+      - name: Build NASSP against the shared SDK
         id: build
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
@@ -164,16 +200,23 @@ jobs:
           bash .github/native-linux/run.sh "$RUNNER_TEMP/nassp-inputs" "nassp-results" build \
             2>&1 | tee "nassp-results/build.log"
 
+      - name: Fly and reload the frozen Apollo 11 lunar orbit with sound off
+        if: matrix.suite == 'lunar-smoke'
+        run: |
+          xvfb-run -a -s '-screen 0 1600x1000x24 +extension GLX' python3 -B \
+            .github/native-linux/lunar_smoke.py "$RUNNER_TEMP/nassp-inputs" nassp-results
+
       - name: Check the Orbiter Launchpad
         id: launcher
         if: matrix.suite == 'baseline'
         run: bash .github/native-linux/run.sh "$RUNNER_TEMP/nassp-inputs" "nassp-results" launcher
 
       - name: Fly the replay scenarios
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        if: ${{ !cancelled() && matrix.suite != 'lunar-smoke' && steps.build.outcome == 'success' }}
         run: bash .github/native-linux/run.sh "$RUNNER_TEMP/nassp-inputs" "nassp-results" flight "$REPLAY_SUITE"
 
       - name: Verify and summarize results
+        if: matrix.suite != 'lunar-smoke'
         run: |
           python3 .github/native-linux/verify.py "$RUNNER_TEMP/nassp-inputs/launcher-manifest.json" \
             "nassp-results" "$REPLAY_SUITE" | tee -a "$GITHUB_STEP_SUMMARY"

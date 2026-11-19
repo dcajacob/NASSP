@@ -6,6 +6,14 @@ inputs=$(realpath "$1")
 mkdir -p "$2"
 output=$(realpath "$2")
 runtime="$inputs/runtime"
+expected=$(cat "$source_dir/.github/native-linux/orbiter-revision")
+if [[ ! -f "$inputs/orbiter-source.txt" || "$(<"$inputs/orbiter-source.txt")" != "$expected" ]]; then
+    echo "Prepare this scratch runtime with the pinned shared Orbiter build $expected." >&2
+    exit 1
+fi
+if [[ ${3:-} == build ]]; then
+    (cd "$inputs" && sha256sum --check --quiet orbiter-files.sha256)
+fi
 
 if [[ "${3:-}" == launcher || "${3:-}" == flight ]]; then
     # Keep the audio server private and use the same backend as a Linux desktop.

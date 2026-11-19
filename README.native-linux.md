@@ -41,11 +41,21 @@ mission-specific port and qualification.
 
 ## Native Linux pull request checks
 
-GitHub Actions runs **Native Linux OpenGL** on pull requests targeting
-`codex/native-linux-apollo11-baseline`, the native Linux integration branch.
-It builds the NASSP modules from the PR checkout against the pinned Orbiter
-runtime and SDK in the fork's `native-linux-ci-inputs-v1` release. The job
-verifies the input archives and Orbiter SPICE kernel checksums before use.
+The Linux workflow checks out `dcajacob/orbiter-cross-platform` at the full commit in
+`.github/native-linux/orbiter-revision`. It builds Orbiter, the OpenGL renderer,
+Qt Launchpad, Earth and Moon modules and matching SDK together on Ubuntu 26.04.
+Stage2010 and VesselBuilder1 are rebuilt from checksum-verified sources with the
+Linux port changes in `.github/native-linux/ports`. Every test job verifies the
+shared build and compiles the NASSP modules from its own checkout against that SDK.
+The NASSP input archives supply the frozen scenarios, terrain, configuration and
+replays. The workflow excludes the former executable, renderer and SDK.
+
+The default check flies the frozen Apollo 11 lunar-orbit save with sound off,
+saves it and reloads it in a second process. It checks graphics, simulation time
+and the Columbia/Eagle docking links. Its receipt records both source revisions
+and the hashes of the executable, SDK header and scenario. Request the complete
+mission matrix with the `full` workflow input or the `full-native-linux` PR
+label. The full checks retain the original replay table and expected outcomes.
 
 The Qt Launchpad opens 53 frozen scenarios under Xvfb and Mesa software
 OpenGL. For 26 scenarios the job also resizes the simulation window, resumes
@@ -76,17 +86,19 @@ The baseline job attaches `native-linux-opengl-results`. The other jobs
 attach `native-linux-opengl-<suite>-results`. Each artifact includes the
 build log, replay saves and telemetry, and a JSON result summary.
 
-To run the same checks on Ubuntu 26.04, extract the CI input archive into a scratch
-directory, unpack the terrain archive under `runtime/planet-archives`, and add `Kernels/orbiter.bsp` from the workflow's stock
-data archive under `runtime/celestial-data`. Install the workflow dependencies
-and run the commands below. The build installs modules and generated assets
-into that scratch runtime.
+To reproduce locally on Ubuntu 26.04, install the development and virtual-desktop
+packages listed in the workflow. Check out the pinned Orbiter commit and run
+`bash .github/native-linux/build-orbiter.sh /path/to/orbiter /new/build-dir`.
+In a fresh inputs directory, follow the workflow's checksum and extraction steps,
+excluding `./runtime/engine` and `./sdk` from the old fixture. Extract the new
+`orbiter-host.tar.zst` in that directory. Add the original locked terrain and
+SPICE kernel as in the workflow, then build the NASSP modules and run the short check.
 
 ```sh
-for phase in build launcher flight; do
-  bash .github/native-linux/run.sh /path/to/inputs /path/to/results "$phase" || exit
-done
-python3 .github/native-linux/verify.py /path/to/inputs/launcher-manifest.json /path/to/results
+bash .github/native-linux/run.sh /path/to/inputs /path/to/results build
+export ORBITER_REVISION=$(cat .github/native-linux/orbiter-revision)
+export GITHUB_SHA=$(git rev-parse HEAD)
+xvfb-run -a python3 -B .github/native-linux/lunar_smoke.py /path/to/inputs /path/to/results
 ```
 
 For the additional missions, unpack `nassp-native-ci-apollo-replays-v2.tar.zst`
@@ -110,11 +122,8 @@ vessel state, Lua errors, or measurements outside those tolerances.
 
 Launcher and replay audio use a private PulseAudio virtual output set to 5%.
 
-The pinned `nassp-native-ci-opengl-surface-v2.tar.zst` runtime supplement
-includes the OpenGL surface tile crash fix, its source patch, and build
-provenance. Apply it after the base runtime when reproducing CI locally.
-The patch checks for surface and cloud textures before drawing tiles. Apollo 7's
-original rendering cadence exposed this crash during the burn replays.
+The shared Orbiter source includes the OpenGL tile texture fix. The historical
+renderer supplement belongs to the older runtime.
 
 Apollo 7 SPS-3 uses the crew procedure in
 `Script/ProjectApollo/apollo7-countdown-sps3-scs-burn-rate-mode.lua`, installed

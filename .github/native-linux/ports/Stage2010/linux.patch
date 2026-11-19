@@ -1,0 +1,52 @@
+--- a/stage.cpp
++++ b/stage.cpp
+@@ -11,0 +12 @@
++#ifdef _WIN32
+@@ -12,0 +14,5 @@
++#else
++#include "Production/NativeVesselFactory.h"
++#include "Production/NativeRenderApi.h"
++#include "OrbiterNativeBuild.h"
++#endif
+@@ -30,0 +37 @@
++#ifdef _WIN32
+@@ -31,0 +39 @@
++#endif
+@@ -77,0 +86,4 @@
++#ifndef _WIN32
++	// Native Orbiter validates scenario vessels before post-creation.
++	SetMeshVisibilityMode(AddMesh(GetName()), MESHVIS_EXTERNAL);
++#endif
+@@ -87,0 +100 @@
++#ifdef _WIN32
+@@ -98,0 +112,26 @@
++#else
++namespace {
++VESSEL* createStage(OBJHANDLE vessel, int flightmodel)
++{
++	return new stage(vessel, flightmodel);
++}
++
++void destroyStage(VESSEL* vessel)
++{
++	delete static_cast<stage*>(vessel);
++}
++
++using Factory = orbiter::native::VesselFactory<createStage, destroyStage>;
++const OrbiterNativeModuleDescriptor descriptor = {
++	sizeof(OrbiterNativeModuleDescriptor), ORBITER_NATIVE_BOOTSTRAP_VERSION,
++	sizeof(void*), ORBITER_NATIVE_VESSEL, "Stage DLL 2010",
++	ORBITER_NATIVE_SDK_BUILD, ORBITER_NATIVE_CPP_ABI, Factory::initialize, Factory::shutdown
++};
++}
++
++extern "C" ORBITER_NATIVE_EXPORT const OrbiterNativeModuleDescriptor* ORBITER_NATIVE_CALL
++OrbiterNativeQuery(std::uint32_t version) noexcept
++{
++	return version == ORBITER_NATIVE_BOOTSTRAP_VERSION ? &descriptor : nullptr;
++}
++#endif
+@@ -102,0 +142 @@
++#ifdef _WIN32
+@@ -111,0 +152 @@
++#endif
