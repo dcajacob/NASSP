@@ -1,0 +1,94 @@
+"""Crew procedures for an unbroken Earth-orbit coast and SPS ignition setup."""
+import json
+from pathlib import Path
+import re
+
+CREW = Path(__file__).with_name("apollo7_crew")
+SCHEDULE = {
+    4: [(295200,"oxygen"), (322250,64), (339360,65), (357670,72),
+        (381600,"oxygen"), (423080,75)],
+    5: [(445000,83), (468000,"oxygen"), (503160,87), (509400,"oxygen"),
+        (517580,89), (524780,102), (530480,105), (540300,"heater_on"),
+        (541500,"hydrogen"), (541800,"heater_off"), (554400,"oxygen"), (580290,107)],
+    6: [(609080,120), (669000,"heater_on"), (670200,"hydrogen"), (670500,"heater_off"),
+        (670600,"oxygen"), (689790,124), (697290,131), (702000,"oxygen"), (728190,132), (739590,134)],
+    7: [(760200,"heater_on"), (761400,"hydrogen"), (761700,"heater_off"),
+        (766890,138), (783390,150), (788400,"oxygen"), (810600,"heater_on"),
+        (811800,"hydrogen"), (812100,"heater_off"), (827400,"oxygen"), (840690,153)],
+    8: [(864990,160), (884400,"heater_on"), (885600,"hydrogen"), (885900,"heater_off"),
+        (914400,"heater_on"), (915600,"hydrogen"), (915900,"heater_off"), (918690,163)],
+}
+PURPOSE = {4: "SPS-4, MINIMUM IMPULSE", 5: "SPS-5 / PUGS",
+           6: "SPS-6, MINIMUM IMPULSE", 7: "SPS-7", 8: "164-1A RETROFIRE"}
+
+
+def scenario_field(directory, name):
+    text = (Path(directory) / "saved.scn").read_text()
+    return re.search(r"^  " + name + r" (.+)$", text, re.M)[1]
+
+
+def coast(chain, previous_dir, number):
+    schedule = SCHEDULE[number]
+    rows = [f"{{{get},{action}}}" if isinstance(action, int)
+            else f"{{{get},nil,{json.dumps(action)}}}" for get, action in schedule]
+    args = (f"local initial_get={float(scenario_field(previous_dir, 'MISSNTIME'))}\n"
+            f"local schedule={{{','.join(rows)}}}\nlocal burn_state={schedule[-1][1]}\n"
+            f"local burn_purpose={json.dumps(PURPOSE[number])}\n")
+    return chain.leg(previous_dir, f"sps{number}-coast", args + (CREW / "coast.lua").read_text(),
+                     120000, .125, "coast.csv", "maneuver_pad_ready")
+
+
+def prepare_p40(chain, previous_dir, pad_dir, number):
+    def pad(field):
+        return float(scenario_field(pad_dir, "MCC_AP7MNV_" + field))
+    present = float(scenario_field(previous_dir, "MISSNTIME"))
+    ignition = pad("GETI")
+    if ignition - present < 1350:
+        raise ValueError(f"Insufficient time for SPS-{number} R60 slew")
+    config = "11102" if number == 7 else "10102"
+    args = (f'local dap_config="{config}"\nlocal csm_weight={round(pad("Weight"))}\n'
+            f'local pitch_trim={round(100 * pad("pTrim"))}\n'
+            f'local yaw_trim={round(100 * pad("yTrim"))}\n'
+            f'local waitUntil={ignition - present - 1350}\n')
+    return chain.leg(previous_dir, f"sps{number}-prepare-p40",
+                     args + (CREW / "prepare-p40.lua").read_text(), 110000, .125,
+                     "prepare-p40.csv", "ready_for_slew")
+
+
+def burn_sps4(chain, ready, pad):
+    from apollo7_middle import substitute
+    pinned = chain.runtime / "resources/Script/ProjectApollo/apollo7-countdown-sps4-p40-burn.lua"
+    source = pinned.read_text()
+
+    def target(name):
+        return float(scenario_field(pad, "MCC_AP7MNV_" + name))
+
+    delay = target("GETI") - float(scenario_field(ready, "MISSNTIME"))
+    source = substitute(source, r"^local timeToIgnition = .*", f"local timeToIgnition = {delay}")
+    source = substitute(source, r'^set\("EMSDvDisplay",\d+\)',
+                        f'set("EMSDvDisplay",{round(10 * target("Vc"))})')
+    start = source.index('set("DirectUllMnACircuitBraker",1)')
+    end = source.index("local initialMass=", start)
+    source = (source[:start] + "local ullageEnd=timeToIgnition-10\n"
+              + (CREW / "ullage.lua").read_text() + source[end:])
+    # The original R60, V99, SPS consumption, automatic cutoff and slosh
+    # observations run before independently checking this mission's live PAD.
+    check = f"""
+local earth=ship:get_gravityref()
+local _,orbit=ship:get_elementsex(earth)
+local radius=oapi.get_size(earth)
+assert(math.abs(orbit.PeD-radius-{target("HP") * 1852})<15000, "SPS-4 missed PAD perigee")
+assert(math.abs(orbit.ApD-radius-{target("HA") * 1852})<15000, "SPS-4 missed PAD apogee")
+reportState("linked_burn_verified")
+"""
+    source = substitute(source, r"^report:close\(\)", check + "report:close()")
+    return chain.leg(ready, "sps4-burn", source, 80000, .0625,
+                     "sps4-p40.csv", "linked_burn_verified")
+
+
+def fly(chain, previous_dir):
+    from apollo7_middle import uplink_and_p30
+    pad = coast(chain, previous_dir, 4)
+    checked = uplink_and_p30(chain, pad, 4)
+    ready = prepare_p40(chain, checked, pad, 4)
+    return burn_sps4(chain, ready, pad)

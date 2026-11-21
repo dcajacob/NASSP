@@ -88,6 +88,7 @@ jobs:
           if os.environ["FULL"] == "true":
               rows = Path(".github/native-linux/replays.tsv").read_text().splitlines()
               suites = list(dict.fromkeys(row.split()[0] for row in rows if row.strip()))
+          suites.append("apollo7-linked-return")
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               print("suites=" + json.dumps(suites), file=out)
           PYTHON
@@ -102,7 +103,7 @@ jobs:
     runs-on: ubuntu-24.04
     # The pinned Orbiter runtime and SDK were built on Ubuntu 26.04.
     container: ubuntu:26.04
-    timeout-minutes: 75
+    timeout-minutes: ${{ matrix.suite == 'apollo7-linked-return' && 300 || 75 }}
     env:
       ORBITER_REVISION: ${{ needs.orbiter.outputs.revision }}
       REPLAY_SUITE: ${{ matrix.suite }}
