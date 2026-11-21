@@ -124,6 +124,28 @@ def saved_orbit(directory):
     return a*(1 - eccentricity) - radius, a*(1 + eccentricity) - radius
 
 
+def inertial_reference(directory):
+    raw = (directory / "saved.scn").read_text(encoding="latin-1")
+    imu = raw.split("\nIMU_BEGIN\n", 1)[1].split("\nIMU_END", 1)[0]
+    physical = [float(x) for x in re.findall(r"^  M[123][123] (.+)$", imu, re.M)]
+    memory = raw.split("\nAGC_BEGIN\n", 1)[1].split("\nAGC_END", 1)[0]
+    words = {int(addr, 8): int(word, 8) for addr, word in
+             re.findall(r"^  EMEM([0-7]+) ([0-7]+)$", memory, re.M)}
+
+    # RTCC's MCCCRF_DL is the actual CMC reference at 01735. Each
+    # coefficient is a B+1 double-precision one's-complement fraction.
+    def signed(addr):
+        word = words.get(addr, 0)
+        return word - 0o77777 if word & 0o40000 else word
+
+    cmc = [signed(i) / 2**13 + signed(i + 1) / 2**27
+           for i in range(0o1735, 0o1735 + 18, 2)]
+    # The physical stable-member axes mapped by the AGC matrix into global
+    # coordinates should give the same inertial frame after each alignment.
+    return [sum(physical[3*i+k] * cmc[3*k+j] for k in range(3))
+            for i in range(3) for j in range(3)]
+
+
 def burn_measurements(output, number):
     from apollo7_checks import rows
     from apollo7_middle import field
@@ -154,6 +176,12 @@ def burn_measurements(output, number):
     result = dict(burn=prefix, ignition_get_s=cmc_tig, target_lvlh_ft_s=cmc_dv, sps_used_kg=debit,
                   pad_perigee_km=pad_pe, pad_apogee_km=pad_ap, perigee_km=pe, apogee_km=ap)
     burn_dir = output / (prefix + "-burn")
+    reference = inertial_reference(SEED)
+    aligned = inertial_reference(output / (prefix + "-alignment"))
+    trace = sum(a*b for a,b in zip(reference, aligned, strict=True))
+    if not math.isfinite(trace) or abs(trace - 3) > 2 * (1 - math.cos(math.radians(1))):
+        raise ValueError(f"{prefix}: CMC inertial reference disagrees with the physical platform")
+    result["platform_error_from_seed_deg"] = math.degrees(math.acos(max(-1, min(1, (trace - 1) / 2))))
     saved_pe, saved_ap = saved_orbit(burn_dir)
     if not (abs(saved_pe - 1000 * pe) < 100 and abs(saved_ap - 1000 * ap) < 100):
         raise ValueError(f"{prefix}: saved position and velocity disagree with cutoff telemetry")

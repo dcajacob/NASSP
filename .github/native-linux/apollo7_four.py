@@ -57,14 +57,22 @@ def prepare_p40(chain, previous_dir, pad_dir, number):
         return float(scenario_field(pad_dir, "MCC_AP7MNV_" + field))
     present = float(scenario_field(previous_dir, "MISSNTIME"))
     ignition = pad("GETI")
-    alignment = alignment_script(chain.runtime, max(0, ignition - present - 2850))
-    previous_dir = chain.leg(previous_dir, f"sps{number}-alignment", alignment, 160000, .03125,
+    alignment = alignment_script(chain.runtime, max(0, ignition - present - 2120))
+    previous_dir = chain.leg(previous_dir, f"sps{number}-alignment", alignment, 300000, .015625,
                              "alignment.csv", "platform_reference_ready")
     present = float(scenario_field(previous_dir, "MISSNTIME"))
-    if ignition - present < 1350:
+    if ignition - present < 1000:
         raise ValueError(f"Insufficient time for SPS-{number} R60 slew")
     config = "11102" if number in (7, 8) else "10102"
-    args = (f'local dap_config="{config}"\nlocal csm_weight={round(pad("Weight"))}\n'
+    scenario = (previous_dir / "saved.scn").read_text()
+    def quad_mass(quad):
+        block = re.search(rf"^SMRCSPROPELLANT_{quad}_BEGIN\n  PROPELLANTMASS (\S+)", scenario, re.M)
+        return float(block[1])
+    # Each pair can control roll. Preserve the lower-reserve pair for the axes
+    # only its jets can control (A/C pitch, B/D yaw).
+    bd_roll = min(quad_mass("A"), quad_mass("C")) < min(quad_mass("B"), quad_mass("D"))
+    roll_word = "01111" if bd_roll else "11111"
+    args = (f'local roll_word="{roll_word}"\nlocal dap_config="{config}"\nlocal csm_weight={round(pad("Weight"))}\n'
             f'local pitch_trim={round(100 * pad("pTrim"))}\n'
             f'local yaw_trim={round(100 * pad("yTrim"))}\n'
             f'local waitUntil={ignition - present - 1350}\n')
@@ -77,6 +85,9 @@ def burn_sps4(chain, ready, pad):
     from apollo7_middle import substitute
     pinned = chain.runtime / "resources/Script/ProjectApollo/apollo7-countdown-sps4-p40-burn.lua"
     source = pinned.read_text()
+    # Keep R60 and the subsequent attitude hold at the normal guidance sample
+    # interval. Under warp, a CMC jet pulse can last many control cycles.
+    source = re.sub(r"oapi\.set_tacc\([^)]*\)", "oapi.set_tacc(1)", source)
 
     def target(name):
         return float(scenario_field(pad, "MCC_AP7MNV_" + name))

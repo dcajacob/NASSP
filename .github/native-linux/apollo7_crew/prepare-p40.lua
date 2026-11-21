@@ -48,10 +48,10 @@ assert(sample("ready_for_gdc_alignment")==0,"GDC alignment requires CMC P00")
 
 keys("V48E")
 waitPrompt(4,46,"dap_config_before_powered_flight",16)
-keys("V24E"..dap_config.."E11111E")
+keys("V24E"..dap_config.."E"..roll_word.."E")
 proc.wait_simdt(2)
 assert(ship:get_agcerasable(6,54)==tonumber(dap_config,8) and
-       ship:get_agcerasable(6,55)==tonumber("11111",8),"Incorrect N46 DAP setup")
+       ship:get_agcerasable(6,55)==tonumber(roll_word,8),"Incorrect N46 DAP setup")
 keys("P")
 waitPrompt(6,47,"dap_mass_request",14)
 keys(string.format("V21E%+06dE",csm_weight))
@@ -77,7 +77,17 @@ assert(math.abs(register(1)-pitch_trim)<=3 and math.abs(register(2)-yaw_trim)<=3
 keys("P")
 proc.wait_simdt(3)
 keys("V46E")
-for _,name in ipairs({"AcRollA1Switch","AcRollA2Switch","AcRollC1Switch","AcRollC2Switch"}) do set(name,2) end
+local bdRoll=roll_word=="01111"
+for _,axis in ipairs({"AC","BD"}) do
+    for _,bus in ipairs({"MnA","MnB"}) do set(axis.."Roll"..bus.."CircuitBraker",1) end
+end
+for n=1,2 do
+    set("AcRollA"..n.."Switch",bdRoll and 1 or 2)
+    set("AcRollC"..n.."Switch",bdRoll and 1 or 0)
+    set("BdRollB"..n.."Switch",bdRoll and 2 or 1)
+    set("BdRollD"..n.."Switch",bdRoll and 0 or 1)
+end
+sample(bdRoll and "bd_roll_selected" or "ac_roll_selected")
 for _,name in ipairs({"Pitch1Switch","Yaw1Switch","Pitch2Switch","Yaw2Switch"}) do set(name,0) end
 set("TVCServoPower1Switch",1)
 set("TVCServoPower2Switch",1)

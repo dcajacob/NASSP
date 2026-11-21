@@ -36,21 +36,58 @@ def burn(chain, preburn, pad):
                               ("EMSDvDisplay", "Vc")):
         value = round(float(field(pad, "MCC_AP7MNV_" + pad_field)) * 10)
         script = replace_once(script, rf'set\("{switch}",-?\d+\)', f'set("{switch}",{value})')
-    # The deorbit PAD calls for four-jet forward THC ullage for 15 seconds.
-    # Restore CMC AUTO after final trim and keep its attitude control during ullage.
-    start = script.index('set("DirectUllMnACircuitBraker",1)')
-    end = script.index('local initialMass=', start)
-    script = replace_once(script[:start], r'at\(-30,"ullage"\)', 'at(-25,"ullage")') + (
-        'set("SCContSwitch",1)\nset("CMCModeSwitch",2)\nlocal ullageEnd=timeToIgnition-10\nlocal twoJet=false\n'
-        + (CREW / "ullage.lua").read_text() + script[end:]
-    )
+    # A two-axis SM slew can run until its time limit and spend the last of
+    # the B/D propellant. Use powered CM attitude jets for the R60 maneuver,
+    # just as the original procedure does for final trim. Keep SM fuel for settling.
+    start = script.index('oapi.set_tacc(4)\nat(-680,')
+    end = script.index('at(-68,"late_attitude_check")', start)
+    script = script[:start] + (CREW / "deorbit-ullage.lua").read_text() + script[end:]
+    script = replace_once(script, r'at\(-30,"ullage"\)', 'at(depleted and -8 or -25,"ullage")')
+    start = script.index('set("DirectUllMnACircuitBraker",1)', script.index('at(depleted and -8'))
+    end = script.index("local initialMass=", start)
+    normal = ('set("SCContSwitch",1)\nset("CMCModeSwitch",2)\nset("ManualAttPitchSwitch",2)\n'
+              'local twoJet=true\nlocal minimumImpulse=false\n' + (CREW / "ullage.lua").read_text()
+              + 'set("ManualAttPitchSwitch",1)\n')
+    finish = """if depleted then
+    directPulse(2)
+    local dot=vec.dotp(targetZ,ship:globalrot(_V(0,0,1)))
+    local pointing=math.deg(math.acos(math.max(-1,math.min(1,dot))))
+    local log=assert(io.open("ullage.csv","w"))
+    log:write("axial_delta_v_m_s,pointing_error_deg\\n",string.format("%.6f,%.6f\\n",impulse,pointing))
+    log:close()
+    assert(impulse>.4 and impulse<3,"Deorbit settling impulse missed its target")
+    assert(pointing<3,"R60 pointing was not held to ignition")
+    reportState("ullage_complete")
+    set("SCContSwitch",1)
+    set("CMCModeSwitch",2)
+else
+    local ullageEnd=timeToIgnition-10
+"""
+    script = script[:start] + finish + normal + "end\n" + script[end:]
+    # Restoring the SM jets after trimming with the CM jets requires power
+    # to both transfer motors. Either relay left on CM inhibits translation.
+    script = replace_once(script, r'at\(-38,"arm_sps"\)', """at(-38,"arm_sps")
+for _,name in ipairs({"BatCPWRCircuitBraker","BatCtoBatBusACircuitBraker","BatCtoBatBusBCircuitBraker",
+                     "RCSLogicMnACircuitBraker","RCSLogicMnBCircuitBraker"}) do set(name,1) end
+set("MainBusTieBatAcSwitch",2)
+set("MainBusTieBatBcSwitch",2)""")
     flight = chain.leg(preburn, "sps8-burn", script, 75000, .0625,
                        "retrofire-burn.csv", "automatic_cutoff_confirmed")
+    verify_burn(flight, pad)
+    return flight
+
+
+def verify_burn(flight, pad):
     samples = rows(flight / "retrofire-burn.csv")
     final = samples[-1]
     assert float(final["periapsis"]) < 80000 < float(final["apoapsis"]), final
-    assert float(samples[0]["sps_mass"]) - float(final["sps_mass"]) > 29.606 * max(1, duration-8)
-    return flight
+    assert final["marker"] == "automatic_cutoff_confirmed" and samples[0]["marker"] == "retrofire_target"
+    authorized = [row for row in samples if row["marker"] == "v99_authorized"]
+    assert len(authorized) == 1 and -6 <= float(authorized[0]["relative_to_tig"]) < 1
+    # Full-thrust propellant usage is approximately 29.6 kg/s, with transients at start/stop.
+    duration = float(field(pad, "MCC_AP7MNV_burntime"))
+    used = float(samples[0]["sps_mass"]) - float(final["sps_mass"])
+    assert .8 * duration * 29.606 < used < 1.2 * duration * 29.606, used
 
 
 def verify_entry(p62, recovery):

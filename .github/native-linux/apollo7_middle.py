@@ -87,6 +87,10 @@ def burn_script(runtime, preburn_raw, pad_raw, number):
     template, _ = BURNS[number]
     script = runtime / f"resources/Script/ProjectApollo/apollo7-countdown-sps{number}-{template}.lua"
     source = script.read_text()
+    # The CMC DAP controls individual jet pulses. Keep its closed-loop slew
+    # and attitude hold at the burn step, including the wait for the gimbal tests.
+    source = source.replace("oapi.set_tacc(remaining>100 and 2.5 or 1)", "oapi.set_tacc(1)")
+    source = source.replace("oapi.set_tacc(8)", "oapi.set_tacc(1)").replace("oapi.set_tacc(4)", "oapi.set_tacc(1)")
     def pad(name):
         return float(field(pad_raw, "MCC_AP7MNV_" + name))
 
@@ -111,6 +115,7 @@ def burn_script(runtime, preburn_raw, pad_raw, number):
         end = source.index("local initialMass=", start)
     ullage = "local ullageEnd=timeToIgnition-" + ("15" if number == 7 else "10") + "\n"
     ullage += "local twoJet=" + ("false" if number == 7 else "true") + "\n"
+    ullage += "local minimumImpulse=" + ("true" if number == 6 else "false") + "\n"
     source = source[:start] + ullage + (CREW / "ullage.lua").read_text() + source[end:]
     duration = pad("burntime")
     if number == 7:
@@ -136,12 +141,13 @@ def burn_script(runtime, preburn_raw, pad_raw, number):
     measure = ("local ignitionMass=ship:get_mass()\n"
                "local ignitionPropellant=ship:get_propellantmass(sps)\n")
     source = substitute(source, r'^reportState\("ullage_complete"\)', measure + 'reportState("ullage_complete")')
+    # Track all thrust, including ullage, in the PAD axes at the time of ignition.
+    target = "local padLVLH=" + table([.3048*x for x in dv]) + "\n"
+    target += (CREW / "burn-integral.lua").read_text()
+    source = substitute(source, r'^at\(-30,"ullage"\)', 'at(-30,"ullage")\n' + target)
     if number == 5:
         # During manual takeover steer the RHC against the inertial velocity
         # still to go. Holding the body axis at takeover loses the RTCC pitch.
-        target = "local padLVLH=" + table([.3048*x for x in dv]) + "\n"
-        source = substitute(source, r"^local initialMass=", target + (CREW / "pugs-guidance.lua").read_text() +
-                            "local initialMass=")
         source = substitute(source, r"^local reference=ship:globalrot\(_V\(0,0,1\)\)", "local reference=remainingDirection()")
         source = substitute(source, r"^local function steer\(\)", "local function steer()\n"
                             "    if display()>1800 then reference=remainingDirection() end")

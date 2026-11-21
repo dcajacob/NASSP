@@ -29,5 +29,7 @@ local ullageLog=assert(io.open("ullage.csv","w"))
 ullageLog:write("axial_delta_v_m_s,pointing_drift_deg\n",string.format("%.6f,%.6f\n",impulse,drift))
 ullageLog:close()
 assert(impulse>.4 and impulse<3,"Forward ullage impulse outside limits")
-assert(drift<3,"Ullage lost burn attitude")
+-- P40 steers the SPS-6 minimum impulse after ullage. Check the actual
+-- three-component impulse at cutoff in burn-result.lua.
+if not minimumImpulse then assert(drift<3,"Ullage lost burn attitude") end
 reportState("ullage_complete")
