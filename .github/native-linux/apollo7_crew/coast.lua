@@ -56,6 +56,39 @@ local function coast_until(target)
     proc.wait_simdt(1)
 end
 local function accept(raw)
+    -- V71 loads apply as separate P27 jobs. P00 and an empty uplink queue
+    -- alone can occur between packets, so read each bank during transfer.
+    local packet=assert(field(raw,"MCC_upString"))
+    local loads={}
+    local function add(bank,offset,payload,count)
+        local words={}
+        for digits in payload:gmatch("([0-7]+)E") do words[#words+1]=tonumber(digits,8) end
+        assert(#words==count,"Truncated MCC navigation uplink")
+        loads[#loads+1]={bank=bank,offset=offset,words=words}
+    end
+    if tonumber(field(raw,"MCC_MissionState"))==132 then
+        add(4,4,assert(packet:match("^V71E5E2004E([0-7E]+)V33E$")),3)
+    else
+        for slot,payload in packet:gmatch("V71E21E1501E([0-7]+)E([0-7E]+)V33E") do
+            assert(slot==(#loads==0 and "1" or "77776"),"Unexpected CSM vector slot")
+            add(3,slot=="1" and 0x6c or 0x96,payload,14)
+        end
+        assert(#loads==2,"Missing second CSM vector")
+    end
+    local function verified()
+        local complete=true
+        for _,load in ipairs(loads) do
+            if not load.received then
+                local correct=true
+                for i,word in ipairs(load.words) do
+                    if ship:get_agcerasable(load.bank,load.offset+i-1)~=word then correct=false; break end
+                end
+                load.received=correct
+            end
+            complete=complete and load.received
+        end
+        return complete
+    end
     switch("PCMBitRateSwitch",1)
     switch("UPTLMSwitch1",1)
     ship:set_panelswitch("UPTLMSwitch2",2,true)
@@ -67,17 +100,11 @@ local function accept(raw)
     proc.wait_simdt(2)
     oapi.simulatebufferedkey(0x03)
     local limit=get()+900
-    local active=false
     repeat
-        proc.wait_simdt(2)
-        local p=ship:get_agcerasable(2,9)
-        active = active or p==27 or ship:get_agcuplinkstatus()~=0
-        if active and p==0 and ship:get_agcuplinkstatus()==0 then
-            proc.wait_simdt(8)
-            if ship:get_agcerasable(2,9)==0 and ship:get_agcuplinkstatus()==0 then break end
-        end
+        proc.wait_simdt(.5)
+        if verified() and ship:get_agcerasable(2,9)==0 and ship:get_agcuplinkstatus()==0 then break end
     until get()>=limit
-    assert(active and get()<limit,"Coast navigation uplink did not finish")
+    assert(get()<limit,"Coast navigation uplink did not verify in CMC")
     switch("CMUplinkSwitch",0)
     switch("PCMBitRateSwitch",0)
     record("navigation_uplink",snapshot())
@@ -116,6 +143,22 @@ for _,event in ipairs(schedule) do
             coast_until(get()+(event[3]=="oxygen" and 120 or 80))
             switch(sw,1)
         end
+    elseif event[3]=="charge_b" or event[3]=="check_charge_a" then
+        local b=event[3]=="charge_b"
+        local a=assert(tonumber(raw:match("<BATTERY>%s+BATTERY_A%s+([%d.]+)")))
+        if b or a<2500000 then
+            for _,name in ipairs({"MainBusTieBatAcSwitch","MainBusTieBatBcSwitch",
+                "BatBusAToPyroBusTieCircuitBraker","BatBusBToPyroBusTieCircuitBraker",
+                "BatCtoBatBusACircuitBraker","BatCtoBatBusBCircuitBraker"}) do switch(name,0) end
+            switch(b and "BATRLYBusBatBCircuitBraker" or "BATRLYBusBatACircuitBraker",0)
+            switch("DCIndicatorsRotary",7)
+            switch("BatteryChargeRotary",b and 2 or 1)
+        end
+    elseif event[3]=="stop_charge" then
+        switch("BatteryChargeRotary",0)
+        switch("BATRLYBusBatACircuitBraker",1)
+        switch("BATRLYBusBatBCircuitBraker",1)
+        switch("DCIndicatorsRotary",3)
     elseif event[3]=="heater_on" then
         switch("H2PurgeLineSwitch",1)
     elseif event[3]=="heater_off" then

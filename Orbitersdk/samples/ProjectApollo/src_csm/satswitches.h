@@ -866,10 +866,11 @@ class OpticsHandcontrollerSwitch: public HandcontrollerSwitch {
 
 public:
 	void Init(int xp, int yp, int w, int h, SURFHANDLE surf, SURFHANDLE bsurf, SwitchRow &row, Saturn *s);
-	bool CheckMouseClick(int event, int mx, int my);
+	bool CheckMouseClick(int event, int mx, int my) override;
+	void SetState(int value) override;
 
 protected:
-	Saturn *sat;
+	Saturn *sat = nullptr;
 };
 
 class MinImpulseHandcontrollerSwitch: public HandcontrollerSwitch {

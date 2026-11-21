@@ -1,5 +1,6 @@
 """Fly the next crew procedure using the MCC PAD on this save chain."""
 
+import math
 import re
 from pathlib import Path
 
@@ -69,9 +70,9 @@ def uplink_and_p30(chain, pad_dir, number):
 
 
 BURNS = {
-    5: ("manual-tvc-burn", "sps5-manual-tvc.csv", "manual_cutoff_confirmed"),
-    6: ("p40-burn", "sps6-p40.csv", "automatic_cutoff_confirmed"),
-    7: ("scs-burn", "sps7-scs.csv", "ems_cutoff_confirmed"),
+    5: ("manual-tvc-burn", "sps5-manual-tvc.csv"),
+    6: ("p40-burn", "sps6-p40.csv"),
+    7: ("scs-burn", "sps7-scs.csv"),
 }
 
 
@@ -83,7 +84,7 @@ def substitute(source, pattern, value):
 
 
 def burn_script(runtime, preburn_raw, pad_raw, number):
-    template, _, _ = BURNS[number]
+    template, _ = BURNS[number]
     script = runtime / f"resources/Script/ProjectApollo/apollo7-countdown-sps{number}-{template}.lua"
     source = script.read_text()
     def pad(name):
@@ -99,7 +100,7 @@ def burn_script(runtime, preburn_raw, pad_raw, number):
         source = substitute(source, r'^set\("' + switch + r'",-?\d+\)',
                             f'set("{switch}",{round(value * 10)})')
 
-    # CMC translation via the normal THC uses the B/D-only DAP for SPS-5/6.
+    # The two-jet crew procedure uses the B/D pair with CMC pitch control.
     # SCS uses all four jets for SPS-7. Leave manual ignition's momentary
     # direct ullage interlock alone.
     if number == 7:
@@ -109,6 +110,7 @@ def burn_script(runtime, preburn_raw, pad_raw, number):
         start = source.index('set("DirectUllMnACircuitBraker",1)')
         end = source.index("local initialMass=", start)
     ullage = "local ullageEnd=timeToIgnition-" + ("15" if number == 7 else "10") + "\n"
+    ullage += "local twoJet=" + ("false" if number == 7 else "true") + "\n"
     source = source[:start] + ullage + (CREW / "ullage.lua").read_text() + source[end:]
     duration = pad("burntime")
     if number == 7:
@@ -126,7 +128,25 @@ def burn_script(runtime, preburn_raw, pad_raw, number):
         source = substitute(source, r"initialMass-shutoffMass>[\d.]+ and initialMass-shutoffMass<[\d.]+",
                             f"initialMass-shutoffMass>{29.606 * (duration-20)} and "
                             f"initialMass-shutoffMass<{29.606 * (duration+20)}")
-    return source
+    dv = list(map(float, field(pad_raw, "MCC_AP7MNV_dV").split()))
+    if len(dv) != 3:
+        raise ValueError("Missing target delta-v")
+    header = (f"local padPerigee,padApogee={pad('HP') * 1852},{pad('HA') * 1852}\n"
+              f"local padMagnitude={math.hypot(*dv) * .3048}\n")
+    measure = ("local ignitionMass=ship:get_mass()\n"
+               "local ignitionPropellant=ship:get_propellantmass(sps)\n")
+    source = substitute(source, r'^reportState\("ullage_complete"\)', measure + 'reportState("ullage_complete")')
+    if number == 5:
+        # During manual takeover steer the RHC against the inertial velocity
+        # still to go. Holding the body axis at takeover loses the RTCC pitch.
+        target = "local padLVLH=" + table([.3048*x for x in dv]) + "\n"
+        source = substitute(source, r"^local initialMass=", target + (CREW / "pugs-guidance.lua").read_text() +
+                            "local initialMass=")
+        source = substitute(source, r"^local reference=ship:globalrot\(_V\(0,0,1\)\)", "local reference=remainingDirection()")
+        source = substitute(source, r"^local function steer\(\)", "local function steer()\n"
+                            "    if display()>1800 then reference=remainingDirection() end")
+    source = substitute(source, r"^report:close\(\)", (CREW / "burn-result.lua").read_text() + "report:close()")
+    return header + source
 
 
 def fly_stage(chain, previous_dir, number):
@@ -137,12 +157,14 @@ def fly_stage(chain, previous_dir, number):
         propellant = re.search(r"SPSPROPELLANT_BEGIN\n.*?^  PROPELLANTMASS ([\d.]+)", raw, re.S | re.M)
         remaining = float(propellant[1]) - 29.606 * float(field(raw, "MCC_AP7MNV_burntime"))
         if remaining < 700:
-            raise ValueError(f"SPS-5 target leaves only {remaining:.1f} kg for later burns")
+            pad = chain.leg(pad, "sps5-retarget", (CREW / "retarget.lua").read_text(),
+                            4000, .125, "retarget.csv", "recovery_reserve_verified")
+            raw = saved(pad)
     p00 = uplink_and_p30(chain, pad, number)
     ready = prepare_p40(chain, p00, pad, number)
-    _, csv_name, marker = BURNS[number]
+    _, csv_name = BURNS[number]
     return chain.leg(ready, f"sps{number}-burn", burn_script(chain.runtime, saved(ready), raw, number),
-                     75000, .0625, csv_name, marker)
+                     75000, .0625, csv_name, "linked_burn_verified")
 
 
 def fly(chain, previous_dir):

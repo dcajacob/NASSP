@@ -5,7 +5,7 @@ import re
 
 CREW = Path(__file__).with_name("apollo7_crew")
 SCHEDULE = {
-    4: [(295200,"oxygen"), (322250,64), (339360,65), (357670,72),
+    4: [(279900,"charge_b"), (291300,"stop_charge"), (295200,"oxygen"), (322250,64), (339360,65), (357670,72),
         (381600,"oxygen"), (423080,75)],
     5: [(445000,83), (468000,"oxygen"), (503160,87), (509400,"oxygen"),
         (517580,89), (524780,102), (530480,105), (540300,"heater_on"),
@@ -15,8 +15,8 @@ SCHEDULE = {
     7: [(760200,"heater_on"), (761400,"hydrogen"), (761700,"heater_off"),
         (766890,138), (783390,150), (788400,"oxygen"), (810600,"heater_on"),
         (811800,"hydrogen"), (812100,"heater_off"), (827400,"oxygen"), (840690,153)],
-    8: [(864990,160), (884400,"heater_on"), (885600,"hydrogen"), (885900,"heater_off"),
-        (914400,"heater_on"), (915600,"hydrogen"), (915900,"heater_off"), (918690,163)],
+    8: [(864990,160), (865800,"charge_b"), (877200,"stop_charge"), (884400,"heater_on"), (885600,"hydrogen"), (885900,"heater_off"),
+        (900000,"check_charge_a"), (911400,"stop_charge"), (914400,"heater_on"), (915600,"hydrogen"), (915900,"heater_off"), (918690,163)],
 }
 PURPOSE = {4: "SPS-4, MINIMUM IMPULSE", 5: "SPS-5 / PUGS",
            6: "SPS-6, MINIMUM IMPULSE", 7: "SPS-7", 8: "164-1A RETROFIRE"}
@@ -38,14 +38,32 @@ def coast(chain, previous_dir, number):
                      120000, .125, "coast.csv", "maneuver_pad_ready")
 
 
+def alignment_script(runtime, coast_seconds):
+    table = runtime / "resources/Config/ProjectApollo/RTCC/Star Table.txt"
+    # RTCC writes the inertial star catalog in a right-handed frame. Orbiter
+    # uses ecliptic north as its second axis.
+    stars = []
+    for line in table.read_text().splitlines()[:37]:
+        x, y, z = map(float, line.split())
+        stars.append(f"vec.unit(_V({x},{z},{y}))")
+    if len(stars) != 37:
+        raise ValueError("Incomplete Apollo navigation star catalog")
+    return (f"local coast_seconds={coast_seconds}\nlocal stars={{{','.join(stars)}}}\n"
+            + (CREW / "align.lua").read_text())
+
+
 def prepare_p40(chain, previous_dir, pad_dir, number):
     def pad(field):
         return float(scenario_field(pad_dir, "MCC_AP7MNV_" + field))
     present = float(scenario_field(previous_dir, "MISSNTIME"))
     ignition = pad("GETI")
+    alignment = alignment_script(chain.runtime, max(0, ignition - present - 2850))
+    previous_dir = chain.leg(previous_dir, f"sps{number}-alignment", alignment, 160000, .03125,
+                             "alignment.csv", "platform_reference_ready")
+    present = float(scenario_field(previous_dir, "MISSNTIME"))
     if ignition - present < 1350:
         raise ValueError(f"Insufficient time for SPS-{number} R60 slew")
-    config = "11102" if number == 7 else "10102"
+    config = "11102" if number in (7, 8) else "10102"
     args = (f'local dap_config="{config}"\nlocal csm_weight={round(pad("Weight"))}\n'
             f'local pitch_trim={round(100 * pad("pTrim"))}\n'
             f'local yaw_trim={round(100 * pad("yTrim"))}\n'
@@ -67,10 +85,22 @@ def burn_sps4(chain, ready, pad):
     source = substitute(source, r"^local timeToIgnition = .*", f"local timeToIgnition = {delay}")
     source = substitute(source, r'^set\("EMSDvDisplay",\d+\)',
                         f'set("EMSDvDisplay",{round(10 * target("Vc"))})')
-    start = source.index('set("DirectUllMnACircuitBraker",1)')
-    end = source.index("local initialMass=", start)
-    source = (source[:start] + "local ullageEnd=timeToIgnition-10\n"
-              + (CREW / "ullage.lua").read_text() + source[end:])
+    # SPS-4 uses the B/D pair only. Main A powers B4 and D3, while main B
+    # powers A4 and C3. Record the acceleration while those two valves are held.
+    source = substitute(source, r'^at\(-10,"ullage_complete"\)', """
+local initialOrbit=select(2,ship:get_elementsex(ship:get_gravityref()))
+local initialA=(initialOrbit.PeD+initialOrbit.ApD)/2
+local previousTime=oapi.get_simtime()
+local impulse=0
+while oapi.get_simtime()<timeToIgnition-10 do
+    proc.wait_frames(1)
+    local now=oapi.get_simtime()
+    impulse=impulse+ship:get_thrustvector().z*(now-previousTime)/ship:get_mass()
+    previousTime=now
+end
+reportState("ullage_complete")
+assert(impulse>.55 and impulse<1.9,"Missing B/D ullage impulse")
+""")
     # The original R60, V99, SPS consumption, automatic cutoff and slosh
     # observations run before independently checking this mission's live PAD.
     check = f"""
@@ -79,6 +109,17 @@ local _,orbit=ship:get_elementsex(earth)
 local radius=oapi.get_size(earth)
 assert(math.abs(orbit.PeD-radius-{target("HP") * 1852})<15000, "SPS-4 missed PAD perigee")
 assert(math.abs(orbit.ApD-radius-{target("HA") * 1852})<15000, "SPS-4 missed PAD apogee")
+local finalA=(orbit.PeD+orbit.ApD)/2
+-- For a short posigrade maneuver, differentiate orbital energy -mu/(2a).
+local speed=vec.length(ship:get_relativevel(earth))
+local mu=3.986004418e14
+local achieved=mu*(1/initialA-1/finalA)/(2*speed)
+local expected={float(scenario_field(pad, "MCC_AP7MNV_dV").split()[0])*0.3048}
+assert(achieved>.5*expected and achieved<1.5*expected,"SPS-4 orbital energy change disagrees with PAD")
+local receipt=assert(io.open("burn.csv","w"))
+receipt:write("ullage_delta_v_m_s,achieved_delta_v_m_s,target_delta_v_m_s,sps_kg\\n",
+              string.format("%.5f,%.5f,%.5f,%.5f\\n",impulse,achieved,expected,used))
+receipt:close()
 reportState("linked_burn_verified")
 """
     source = substitute(source, r"^report:close\(\)", check + "report:close()")

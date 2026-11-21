@@ -36,6 +36,14 @@ def burn(chain, preburn, pad):
                               ("EMSDvDisplay", "Vc")):
         value = round(float(field(pad, "MCC_AP7MNV_" + pad_field)) * 10)
         script = replace_once(script, rf'set\("{switch}",-?\d+\)', f'set("{switch}",{value})')
+    # The deorbit PAD calls for four-jet forward THC ullage for 15 seconds.
+    # Restore CMC AUTO after final trim and keep its attitude control during ullage.
+    start = script.index('set("DirectUllMnACircuitBraker",1)')
+    end = script.index('local initialMass=', start)
+    script = replace_once(script[:start], r'at\(-30,"ullage"\)', 'at(-25,"ullage")') + (
+        'set("SCContSwitch",1)\nset("CMCModeSwitch",2)\nlocal ullageEnd=timeToIgnition-10\nlocal twoJet=false\n'
+        + (CREW / "ullage.lua").read_text() + script[end:]
+    )
     flight = chain.leg(preburn, "sps8-burn", script, 75000, .0625,
                        "retrofire-burn.csv", "automatic_cutoff_confirmed")
     samples = rows(flight / "retrofire-burn.csv")
@@ -45,17 +53,24 @@ def burn(chain, preburn, pad):
     return flight
 
 
-def verify_entry(p62, descent):
+def verify_entry(p62, recovery):
+    descent = recovery.parent / "entry-splashdown"
     gap = rows(p62 / "deorbit-to-entry.csv")
     by_event = {row["marker"]: row for row in gap}
     assert by_event["before_sm_sep"]["sm"] == "0" and by_event["after_sm_sep"]["sm"] == "1"
     assert by_event["cm_rcs_transfer_confirmed"]["program"] == "62"
-    assert by_event["p63_entry_started"]["program"] == "63"
+    preparation = rows((p62.parent / "entry-attitude") / "deorbit-to-entry.csv")
+    assert preparation[0]["marker"] == "cm_separation_reloaded" and preparation[0]["sm"] == "1"
+    assert preparation[-1]["marker"] == "p63_entry_started" and preparation[-1]["program"] == "63"
     samples = rows(descent / "deorbit-to-entry.csv")
     sequence = [row["marker"] for row in samples]
     events = ["entry_program_63", "entry_interface", "entry_program_64", "entry_program_67", "splashdown"]
     assert [sequence.index(event) for event in events] == sorted(sequence.index(event) for event in events)
     assert float(samples[0]["altitude"]) > 120000
+    interface = samples[sequence.index("entry_interface")]
+    assert 119000 < float(interface["altitude"]) <= 120000 and float(interface["airspeed"]) > 7000
+    # The manual entry crew commands 19 degrees incidence to the heat shield.
+    assert 5 < float(interface["heatshield_angle"]) < 35 and float(interface["body_rate"]) < .05
     drogue = next(i for i, row in enumerate(samples) if row["drogue"] == "1")
     main = next(i for i, row in enumerate(samples) if row["main"] == "1")
     assert 0 < drogue < main < len(samples)-1
@@ -63,7 +78,17 @@ def verify_entry(p62, descent):
     assert final["marker"] == "splashdown" and final["program"] == "67"
     assert final["main"] == "1" and final["floatbag"] == "1"
     assert abs(float(final["altitude"])) < 2.5 and 0 <= float(final["airspeed"]) < 15, final
+    settled = rows(recovery / "recovery.csv")
+    assert [row["event"] for row in settled] == ["water_contact", "mains_released", "settled_recovery"]
+    assert all(row["ground_contact"] == "true" for row in settled)
+    assert [row["main_attached"] for row in settled] == ["true", "false", "false"]
+    assert float(settled[-1]["elapsed"]) - float(settled[1]["elapsed"]) >= 60
+    assert float(settled[-1]["airspeed"]) < 1 and abs(float(settled[-1]["altitude"])) < 3
+    assert field(recovery, "STATUS") == "Landed Earth" and field(recovery, "STAGE") == "47"
+    lng, lat = map(float, field(recovery, "POS").split())
+    assert abs(lng-float(settled[-1]["longitude"])) < .001 and abs(lat-float(settled[-1]["latitude"])) < .001
     assert field(descent, "STAGE") == "46"
+    assert abs(float(field(descent, "SPLASHDOWN")) - float(field(recovery, "SPLASHDOWN"))) < .1
     contact = float(field(descent, "SPLASHDOWN"))
     separation = float(field(descent, "CM_SM_SEPARATION_DONE"))
     assert abs(contact-float(final["met"])) < 5 and contact > separation > float(gap[0]["met"])
@@ -73,13 +98,21 @@ def enter(chain, previous, ignition):
     p61 = chain.leg(previous, "entry-p61", (CREW / "p61.lua").read_text(), 12000, .0625,
                     "entry-cmc.csv", "p62_waiting_for_service_module_sep")
     met = float(field(p61, "MISSNTIME"))
-    script = f"local initialMET={met}\nlocal separationMET={ignition+385}\n" + (CREW / "p62.lua").read_text()
-    p62 = chain.leg(p61, "entry-separation", script, 40000, .05, "deorbit-to-entry.csv", "p63_entry_started")
+    telemetry = (CREW / "entry-telemetry.lua").read_text()
+    script = f"local initialMET={met}\nlocal separationMET={ignition+385}\n" + telemetry + (CREW / "p62.lua").read_text()
+    p62 = chain.leg(p61, "entry-separation", script, 16000, .05, "deorbit-to-entry.csv", "cm_rcs_transfer_confirmed")
     met = float(field(p62, "MISSNTIME"))
+    script = f"local initialMET={met}\n" + telemetry + (CREW / "p63.lua").read_text()
+    attitude = chain.leg(p62, "entry-attitude", script, 18000, .025, "deorbit-to-entry.csv", "p63_entry_started")
+    met = float(field(attitude, "MISSNTIME"))
     script = replace_once(fixture(chain, "entry-manual-attitude"), r"local initialMET = [\d.]+", f"local initialMET={met}")
-    descent = chain.leg(p62, "entry-splashdown", script, 120000, .05, "deorbit-to-entry.csv", "splashdown")
-    verify_entry(p62, descent)
-    return descent
+    script = replace_once(script, r"oapi.simulateimmediatekey\(amount>0 and chosen\[2\] or chosen\[3\]\)",
+                          "oapi.simulateimmediatekey(amount>0 and chosen[2] or chosen[3],OAPI_KEY.LALT)")
+    descent = chain.leg(attitude, "entry-splashdown", script, 150000, .025, "deorbit-to-entry.csv", "splashdown")
+    recovery = chain.leg(descent, "entry-recovery", (CREW / "recovery.lua").read_text(), 6000, .05,
+                         "recovery.csv", "settled_recovery")
+    verify_entry(p62, recovery)
+    return recovery
 
 
 def fly(chain, previous):

@@ -2,6 +2,7 @@
 import csv
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -61,6 +62,7 @@ class Chain:
         self.output = Path(output).resolve()
         self.output.mkdir(parents=True, exist_ok=True)
         self.records = []
+        self.engine_sha = digest(self.runtime / "engine/orbiter-production")
 
     def leg(self, previous_dir, slug, lua_text, ticks, step, csv_name, marker, replay=None):
         directory = self.output / slug
@@ -79,14 +81,58 @@ class Chain:
         for key in ("WAYLAND_DISPLAY", "LD_LIBRARY_PATH"):
             env.pop(key, None)
         print(f"Flying {slug} from {previous_dir.name}", flush=True)
-        with (directory / "console.log").open("wb") as log:
-            subprocess.run(args, cwd=directory, env=env, stdin=subprocess.DEVNULL, stdout=log,
-                           stderr=subprocess.STDOUT, check=True)
+        # Orbiter keeps simulating after a crew script raises an error. Stop
+        # that leg immediately so it cannot coast past its recovery window.
+        log_path = directory / "console.log"
+        with log_path.open("wb") as log, log_path.open(errors="replace") as reader:
+            with subprocess.Popen(["stdbuf", "-oL", "-eL", *args], cwd=directory, env=env,
+                                  stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT) as process:
+                while process.poll() is None:
+                    try:
+                        process.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        for line in reader:
+                            if "LuaCall" in line:
+                                process.terminate()
+                                raise RuntimeError(f"{slug}: {line.strip()}")
+                if process.returncode:
+                    raise subprocess.CalledProcessError(process.returncode, args)
         record = check_leg(previous_dir, directory, csv_name, marker)
         self.records.append(record)
         (self.output / "lineage.json").write_text(json.dumps(self.records, indent=2) + "\n")
         print(f"{slug}: {marker} at GET {record['end_get']:.2f}", flush=True)
         return directory
+
+
+def burn_measurements(output, number):
+    from apollo7_checks import rows
+    from apollo7_middle import field
+
+    prefix = f"sps{number}"
+    pad_dir = output / (prefix + "-coast")
+    if number == 5 and (output / "sps5-retarget").is_dir():
+        pad_dir = output / "sps5-retarget"
+    pad = (pad_dir / "saved.scn").read_text(encoding="latin-1")
+    readback = {row["phase"]: row for row in rows(output / (prefix + "-p30") / "p30.csv")}
+    tig = float(field(pad, "MCC_AP7MNV_GETI"))
+    dv = list(map(float, field(pad, "MCC_AP7MNV_dV").split()))
+    time = readback["ignition_time"]
+    cmc_tig = 3600 * int(time["r1"]) + 60 * int(time["r2"]) + int(time["r3"]) / 100
+    cmc_dv = [int(readback["delta_v"][key]) / 10 for key in ("r1", "r2", "r3")]
+    if abs(cmc_tig - tig) > .03 or any(abs(a-b) > .15 for a,b in zip(dv, cmc_dv, strict=True)):
+        raise ValueError(f"{prefix}: AGC readback disagrees with the maneuver PAD")
+    names = {4: "sps4-p40.csv", 5: "sps5-manual-tvc.csv", 6: "sps6-p40.csv",
+             7: "sps7-scs.csv", 8: "retrofire-burn.csv"}
+    samples = rows(output / (prefix + "-burn") / names[number])
+    last = samples[-1]
+    debit = float(samples[0]["sps_mass"]) - float(last["sps_mass"])
+    pe, ap = (float(last[key]) / 1000 for key in ("periapsis", "apoapsis"))
+    if not (debit > 0 and math.isfinite(pe) and math.isfinite(ap) and pe < ap):
+        raise ValueError(f"{prefix}: invalid cutoff telemetry {last}")
+    return dict(burn=prefix, ignition_get_s=cmc_tig, target_lvlh_ft_s=cmc_dv, sps_used_kg=debit,
+                pad_perigee_km=float(field(pad, "MCC_AP7MNV_HP")) * 1.852,
+                pad_apogee_km=float(field(pad, "MCC_AP7MNV_HA")) * 1.852,
+                perigee_km=pe, apogee_km=ap)
 
 
 def verify(output):
@@ -105,9 +151,16 @@ def verify(output):
     burns = [item["stage"] for item in records if item["stage"].endswith("-burn")]
     if burns != [f"sps{n}-burn" for n in range(4, 9)]:
         raise ValueError(f"Incomplete burn sequence: {burns}")
-    if previous.name != "entry-splashdown":
+    if previous.name != "entry-recovery":
         raise ValueError("Missing splashdown")
     verify_entry(output / "entry-separation", previous)
+    from apollo7_checks import rows
+    recovery = rows(previous / "recovery.csv")[-1]
+    report = dict(start_get=clock(SEED), end_get=clock(previous), seed_sha256=SEED_SHA256,
+                  handoffs=len(records), burns=[burn_measurements(output, n) for n in range(4, 9)],
+                  recovery=recovery)
+    (output / "results.json").write_text(json.dumps(report, indent=2) + "\n")
+    print(json.dumps(report, indent=2))
     print(f"{len(records)} linked flights passed from SPS-3 to splashdown at GET {clock(previous):.2f}.")
 
 
@@ -119,6 +172,10 @@ def main(inputs, output):
     if digest(SEED / "saved.scn") != SEED_SHA256:
         raise ValueError("Wrong SPS-3 save")
     chain = Chain(inputs, output)
+    build = dict(orbiter_source=(chain.inputs / "orbiter-source.txt").read_text().strip(),
+                 nassp_source=os.environ.get("GITHUB_SHA"),
+                 engine_sha256=chain.engine_sha, seed_sha256=SEED_SHA256)
+    (chain.output / "build.json").write_text(json.dumps(build, indent=2) + "\n")
     previous = SEED
     for fly in (sps4, sps5_through_7, sps8_and_entry):
         previous = fly(chain, previous)
