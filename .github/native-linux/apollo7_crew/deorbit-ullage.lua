@@ -37,4 +37,11 @@ if depleted then
     reportState("depleted_quad_settling")
     assert(aimWithCmRcs(targetZ,targetY,timeToIgnition-40,slewTelemetry),"Unable to reacquire R60 after settling")
     reportState("r60_reacquired_after_settling")
+    -- Keep the CM jets in the attitude loop until transfer back to SM.
+    -- A small residual body rate over the last two minutes can carry the
+    -- thrust axis several degrees off the retrofire direction.
+    while oapi.get_simtime()<timeToIgnition-14 do
+        aimWithCmRcs(targetZ,targetY,timeToIgnition-14,slewTelemetry)
+        proc.wait_frames(1)
+    end
 end

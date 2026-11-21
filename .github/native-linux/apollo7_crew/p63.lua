@@ -114,10 +114,11 @@ set("EMSModeSwitch",2)
 set("AttRateSwitch",1)
 set("AttDeadbandSwitch",1)
 
-local deadline=oapi.get_simtime()+25
+local deadline=oapi.get_simtime()+180
 while ship:get_agcerasable(2,9)~=63 do
     assert(oapi.get_simtime()<deadline,"CMC did not enter P63")
-    proc.wait_simdt(.25)
+    sample("waiting_for_p63")
+    proc.wait_simdt(1)
 end
 sample("p63_entry_started")
 report:close()

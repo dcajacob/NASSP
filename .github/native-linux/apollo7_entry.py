@@ -32,6 +32,11 @@ def burn(chain, preburn, pad):
     script = replace_once(script, r"local timeToIgnition = [\d.]+", f"local timeToIgnition = {time_to_ignition}")
     script = replace_once(script, r"local plannedDuration=[\d.]+", f"local plannedDuration={duration}")
     script = replace_once(script, "original_sps6_target", "retrofire_target")
+    # Capture more precisely ahead of the final two-second ullage pulse.
+    script = replace_once(script, r"bearing<math.rad\(2.25\)",
+                          "bearing<math.rad(oapi.get_simtime()>timeToIgnition-175 and .7 or 2.25)")
+    script = replace_once(script, r"vec.length\(rates\)<math.rad\(.085\)",
+                          "vec.length(rates)<math.rad(oapi.get_simtime()>timeToIgnition-175 and .055 or .085)")
     for switch, pad_field in (("SPSGimbalPitchThumbwheel", "pTrim"), ("SPSGimbalYawThumbwheel", "yTrim"),
                               ("EMSDvDisplay", "Vc")):
         value = round(float(field(pad, "MCC_AP7MNV_" + pad_field)) * 10)
@@ -71,6 +76,24 @@ for _,name in ipairs({"BatCPWRCircuitBraker","BatCtoBatBusACircuitBraker","BatCt
                      "RCSLogicMnACircuitBraker","RCSLogicMnBCircuitBraker"}) do set(name,1) end
 set("MainBusTieBatAcSwitch",2)
 set("MainBusTieBatBcSwitch",2)""")
+    raw = (preburn / "saved.scn").read_text(encoding="latin-1")
+    quad_mass = [float(re.search(rf"^SMRCSPROPELLANT_{q}_BEGIN\n  PROPELLANTMASS (\S+)", raw, re.M)[1])
+                 for q in "ABCD"]
+    if min(quad_mass) >= 2:
+        # With four service-module quads available, let the CMC fly R60.
+        # The command-module jets otherwise spend entry propellant and impart
+        # translation while slewing the much larger docked CM/SM.
+        script = script.replace('press("DskySwitchEnter","r60_attitude_accepted")', '''
+set("CMCModeSwitch",2)
+press("DskySwitchProg","start_maneuver")
+waitPrompt(6,18,20)
+waitPrompt(50,18,timeToIgnition-540)
+press("DskySwitchEnter","r60_attitude_accepted")''', 1)
+        start = script.index("-- Once any SM quad")
+        end = script.index('at(-38,"arm_sps")', start)
+        script = script[:start] + 'local depleted=false\nslewReport:close()\n' + script[end:]
+        script = script.replace("oapi.set_tacc(8)", "oapi.set_tacc(1)")
+        script = script.replace('set("ManualAttPitchSwitch",2)', 'set("ManualAttPitchSwitch",1)')
     flight = chain.leg(preburn, "sps8-burn", script, 75000, .0625,
                        "retrofire-burn.csv", "automatic_cutoff_confirmed")
     verify_burn(flight, pad)

@@ -6,6 +6,7 @@ import math
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 
@@ -246,6 +247,8 @@ def verify(output):
     verify_entry(output / "entry-separation", previous)
     splashdown = rows(output / "entry-splashdown" / "deorbit-to-entry.csv")[-1]
     recovery = rows(previous / "recovery.csv")[-1]
+    if not atlantic_water(output / "coast.vec", float(recovery["longitude"]), float(recovery["latitude"])):
+        raise ValueError("The final contact is on land on Orbiter's Earth coastline map")
     report = dict(start_get=clock(SEED), end_get=clock(previous), seed_sha256=SEED_SHA256,
                   handoffs=len(records), burns=[burn_measurements(output, n) for n in range(4, 9)],
                   splashdown_get_s=float(splashdown["met"]), contact_airspeed_m_s=float(splashdown["airspeed"]),
@@ -253,6 +256,32 @@ def verify(output):
     (output / "results.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
     print(f"{len(records)} linked flights passed from SPS-3 to splashdown at GET {clock(previous):.2f}.")
+
+
+def atlantic_water(coastline, longitude, latitude):
+    """Count coastline crossings from open Atlantic water at 40 W, 30 N."""
+    if digest(coastline) != "9b33031ebfc88ade6daabd1d3ec6a7ce5d91b61daaf5211bf2cdde9f98bc79b3":
+        raise ValueError("Unexpected Orbiter Earth coastline data")
+    lines = iter(coastline.read_text().splitlines())
+    next(lines)
+    segments = int(next(lines).split()[0])
+    dx, dy = longitude + 40, latitude - 30
+    span2 = dx*dx + dy*dy
+    crossings = 0
+    for _ in range(segments):
+        vertices = [tuple(map(float, next(lines).split())) for _ in range(int(next(lines)))]
+        for (x1, y1), (x2, y2) in zip(vertices, vertices[1:]):
+            if abs(x1 - x2) > 180:
+                continue  # Map seam on the opposite side of the Earth.
+            s1 = dx*(y1-30) - dy*(x1+40)
+            s2 = dx*(y2-30) - dy*(x2+40)
+            if (s1 > 0) == (s2 > 0):
+                continue
+            t = s1 / (s1-s2)
+            along = dx*(x1+40 + t*(x2-x1)) + dy*(y1-30 + t*(y2-y1))
+            if 0 < along < span2:
+                crossings += 1
+    return crossings % 2 == 0
 
 
 def main(inputs, output):
@@ -263,6 +292,7 @@ def main(inputs, output):
     if digest(SEED / "saved.scn") != SEED_SHA256:
         raise ValueError("Wrong SPS-3 save")
     chain = Chain(inputs, output)
+    shutil.copyfile(chain.runtime / "resources/Config/Earth/Data/coast.vec", chain.output / "coast.vec")
     build = dict(orbiter_source=(chain.inputs / "orbiter-source.txt").read_text().strip(),
                  nassp_source=os.environ.get("GITHUB_SHA"),
                  engine_sha256=chain.engine_sha, seed_sha256=SEED_SHA256)
