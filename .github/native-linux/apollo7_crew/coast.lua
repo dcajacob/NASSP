@@ -110,6 +110,12 @@ local function accept(raw)
     record("navigation_uplink",snapshot())
 end
 proc.wait_simdt(2)
+if burn_state==163 then
+    -- Restore the controllers after SPS-7 manual TVC before the retrofire coast.
+    switch("THCRotary",1)
+    ship:set_rcsmode(0)
+    for _,axis in ipairs({"Pitch","Yaw","Roll"}) do switch("ManualAtt"..axis.."Switch",1) end
+end
 p00()
 -- FREE drift with power retained to the guidance platform. Isolate both start
 -- batteries and turn the SPS gimbal motors off for the multi-orbit coast.

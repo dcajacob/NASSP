@@ -121,6 +121,19 @@ def burn_script(runtime, preburn_raw, pad_raw, number):
     if number == 7:
         source = substitute(source, r"^local plannedDuration=.*", f"local plannedDuration={duration}")
         source = source.replace('set("SCContSwitch",0)', 'set("AttRateSwitch",0)\nset("SCContSwitch",0)')
+        source = substitute(source, r"^local previousMode=", (CREW / "sps7-steer.lua").read_text()
+                            + "\nlocal previousMode=")
+        source = substitute(source, r'^at\(-5,"cmc_monitoring"\)', '''set("SCContSwitch",0)
+ship:set_rcsmode(1)
+for _,axis in ipairs({"Pitch","Yaw","Roll"}) do set("ManualAtt"..axis.."Switch",2) end
+steerUntil(timeToIgnition-5)
+at(-5,"cmc_monitoring")''')
+        source = substitute(source, r'^at\(0,"manual_ignition"\)', 'steerUntil(timeToIgnition)\nat(0,"manual_ignition")')
+        source = substitute(source, r'^set\("AttRateSwitch",1\)', '''set("AttRateSwitch",1)
+set("SCSTvcPitchSwitch",1)
+set("SCSTvcYawSwitch",1)
+set("THCRotary",2)''')
+        source = substitute(source, r'    proc.wait_simdt\(\.125\)', '    steer()\n    proc.wait_frames(2)')
     if number == 5:
         takeover = duration - 30  # RTCC prints this in the PUGS PAD remarks.
         if not 0 < takeover < duration:
