@@ -156,3 +156,28 @@ checks establishes repeatable current behavior for those inputs.
 
 The replay table's optional seventh column selects an existing input fixture.
 SPS-3 uses it to fly the identical pre-burn state at both step sizes.
+
+### Linked Apollo 7 return
+
+The `apollo7-linked-return` suite starts from the corrected SPS-3 62.5 ms
+post-burn coast save at GET 76:42:46. Each subsequent coast, uplink, maneuver
+and entry procedure loads the save written by its immediate predecessor.
+The runner changes only the scenario's crew-script line between legs. The CMC
+receives fresh targets from simulated Mission Control, and its P30 ignition
+time and three velocity components are checked against each maneuver PAD.
+
+With both additional mission replay archives installed as described above,
+run the linked flight in a fresh results directory:
+
+```sh
+bash .github/native-linux/run.sh /path/to/inputs /path/to/results flight apollo7-linked-return
+python3 .github/native-linux/verify.py /path/to/inputs/launcher-manifest.json /path/to/results apollo7-linked-return
+```
+
+GitHub Actions selects the linked flight for PRs that change the Apollo 7 crew
+procedures or Mission C targeting. It can also be selected under **Run
+workflow**. The artifact `native-linux-opengl-apollo7-linked-return-results`
+contains each leg's input, crew script, telemetry, console log and output save.
+Under `linked-return/`, `lineage.json` records the SHA-256 of every handoff.
+The verifier writes `results.json` after it checks the complete sequence through
+main parachute release and settled recovery.

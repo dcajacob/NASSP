@@ -104,6 +104,26 @@ class Chain:
         return directory
 
 
+def saved_orbit(directory):
+    # Sol_VirtualAGC selects Config/ProjectApollo/Earth_VirtualAGC.cfg.
+    # Reconstruct the osculating apsides from the serialized flight state.
+    mu = 6.67259e-11 * 5.97374033e24
+    radius = 6373338.
+    raw = (directory / "saved.scn").read_text(encoding="latin-1")
+    csm = re.search(r"^AS-205:.*?\n(.*?)^END$", raw, re.M | re.S)[1]
+    if "  STATUS Orbiting Earth\n" not in csm:
+        raise ValueError(f"{directory.name}: expected a geocentric cutoff state")
+    r, v = (list(map(float, re.search(r"^  " + key + r" (.+)$", csm, re.M)[1].split()))
+            for key in ("RPOS", "RVEL"))
+    distance = math.hypot(*r)
+    speed2 = sum(x*x for x in v)
+    rv = sum(x*y for x,y in zip(r, v, strict=True))
+    a = 1 / (2 / distance - speed2 / mu)
+    h2 = distance**2 * speed2 - rv**2
+    eccentricity = math.sqrt(1 - h2 / (mu * a))
+    return a*(1 - eccentricity) - radius, a*(1 + eccentricity) - radius
+
+
 def burn_measurements(output, number):
     from apollo7_checks import rows
     from apollo7_middle import field
@@ -129,14 +149,44 @@ def burn_measurements(output, number):
     pe, ap = (float(last[key]) / 1000 for key in ("periapsis", "apoapsis"))
     if not (debit > 0 and math.isfinite(pe) and math.isfinite(ap) and pe < ap):
         raise ValueError(f"{prefix}: invalid cutoff telemetry {last}")
-    return dict(burn=prefix, ignition_get_s=cmc_tig, target_lvlh_ft_s=cmc_dv, sps_used_kg=debit,
-                pad_perigee_km=float(field(pad, "MCC_AP7MNV_HP")) * 1.852,
-                pad_apogee_km=float(field(pad, "MCC_AP7MNV_HA")) * 1.852,
-                perigee_km=pe, apogee_km=ap)
+    pad_pe = float(field(pad, "MCC_AP7MNV_HP")) * 1.852
+    pad_ap = float(field(pad, "MCC_AP7MNV_HA")) * 1.852
+    result = dict(burn=prefix, ignition_get_s=cmc_tig, target_lvlh_ft_s=cmc_dv, sps_used_kg=debit,
+                  pad_perigee_km=pad_pe, pad_apogee_km=pad_ap, perigee_km=pe, apogee_km=ap)
+    burn_dir = output / (prefix + "-burn")
+    saved_pe, saved_ap = saved_orbit(burn_dir)
+    if not (abs(saved_pe - 1000 * pe) < 100 and abs(saved_ap - 1000 * ap) < 100):
+        raise ValueError(f"{prefix}: saved position and velocity disagree with cutoff telemetry")
+    if number < 8:
+        if not (abs(pe - pad_pe) < 15 and abs(ap - pad_ap) < 15):
+            raise ValueError(f"{prefix}: cutoff orbit missed the maneuver PAD")
+        if number == 4:
+            receipt, = rows(burn_dir / "burn.csv")
+            target = dv[0] * .3048
+            achieved = float(receipt["achieved_delta_v_m_s"])
+            ullage = float(receipt["ullage_delta_v_m_s"])
+            passed = .55 < ullage < 1.9 and .5 * target < achieved < 1.5 * target
+            result["delta_v_method"] = "change in orbital energy"
+        else:
+            receipt, = rows(burn_dir / "burn-result.csv")
+            target = math.hypot(*dv) * .3048
+            achieved = float(receipt["delivered_m_s"])
+            ullage = float(receipt["ullage_m_s"])
+            measured = [float(receipt[f"achieved_{axis}_m_s"]) for axis in "xyz"]
+            error = math.dist(measured, [component * .3048 for component in dv])
+            tolerance = max(2, .03 * target)
+            passed = .4 < ullage < 3 and abs(achieved - target) < tolerance and error < tolerance
+            result["delta_v_method"] = "rocket equation plus measured ullage"
+            result.update(integrated_lvlh_m_s=measured, vector_error_m_s=error)
+        if not passed:
+            raise ValueError(f"{prefix}: delta-v or ullage fell outside the replay tolerance")
+        result.update(target_delta_v_m_s=target, achieved_delta_v_m_s=achieved, ullage_m_s=ullage)
+    return result
 
 
 def verify(output):
-    from apollo7_entry import verify_entry
+    from apollo7_checks import rows
+    from apollo7_entry import verify_burn, verify_entry
 
     if digest(SEED / "saved.scn") != SEED_SHA256:
         raise ValueError("The corrected SPS-3 reference save has changed")
@@ -148,16 +198,29 @@ def verify(output):
         if expected != record:
             raise ValueError(f"Inconsistent flight receipt for {directory}")
         previous = directory
-    burns = [item["stage"] for item in records if item["stage"].endswith("-burn")]
-    if burns != [f"sps{n}-burn" for n in range(4, 9)]:
-        raise ValueError(f"Incomplete burn sequence: {burns}")
-    if previous.name != "entry-recovery":
-        raise ValueError("Missing splashdown")
+    stages = [item["stage"] for item in records]
+    expected = []
+    for number in range(4, 9):
+        prefix = f"sps{number}-"
+        expected.append(prefix + "coast")
+        if number == 5 and prefix + "retarget" in stages:
+            expected.append(prefix + "retarget")
+        expected.extend(prefix + part for part in ("uplink", "p30", "alignment", "prepare-p40", "burn"))
+        packets = [r["phase"] for r in rows(output / (prefix + "uplink") / "uplink.csv")]
+        required = {"accepted", "csm_state_vector", "second_state_vector", "target_uplink_verified"}
+        required.update(("retrofire_target", "entry_reference") if number == 8 else ("external_delta_v",))
+        if set(packets) != required or len(packets) != len(required):
+            raise ValueError(f"{prefix}uplink: missing or unexpected CMC readbacks")
+    expected.extend(("entry-p61", "entry-separation", "entry-attitude", "entry-splashdown", "entry-recovery"))
+    if stages != expected:
+        raise ValueError(f"Incomplete or out-of-order flight: {stages}")
+    verify_burn(output / "sps8-burn", output / "sps8-coast")
     verify_entry(output / "entry-separation", previous)
-    from apollo7_checks import rows
+    splashdown = rows(output / "entry-splashdown" / "deorbit-to-entry.csv")[-1]
     recovery = rows(previous / "recovery.csv")[-1]
     report = dict(start_get=clock(SEED), end_get=clock(previous), seed_sha256=SEED_SHA256,
                   handoffs=len(records), burns=[burn_measurements(output, n) for n in range(4, 9)],
+                  splashdown_get_s=float(splashdown["met"]), contact_airspeed_m_s=float(splashdown["airspeed"]),
                   recovery=recovery)
     (output / "results.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
