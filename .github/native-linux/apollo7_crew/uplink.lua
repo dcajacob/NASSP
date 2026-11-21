@@ -14,6 +14,16 @@ local function installed(load)
     return true
 end
 proc.wait_simdt(2)
+if #loads==4 then
+    -- Let P00 finish its navigation work after restoring the deorbit coast.
+    -- If Pinball is busy when the first V71 arrives, P27 can remain at V21 N01.
+    proc.wait_simdt(20)
+    local deadline=oapi.get_simtime()+120
+    while math.floor(ship:get_agcchannel(9)/2)%2==1 do
+        assert(oapi.get_simtime()<deadline,"CMC remained busy before retrofire uplink")
+        proc.wait_simdt(.25)
+    end
+end
 assert(ship:get_agcerasable(2,9)==0,"CAPCOM uplink requires CMC P00")
 ship:set_panelswitch("PCMBitRateSwitch",1)
 ship:set_panelswitch("UPTLMSwitch1",1)

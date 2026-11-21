@@ -93,7 +93,12 @@ press("DskySwitchEnter","r60_attitude_accepted")''', 1)
         end = script.index('at(-38,"arm_sps")', start)
         script = script[:start] + 'local depleted=false\nslewReport:close()\n' + script[end:]
         script = script.replace("oapi.set_tacc(8)", "oapi.set_tacc(1)")
-        script = script.replace('set("ManualAttPitchSwitch",2)', 'set("ManualAttPitchSwitch",1)')
+        script = script.replace('set("ManualAttPitchSwitch",2)\nlocal twoJet=true', '''set("ManualAttPitchSwitch",1)
+set("ManualAttYawSwitch",1)
+for _,jet in ipairs({"PitchA3","PitchA4","PitchC3","PitchC4","YawB3","YawB4","YawD3","YawD4"}) do
+    set(jet.."Switch",0)
+end
+local twoJet=false''')
     flight = chain.leg(preburn, "sps8-burn", script, 75000, .0625,
                        "retrofire-burn.csv", "automatic_cutoff_confirmed")
     verify_burn(flight, pad)
