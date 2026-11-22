@@ -134,8 +134,8 @@ def verify_entry(p62, recovery):
     assert float(samples[0]["altitude"]) > 120000
     interface = samples[sequence.index("entry_interface")]
     assert 119000 < float(interface["altitude"]) <= 120000 and float(interface["airspeed"]) > 7000
-    # The manual entry crew commands 19 degrees incidence to the heat shield.
-    assert 5 < float(interface["heatshield_angle"]) < 35 and float(interface["body_rate"]) < .05
+    # The CMC controls entry attitude and bank through atmospheric capture.
+    assert 0 <= float(interface["heatshield_angle"]) < 40 and float(interface["body_rate"]) < .05
     drogue = next(i for i, row in enumerate(samples) if row["drogue"] == "1")
     main = next(i for i, row in enumerate(samples) if row["main"] == "1")
     assert 0 < drogue < main < len(samples)-1
@@ -160,7 +160,7 @@ def verify_entry(p62, recovery):
 
 
 def enter(chain, previous, ignition):
-    p61 = chain.leg(previous, "entry-p61", (CREW / "p61.lua").read_text(), 12000, .0625,
+    p61 = chain.leg(previous, "entry-p61", (CREW / "p61.lua").read_text(), 26000, .015625,
                     "entry-cmc.csv", "p62_waiting_for_service_module_sep")
     met = float(field(p61, "MISSNTIME"))
     telemetry = (CREW / "entry-telemetry.lua").read_text()
@@ -170,9 +170,7 @@ def enter(chain, previous, ignition):
     script = f"local initialMET={met}\n" + telemetry + (CREW / "p63.lua").read_text()
     attitude = chain.leg(p62, "entry-attitude", script, 18000, .025, "deorbit-to-entry.csv", "p63_entry_started")
     met = float(field(attitude, "MISSNTIME"))
-    script = replace_once(fixture(chain, "entry-manual-attitude"), r"local initialMET = [\d.]+", f"local initialMET={met}")
-    script = replace_once(script, r"oapi.simulateimmediatekey\(amount>0 and chosen\[2\] or chosen\[3\]\)",
-                          "oapi.simulateimmediatekey(amount>0 and chosen[2] or chosen[3],OAPI_KEY.LALT)")
+    script = f"local initialMET={met}\n" + telemetry + (CREW / "cmc-entry.lua").read_text()
     descent = chain.leg(attitude, "entry-splashdown", script, 150000, .025, "deorbit-to-entry.csv", "splashdown")
     recovery = chain.leg(descent, "entry-recovery", (CREW / "recovery.lua").read_text(), 6000, .05,
                          "recovery.csv", "settled_recovery")

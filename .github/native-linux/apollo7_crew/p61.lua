@@ -56,6 +56,43 @@ while sample("before_p52")~=0 do
     assert(oapi.get_simtime()<deadline,"CMC did not return to P00 before P52")
     proc.wait_simdt(2)
 end
+-- Damp residual pitch and yaw from SPS shutdown before torquing the stable member.
+set("SCContSwitch",0)
+set("AttRateSwitch",0)
+set("AttDeadbandSwitch",0)
+set("LimitCycleSwitch",0)
+for _,axis in ipairs({"Roll","Pitch","Yaw"}) do
+    set("BMAG"..axis.."Switch",2)
+    set("ManualAtt"..axis.."Switch",1)
+end
+
+local axes={{"Pitch","x",OAPI_KEY.NUMPAD2,OAPI_KEY.NUMPAD8},
+            {"Yaw","y",OAPI_KEY.NUMPAD1,OAPI_KEY.NUMPAD3},
+            {"Roll","z",OAPI_KEY.NUMPAD6,OAPI_KEY.NUMPAD4}}
+set("RotPowerDirect1Switch",2)
+set("RotPowerDirect2Switch",2)
+ship:set_rcsmode(1)
+for _,a in ipairs(axes) do set("ManualAtt"..a[1].."Switch",2) end
+local trimDeadline=oapi.get_simtime()+130
+repeat
+    local rates=ship:get_angvel()
+    local best=axes[1]
+    for _,a in ipairs(axes) do if math.abs(rates[a[2]])>math.abs(rates[best[2]]) then best=a end end
+    if vec.length(rates)<math.rad(.028) then
+        proc.wait_simdt(.75)
+        if vec.length(ship:get_angvel())<math.rad(.032) then break end
+    end
+    oapi.simulateimmediatekey(rates[best[2]]>0 and best[4] or best[3],OAPI_KEY.LALT)
+    proc.wait_frames(1)
+    proc.wait_simdt(.30)
+until oapi.get_simtime()>=trimDeadline
+assert(vec.length(ship:get_angvel())<math.rad(.04),"Residual rates too high for entry platform alignment")
+ship:set_rcsmode(0)
+set("SCContSwitch",1)
+set("CMCModeSwitch",0)
+for _,a in ipairs(axes) do set("ManualAtt"..a[1].."Switch",1) end
+sample("postburn_rates_trimmed")
+
 keys("V37E52E")
 waitPrompt(4,6,"p52_alignment_option",24)
 keys("V22E")

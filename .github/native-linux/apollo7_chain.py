@@ -62,6 +62,12 @@ class Chain:
         self.runtime = self.inputs / "runtime"
         self.output = Path(output).resolve()
         self.output.mkdir(parents=True, exist_ok=True)
+        # The CMC and RTCC propagate oblate Earth gravity. Give the host the
+        # same model throughout the coast, burn, and atmospheric entry.
+        cfg = (self.runtime / "Orbiter.cfg").read_text()
+        cfg = re.sub(r"(?im)^\s*NonsphericalGravitySources\s*=.*$", "", cfg)
+        self.config = self.output / "Orbiter.cfg"
+        self.config.write_text("NonsphericalGravitySources = TRUE\n" + cfg)
         self.records = []
         self.engine_sha = digest(self.runtime / "engine/orbiter-production")
 
@@ -74,11 +80,12 @@ class Chain:
         engine = self.runtime / "engine"
         args = [engine / "run-orbiter", "--assets", self.runtime / "resources", "--data",
                 self.runtime / "celestial-data", "--modules", engine / "NativeModules",
-                "--planets", self.runtime / "planet-archives", "--config", self.runtime / "Orbiter.cfg",
+                "--planets", self.runtime / "planet-archives", "--config", self.config,
                 "--xrsound-assets", self.runtime / "resources", "--scenario", "input.scn",
                 "--save", "saved.scn", "--replay", "replay.csv", "--ticks", str(ticks),
                 "--fixed-step", str(step), "--render-every", "257", "--run"]
         env = os.environ.copy()
+        env["NASSP_SYNCHRONOUS_MCC"] = "1"
         for key in ("WAYLAND_DISPLAY", "LD_LIBRARY_PATH"):
             env.pop(key, None)
         print(f"Flying {slug} from {previous_dir.name}", flush=True)
@@ -213,6 +220,43 @@ def burn_measurements(output, number):
     return result
 
 
+def recovery_target(output, recovery):
+    from apollo7_entry import field
+
+    pad = output / "sps8-coast"
+    target_lat = float(field(pad, "RTCC_SplLat"))
+    target_lon = float(field(pad, "RTCC_SplLng"))
+    if not (-math.pi/2 <= target_lat <= math.pi/2 and -math.pi <= target_lon <= math.pi):
+        raise ValueError("Invalid RTCC recovery target")
+
+    # Colossus LAT(SPL) and LNG(SPL) are DP fractions of one revolution.
+    basis = inertial_reference(SEED)
+    platform = inertial_reference(output / "entry-p61")
+    trace = sum(a*b for a,b in zip(basis, platform, strict=True))
+    alignment_error = math.degrees(math.acos(max(-1, min(1, (trace - 1)/2))))
+    if not math.isfinite(trace) or alignment_error > 1:
+        raise ValueError(f"Entry IMU and CMC references disagree by {alignment_error:.2f} degrees")
+
+    save = (output / "entry-p61/saved.scn").read_text(encoding="latin-1")
+    agc = save.split("\nAGC_BEGIN\n", 1)[1].split("\nAGC_END", 1)[0]
+    words = {int(a, 8): int(w, 8) for a, w in re.findall(r"^  EMEM([0-7]+) ([0-7]+)$", agc, re.M)}
+    def signed(a):
+        word = words.get(a, 0)
+        return word - 0o77777 if word & 0o40000 else word
+    def angle(a):
+        return math.tau * (signed(a) / 2**14 + signed(a+1) / 2**28)
+    if max(abs(angle(0o3400) - target_lat), abs(angle(0o3402) - target_lon)) > 1e-6:
+        raise ValueError("P61 splashdown coordinates disagree with the live retrofire PAD")
+
+    lat, lon = (math.radians(float(recovery[key])) for key in ("latitude", "longitude"))
+    hav = math.sin((lat-target_lat)/2)**2 + math.cos(lat)*math.cos(target_lat)*math.sin((lon-target_lon)/2)**2
+    miss_nm = 2 * 6371000 * math.asin(math.sqrt(min(1, hav))) / 1852
+    if not math.isfinite(miss_nm) or miss_nm > 10:
+        raise ValueError(f"Splashdown missed the RTCC recovery target by {miss_nm:.2f} nmi (limit 10 nmi)")
+    return dict(latitude_deg=math.degrees(target_lat), longitude_deg=math.degrees(target_lon),
+                miss_nm=miss_nm, limit_nm=10, entry_alignment_error_deg=alignment_error)
+
+
 def verify(output):
     from apollo7_checks import rows
     from apollo7_entry import verify_burn, verify_entry
@@ -249,10 +293,11 @@ def verify(output):
     recovery = rows(previous / "recovery.csv")[-1]
     if not atlantic_water(output / "coast.vec", float(recovery["longitude"]), float(recovery["latitude"])):
         raise ValueError("The final contact is on land on Orbiter's Earth coastline map")
+    target = recovery_target(output, recovery)
     report = dict(start_get=clock(SEED), end_get=clock(previous), seed_sha256=SEED_SHA256,
                   handoffs=len(records), burns=[burn_measurements(output, n) for n in range(4, 9)],
                   splashdown_get_s=float(splashdown["met"]), contact_airspeed_m_s=float(splashdown["airspeed"]),
-                  recovery=recovery)
+                  recovery=recovery, recovery_target=target)
     (output / "results.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
     print(f"{len(records)} linked flights passed from SPS-3 to splashdown at GET {clock(previous):.2f}.")

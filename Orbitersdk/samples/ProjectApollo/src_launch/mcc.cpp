@@ -49,6 +49,7 @@
 #include "nassputils.h"
 #include "Mission.h"
 #include <chrono>
+#include <cstdlib>
 #include <cstring>
 #include <thread>
 
@@ -1479,6 +1480,12 @@ int MCC::startSubthread(int fcn, int type){
 		subThreadMode = fcn;
 		subThreadType = type;
 		subThreadStatus = SCHEDULED;
+		// Fixed-step replays must calculate the PAD at the requesting simulation epoch.
+		const char *synchronous = std::getenv("NASSP_SYNCHRONOUS_MCC");
+		if (synchronous && std::strcmp(synchronous, "1") == 0) {
+			subThread();
+			return 0;
+		}
 		try {
 			subThreadWorker = std::thread(&MCC::subThread, this);
 		} catch (...) {
