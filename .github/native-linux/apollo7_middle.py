@@ -49,7 +49,7 @@ def uplink_script(raw, number):
     for packet, (name, prefix, count, bank, address) in zip(packets, specs):
         values = table(words(packet, prefix, count))
         loads.append(f'{{name="{name}", bank={bank}, address={address}, words={values}}}')
-    return "local loads=" + table(loads) + "\n" + (CREW / "uplink.lua").read_text()
+    return f"local waitForNavigation={str(number in (7, 8)).lower()}\nlocal loads=" + table(loads) + "\n" + (CREW / "uplink.lua").read_text()
 
 
 def p30(chain, previous_dir, pad_dir, number):

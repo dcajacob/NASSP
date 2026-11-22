@@ -14,8 +14,9 @@ local function installed(load)
     return true
 end
 proc.wait_simdt(2)
-if #loads==4 then
-    -- Let P00 finish its navigation work after restoring the deorbit coast.
+if waitForNavigation then
+    -- Let P00 finish its navigation work before the last two orbital burns.
+    -- An in-flight P00 integration can overwrite newly accepted state vectors.
     -- If Pinball is busy when the first V71 arrives, P27 can remain at V21 N01.
     proc.wait_simdt(20)
     local deadline=oapi.get_simtime()+120
@@ -55,6 +56,9 @@ repeat
     end
 until quiet>=8 or oapi.get_simtime()>deadline
 assert(quiet>=8,"CMC did not receive and finish processing all MCC packets")
+for _,load in ipairs(loads) do
+    assert(installed(load),"CMC overwrote "..load.name.." before uplink completion")
+end
 ship:set_panelswitch("CMUplinkSwitch",0)
 ship:set_panelswitch("PCMBitRateSwitch",0)
 event("target_uplink_verified")
