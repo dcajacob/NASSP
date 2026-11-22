@@ -165,6 +165,11 @@ and entry procedure loads the save written by its immediate predecessor.
 The runner changes only the scenario's crew-script line between legs. The CMC
 receives fresh targets from simulated Mission Control, and its P30 ignition
 time and three velocity components are checked against each maneuver PAD.
+The linked replay enables nonspherical Earth gravity and runs simulated Mission
+Control calculations synchronously. The crew waits for the CMC navigation
+cycle before loading the final state vectors for SPS-7 and SPS-8. It keeps the
+calibrated retrofire platform through P61 and uses the CMC entry autopilot
+from service-module separation through atmospheric entry.
 
 With both additional mission replay archives installed as described above,
 run the linked flight in a fresh results directory:
@@ -180,4 +185,8 @@ workflow**. The artifact `native-linux-opengl-apollo7-linked-return-results`
 contains each leg's input, crew script, telemetry, console log and output save.
 Under `linked-return/`, `lineage.json` records the SHA-256 of every handoff.
 The verifier writes `results.json` after it checks the complete sequence through
-main parachute release and settled recovery.
+main parachute release and settled recovery. It compares the coordinates
+loaded in the CMC with the live RTCC target, checks the IMU reference at five
+checkpoints, and requires settled water contact within 10 nautical miles of
+the target. The report gives the target, recovered position and great-circle
+miss distance.

@@ -229,14 +229,17 @@ def recovery_target(output, recovery):
     if not (-math.pi/2 <= target_lat <= math.pi/2 and -math.pi <= target_lon <= math.pi):
         raise ValueError("Invalid RTCC recovery target")
 
-    # Colossus LAT(SPL) and LNG(SPL) are DP fractions of one revolution.
     basis = inertial_reference(SEED)
-    platform = inertial_reference(output / "entry-p61")
-    trace = sum(a*b for a,b in zip(basis, platform, strict=True))
-    alignment_error = math.degrees(math.acos(max(-1, min(1, (trace - 1)/2))))
-    if not math.isfinite(trace) or alignment_error > 1:
-        raise ValueError(f"Entry IMU and CMC references disagree by {alignment_error:.2f} degrees")
+    alignment_errors = {}
+    for stage in ("sps8-burn", "entry-p61", "entry-separation", "entry-attitude", "entry-splashdown"):
+        platform = inertial_reference(output / stage)
+        trace = sum(a*b for a, b in zip(basis, platform, strict=True))
+        error = math.degrees(math.acos(max(-1, min(1, (trace - 1)/2))))
+        if not math.isfinite(trace) or error > 1:
+            raise ValueError(f"{stage}: IMU and CMC references disagree by {error:.2f} degrees")
+        alignment_errors[stage] = error
 
+    # Colossus LAT(SPL) and LNG(SPL) are DP fractions of one revolution.
     save = (output / "entry-p61/saved.scn").read_text(encoding="latin-1")
     agc = save.split("\nAGC_BEGIN\n", 1)[1].split("\nAGC_END", 1)[0]
     words = {int(a, 8): int(w, 8) for a, w in re.findall(r"^  EMEM([0-7]+) ([0-7]+)$", agc, re.M)}
@@ -254,7 +257,7 @@ def recovery_target(output, recovery):
     if not math.isfinite(miss_nm) or miss_nm > 10:
         raise ValueError(f"Splashdown missed the RTCC recovery target by {miss_nm:.2f} nmi (limit 10 nmi)")
     return dict(latitude_deg=math.degrees(target_lat), longitude_deg=math.degrees(target_lon),
-                miss_nm=miss_nm, limit_nm=10, entry_alignment_error_deg=alignment_error)
+                miss_nm=miss_nm, limit_nm=10, alignment_error_deg_by_stage=alignment_errors)
 
 
 def verify(output):
