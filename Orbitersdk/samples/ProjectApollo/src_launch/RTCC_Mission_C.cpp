@@ -337,7 +337,11 @@ bool RTCC::CalculationMTP_C(int fcn, void*&pad, char *upString, char *upDesc, ch
 
 		AGCStateVectorUpdate(buffer1, 1, RTCC_MPT_CSM, sv_upl.sv);
 		AGCStateVectorUpdate(buffer2, 1, RTCC_MPT_LM, sv_upl.sv);
-		CMCRetrofireExternalDeltaVUpdate(buffer3, SplashLatitude, SplashLongitude, TimeofIgnition, DeltaV_LVLH);
+		// RTCC targets a geocentric surface point. Colossus LALOTORV expects
+		// geodetic LAT(SPL) and multiplies tan(latitude) by B2/A2 for Earth.
+		constexpr double fischerB2OverA2 = 0.9933064884;
+		const double cmcLatitude = atan2(sin(SplashLatitude), fischerB2OverA2 * cos(SplashLatitude));
+		CMCRetrofireExternalDeltaVUpdate(buffer3, cmcLatitude, SplashLongitude, TimeofIgnition, DeltaV_LVLH);
 		AGCDesiredREFSMMATUpdate(buffer4, REFSMMAT);
 
 		sprintf(uplinkdata, "%s%s%s%s", buffer1, buffer2, buffer3, buffer4);

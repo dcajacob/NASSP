@@ -186,7 +186,8 @@ contains each leg's input, crew script, telemetry, console log and output save.
 Under `linked-return/`, `lineage.json` records the SHA-256 of every handoff.
 The verifier writes `results.json` after it checks the complete sequence through
 main parachute release and settled recovery. It compares the coordinates
-loaded in the CMC with the live RTCC target, checks the IMU reference at five
+loaded in the CMC with the live RTCC target after converting the CMC’s
+geodetic latitude back to RTCC’s geocentric latitude, checks the IMU reference at five
 checkpoints, and requires settled water contact within 10 nautical miles of
 the target. The report gives the target, recovered position and great-circle
 miss distance.

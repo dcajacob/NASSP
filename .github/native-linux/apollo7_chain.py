@@ -248,7 +248,10 @@ def recovery_target(output, recovery):
         return word - 0o77777 if word & 0o40000 else word
     def angle(a):
         return math.tau * (signed(a) / 2**14 + signed(a+1) / 2**28)
-    if max(abs(angle(0o3400) - target_lat), abs(angle(0o3402) - target_lon)) > 1e-6:
+    # Recover the target direction as Colossus LALOTORV does for Earth.
+    cmc_lat = angle(0o3400)
+    cmc_target_lat = math.atan2(0.9933064884 * math.sin(cmc_lat), math.cos(cmc_lat))
+    if max(abs(cmc_target_lat - target_lat), abs(angle(0o3402) - target_lon)) > 1e-6:
         raise ValueError("P61 splashdown coordinates disagree with the live retrofire PAD")
 
     lat, lon = (math.radians(float(recovery[key])) for key in ("latitude", "longitude"))
@@ -257,7 +260,8 @@ def recovery_target(output, recovery):
     if not math.isfinite(miss_nm) or miss_nm > 10:
         raise ValueError(f"Splashdown missed the RTCC recovery target by {miss_nm:.2f} nmi (limit 10 nmi)")
     return dict(latitude_deg=math.degrees(target_lat), longitude_deg=math.degrees(target_lon),
-                miss_nm=miss_nm, limit_nm=10, alignment_error_deg_by_stage=alignment_errors)
+                cmc_geodetic_latitude_deg=math.degrees(cmc_lat), miss_nm=miss_nm, limit_nm=10,
+                alignment_error_deg_by_stage=alignment_errors)
 
 
 def verify(output):
