@@ -64,6 +64,11 @@ case "${3:-}" in
             "$output/launcher" "$inputs/launcher-manifest.json"
         ;;
     flight)
+        if [[ "${4:-}" == apollo7-linked-return ]]; then
+            xvfb-run -a -s '-screen 0 1600x1000x24 +extension GLX' python3 -B \
+                "$source_dir/.github/native-linux/apollo7_chain.py" "$inputs" "$output/linked-return"
+            exit
+        fi
         run_flight() (
             local case_name=$1 ticks=$2 step=$3 render_every=$4 keymap_profile=$5 input_case=$6
             local keymap=()

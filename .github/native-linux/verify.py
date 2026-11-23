@@ -91,6 +91,10 @@ def verify_launcher(manifest_path, output):
 
 def main(manifest_path, output, suite="baseline"):
     output = Path(output)
+    if suite == "apollo7-linked-return":
+        from apollo7_chain import verify
+        verify(output / "linked-return")
+        return
     flight = output / "flight"
     cases = []
     for line in Path(__file__).with_name("replays.tsv").read_text().splitlines():

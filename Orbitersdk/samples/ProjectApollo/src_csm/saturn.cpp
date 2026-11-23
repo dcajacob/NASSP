@@ -5478,6 +5478,13 @@ int Saturn::Lua_InitInstance (void *context)
 		{"set_agcerasable", LuaCall_SetAGCErasable},	
 		{"get_agcuplinkstatus", LuaCall_GetAGCUplinkStatus},	
 #if defined(NASSP_NATIVE_LINUX)
+		{"get_sextantangles", [](lua_State *L) {
+			auto **slot = static_cast<VESSEL **>(luaL_checkudata(L, 1, "Saturn.vtable"));
+			const auto &optics = static_cast<Saturn *>(*slot)->optics;
+			lua_pushnumber(L, optics.SextShaft);
+			lua_pushnumber(L, optics.SextTrunion);
+			return 2;
+		}},
 		{"get_imu_reference", [](lua_State *L) {
 			auto **slot = static_cast<VESSEL **>(luaL_checkudata(L, 1, "Saturn.vtable"));
 			const auto &ref = static_cast<Saturn *>(*slot)->imu.GetOrbiterAttitudeReference();

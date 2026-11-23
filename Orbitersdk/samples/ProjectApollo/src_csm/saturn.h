@@ -4137,7 +4137,7 @@ protected:
 	bool FovExternal;
 	double FovSave;
 	int maxTimeAcceleration;
-	bool IsMultiThread;
+	bool IsMultiThread = false;
 
 	//
 	// Helpers for drawing the telescope and sextant reticles.

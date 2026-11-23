@@ -572,6 +572,7 @@ if(NASSP_BUILD_NATIVE_LINUX)
         "${NASSP_SOURCE_ROOT}/../../../Script/ProjectApollo/apollo10-entry-replay.lua"
         "${NASSP_SOURCE_ROOT}/../../../Script/ProjectApollo/apollo7-countdown-sps3-scs-burn-rate-mode.lua"
         "${NASSP_SOURCE_ROOT}/../../../Script/ProjectApollo/apollo7-sps3-postburn-replay.lua"
+        "${NASSP_SOURCE_ROOT}/../../../Script/ProjectApollo/apollo7-linked-replay.lua"
         DESTINATION "Script/ProjectApollo" COMPONENT ApolloReplayAssets
     )
     add_library(NasspS1C MODULE src_saturn/s1c.cpp src_saturn/s1csystems.cpp)

@@ -2280,26 +2280,21 @@ void OpticsHandcontrollerSwitch::Init(int xp, int yp, int w, int h, SURFHANDLE s
 
 bool OpticsHandcontrollerSwitch::CheckMouseClick(int event, int mx, int my)
 {
-	if (HandcontrollerSwitch::CheckMouseClick(event, mx, my)) {
-		sat->optics.OpticsManualMovement &= 0xF0; 
-		if (state == 1) {
-			// Optics Right
-			sat->optics.OpticsManualMovement |= 0x08; 
-		} else if (state == 2) {
-			// Optics Left
-			sat->optics.OpticsManualMovement |= 0x04;
-		} else if (state == 3) {
-			// Optics Down
-			sat->optics.OpticsManualMovement |= 0x02; 
-		} else if (state == 4) {
-			// Optics Up
-			sat->optics.OpticsManualMovement |= 0x01; 
-		}
-		return true;
-	}
-	return false;
+	if (!HandcontrollerSwitch::CheckMouseClick(event, mx, my)) return false;
+	SetState(state);
+	return true;
 }
 
+void OpticsHandcontrollerSwitch::SetState(int value)
+{
+	// Stick positions are center, right, left, down and up in the panel artwork.
+	static const int movement[] = {0, 0x08, 0x04, 0x02, 0x01};
+	if (value < 0 || value > 4) return;
+	state = value;
+	if (sat) {
+		sat->optics.OpticsManualMovement = (sat->optics.OpticsManualMovement & 0xF0) | movement[value];
+	}
+}
 
 void MinImpulseHandcontrollerSwitch::Init(int xp, int yp, int w, int h, SURFHANDLE surf, SURFHANDLE bsurf, SwitchRow &row, Saturn *s)
 {
