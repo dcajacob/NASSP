@@ -140,9 +140,18 @@ def nsr_and_approach(chain, parent):
     header = f"local tig,deltaV,manual_entry={tig},{table(fps)},true\n"
     readback = chain.leg(tpi, "tpi-p30", header + (CREW / "p30.lua").read_text(), 5000, .125,
                          "p30.csv", "p30_pad_verified")
-    header = f"local tig,start_get,pad_dv={tig},{clock(readback)},{table(dv)}\n"
-    return chain.leg(readback, "rendezvous", header + (CREW / "rendezvous.lua").read_text() + SAVE_AND_EXIT,
-                     100000, .0625, "rendezvous.csv", "rendezvous_complete")
+    return terminal_approach(chain, readback, tig, dv)
+
+
+def terminal_approach(chain, readback, tig, dv):
+    from apollo7_middle import table
+    controls = (CREW / "rendezvous-controls.lua").read_text()
+    previous = readback
+    for name, event in (("tpi","tpi"), ("rendezvous","rendezvous_complete")):
+        header = f"local tig,start_get,pad_dv={tig},{clock(previous)},{table(dv)}\n"
+        previous = chain.leg(previous, name, header + controls + (CREW / (name+".lua")).read_text()
+                             + SAVE_AND_EXIT, 100000, .0625, "rendezvous.csv", event)
+    return previous
 
 
 def fly_sps3(chain, previous):
@@ -189,6 +198,25 @@ def fly_from_phasing(chain, previous):
     return fly_sps3(chain, nsr_and_approach(chain, ncc2))
 
 
+def early_burn_result(output, number, pad_name):
+    from apollo7_middle import saved, field
+    pad = saved(output / pad_name)
+    prefix = f"sps{number}-"
+    readback = {row["phase"]: row for row in rows(output / (prefix+"p30") / "p30.csv")}
+    r = readback["ignition_time"]
+    ignition = int(r["r1"])*3600 + int(r["r2"])*60 + int(r["r3"])/100
+    target = [float(x)*.3048 for x in field(pad,"MCC_AP7MNV_dV").split()]
+    cmc = [int(readback["delta_v"][key])*.03048 for key in ("r1","r2","r3")]
+    burn, = rows(output / (prefix+"burn") / "burn-result.csv")
+    measured = [float(burn[f"achieved_{axis}_m_s"]) for axis in "xyz"]
+    if (abs(ignition-float(field(pad,"MCC_AP7MNV_GETI")))>.03 or math.dist(cmc,target)>.08
+            or math.dist(measured,target)>max(2,.03*math.hypot(*target))):
+        raise ValueError(f"{pad_name}: CMC and measured impulse must agree with the live PAD")
+    return dict(purpose=field(pad,"MCC_AP7MNV_purpose"), tig_s=ignition, target_m_s=target,
+                measured_m_s=measured, vector_error_m_s=math.dist(measured,target),
+                sps_used_kg=float(burn["sps_kg"]))
+
+
 def verify(output, full=False):
     insertion = output / "countdown"
     result = insertion_result(insertion)
@@ -228,7 +256,7 @@ def verify(output, full=False):
         stages.append(("nsr-pad","coast.csv","advisory"))
         powered(2, "  MCC_upString " in saved(output/"nsr-pad"), False)
         stages.extend([("tpi-pad","coast.csv","advisory"), ("tpi-p30","p30.csv","p30_pad_verified"),
-                       ("rendezvous","rendezvous.csv","rendezvous_complete"),
+                       ("tpi","rendezvous.csv","tpi"), ("rendezvous","rendezvous.csv","rendezvous_complete"),
                        ("sps3-coast","coast.csv","maneuver_pad_ready")])
         powered(3, True, True)
         stages.append(("sps3-postburn","postburn.csv","post_sps3_continuation_complete"))
@@ -246,6 +274,14 @@ def verify(output, full=False):
     if full:
         from apollo7_checks import verify_sps3
         from apollo7_chain import verify as verify_return
+        maneuvers = [(1,"ncc1-pad"), (2,"nsr-pad"), (3,"sps3-coast")]
+        if field(saved(output/"ncc2-advisory"),"MCC_scrubbed") == "0":
+            maneuvers.insert(1, ("ncc2","ncc2-advisory"))
+        result["early_maneuvers"] = [early_burn_result(output,n,pad) for n,pad in maneuvers]
+        station, = [r for r in rows(output/"rendezvous/rendezvous.csv") if r["event"] == "stationkeeping"]
+        if not (150 < float(station["range_m"]) < 850 and float(station["relative_speed_m_s"]) < .45):
+            raise ValueError("Missed S-IVB stationkeeping limits")
+        result["stationkeeping"] = station
         result["sps3"] = verify_sps3(output/"sps3-burn", output/"sps3-coast", previous)
         verify_return(output/"return", previous)
         recovery = json.loads((output/"return/results.json").read_text())
