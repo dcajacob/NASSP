@@ -62,6 +62,8 @@ def prepare_p40(chain, previous_dir, pad_dir, number, *, realign=True):
     ignition = pad("GETI")
     if realign:
         alignment = alignment_script(chain.runtime, max(0, ignition - present - 2120))
+        if number == 3 and "  OPTICSCOVERED 1\n" in (previous_dir/"saved.scn").read_text():
+            alignment = "local prepare_launch_optics=true\n" + alignment
         previous_dir = chain.leg(previous_dir, f"sps{number}-alignment", alignment, 300000, .015625,
                                  "alignment.csv", "platform_reference_ready")
         present = float(scenario_field(previous_dir, "MISSNTIME"))

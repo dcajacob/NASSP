@@ -155,9 +155,14 @@ def terminal_approach(chain, readback, tig, dv):
 
 
 def fly_sps3(chain, previous):
-    from apollo7_four import coast, prepare_p40
-    from apollo7_middle import field, saved, substitute, table, uplink_and_p30
+    from apollo7_four import coast
     pad = coast(chain, previous, 3)
+    return burn_sps3(chain, pad)
+
+
+def burn_sps3(chain, pad):
+    from apollo7_four import prepare_p40
+    from apollo7_middle import field, saved, substitute, table, uplink_and_p30
     raw = saved(pad)
     def value(name):
         return float(field(raw, "MCC_AP7MNV_" + name))
@@ -167,17 +172,25 @@ def fly_sps3(chain, previous):
     source = (directory / "apollo7-countdown-sps3-scs-burn-rate-mode.lua").read_text()
     source = substitute(source, r"^local timeToIgnition = .*", f"local timeToIgnition = {value('GETI')-clock(ready)}")
     source = substitute(source, r'^set\("EMSDvDisplay",\d+\)', f'set("EMSDvDisplay",{round(value("Vc")*10)})')
-    source = substitute(source, r"^local orbitMatches=.*",
-                        "local orbitMatches=math.abs(orbit.PeD-radius-padPerigee)<15000 "
-                        "and math.abs(orbit.ApD-radius-padApogee)<15000")
+    source = substitute(source, r'^at\(-330, "gimbal_preparation"\)', 'at(-330, "gimbal_preparation")\n'
+                        + f'set("SPSGimbalPitchThumbwheel",{round(value("pTrim")*10)})\n'
+                        + f'set("SPSGimbalYawThumbwheel",{round(value("yTrim")*10)})')
+    source = substitute(source, r"^local orbitMatches=.*", "")
     dv = [float(x)*.3048 for x in field(raw, "MCC_AP7MNV_dV").split()]
     header = (f"local padLVLH,padMagnitude={table(dv)},{math.hypot(*dv)}\n"
               f"local padPerigee,padApogee={value('HP')*1852},{value('HA')*1852}\n")
-    source = substitute(source, r'^at\(-30,"ullage"\)', 'at(-30,"ullage")\n'+(CREW / "burn-integral.lua").read_text())
+    source = substitute(source, r'^set\("dVThrust2Switch",1\)', 'set("dVThrust2Switch",1)\n'
+                        + (CREW / "sps3-pointing.lua").read_text())
+    source = substitute(source, r'^at\(-30,"ullage"\)', '''trimUntil(-31)
+assert(recordPointing()<1,"SCS did not acquire the live PAD direction")
+for _,axis in ipairs({"Pitch","Yaw","Roll"}) do set("BMAG"..axis.."Switch",1) end
+at(-30,"ullage")
+''' + (CREW / "burn-integral.lua").read_text())
     source = substitute(source, r'^local originalMass=', 'local ignitionMass=ship:get_mass()\nlocal originalMass=')
-    source = substitute(source, r'^reportState\("sps3_completed"\)',
+    source = substitute(source, r'^    reportState\("burn_watch"\)', '    recordPointing()\n    reportState("burn_watch")')
+    source = substitute(source, r'^assert\(orbitMatches,.*',
                         'local ignitionPropellant,impulse=originalMass,ullageImpulse\n'
-                        + (CREW / "burn-result.lua").read_text() + '\nreportState("sps3_completed")')
+                        + (CREW / "burn-result.lua").read_text())
     burn = chain.leg(ready, "sps3-burn", header + source, 75000, .0625, "sps3-scs.csv", "sps3_completed")
     return chain.leg(burn, "sps3-postburn", (directory / "apollo7-sps3-postburn-replay.lua").read_text(),
                      14000, .0625, "postburn.csv", "post_sps3_continuation_complete")

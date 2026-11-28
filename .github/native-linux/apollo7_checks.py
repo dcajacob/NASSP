@@ -90,7 +90,15 @@ def verify_sps3(run, pad=None, followon=None):
         if row["event"] in ("p00_shutdown_complete", "post_sps3_coast", "post_sps3_continuation_complete"):
             assert row["program"] == "0", row
     for key, original in (("periapsis_m", "periapsis"), ("apoapsis_m", "apoapsis")):
-        assert abs(float(complete[key]) - float(final[original])) < 100, (key, complete[key], final[original])
+        # Catch discontinuities at reload. The full mission enables oblate
+        # Earth gravity, so osculating apsides evolve during the ensuing coast.
+        assert abs(float(initial[key]) - float(final[original])) < 100, (key, initial[key], final[original])
+        if pad is None:
+            assert abs(float(complete[key]) - float(final[original])) < 100, (key, complete[key], final[original])
+    if pad is not None:
+        from apollo7_chain import saved_orbit
+        for key, value in zip(("periapsis_m", "apoapsis_m"), saved_orbit(followon), strict=True):
+            assert abs(value - float(complete[key])) < 100, (key, value, complete[key])
     return {
         "perigee_km": float(final["periapsis"]) / 1000,
         "apogee_km": float(final["apoapsis"]) / 1000,

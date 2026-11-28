@@ -50,10 +50,15 @@ def uplink_script(raw, number):
         values = table(words(packet, prefix, count))
         loads.append(f'{{name="{name}", bank={bank}, address={address}, words={values}}}')
     final_ncc1 = number == 1 and field(raw, "MCC_AP7MNV_purpose") == "NCC-1"
-    # Give P00 the first navigation cycle after the final NCC-1 PAD. Otherwise
-    # it can replace TETCSM during P27's second packet. The fourteen upload
-    # words must still agree after all three packets have finished.
+    # The CMC advances its rectification epoch between coast integrations.
+    # Start the transfer after that transition, leaving time for explicit
+    # word-by-word readback of the entire multi-packet uplink.
     settle = "proc.wait_simdt(155)\n" if final_ncc1 else ""
+    if number == 3:
+        window = min(1800, float(field(raw,"MCC_AP7MNV_GETI")) - float(field(raw,"MISSNTIME")) - 1900)
+        if window < 100:
+            raise ValueError("Insufficient time to synchronize the navigation uplink")
+        settle = f"local navigation_window={window}\n"
     wait = number in (2, 3, 7, 8, "ncc2") or final_ncc1
     return (settle + f"local waitForNavigation={str(wait).lower()}\nlocal loads="
             + table(loads) + "\n" + (CREW / "uplink.lua").read_text())
