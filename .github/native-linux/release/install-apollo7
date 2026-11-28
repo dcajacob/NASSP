@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""Install the native Apollo 7 preview from its split release media."""
+import argparse
+import hashlib
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
+import urllib.request
+import zipfile
+
+PACKAGE = "NASSP-9-Apollo-7-OpenGL-preview1"
+TERRAIN_HASH = "bdbf747dd930ced34a3cca34b69dc7e2d9733e0b9498ee8d6224090cf008dc30"
+TERRAIN_URL = "https://github.com/dcajacob/orbiter-cross-platform/releases/download/production-inputs-v2/"
+TERRAIN_PARTS = (
+    ("Orbiter2016.zip.part01", "c9e8721f6db6b1403556f0aa2446955d812c5ceaf84630b3c35c14105bb06824"),
+    ("Orbiter2016.zip.part02", "426a0e999bb31b3e2fa9a6e61c801edb8a371fa3efa49f334babff61e2ab2d30"),
+)
+
+
+def verify(path, expected):
+    with path.open("rb") as stream:
+        if hashlib.file_digest(stream, "sha256").hexdigest() != expected:
+            raise ValueError(f"SHA-256 mismatch for {path.name}")
+
+
+def fetch_terrain(destination):
+    with destination.open("xb") as output:
+        for name, expected in TERRAIN_PARTS:
+            print(f"Downloading {name}", flush=True)
+            checksum = hashlib.sha256()
+            with urllib.request.urlopen(TERRAIN_URL + name, timeout=120) as response:
+                while chunk := response.read(1024 * 1024):
+                    checksum.update(chunk)
+                    output.write(chunk)
+            if checksum.hexdigest() != expected:
+                raise ValueError(f"SHA-256 mismatch for {name}")
+
+
+def install(parent, terrain):
+    media = Path(__file__).resolve().parent
+    target = parent / PACKAGE
+    if target.exists() or target.is_symlink():
+        raise FileExistsError(target)
+    rows = (media / "SHA256SUMS").read_text().splitlines()
+    names = []
+    for row in rows:
+        match = re.fullmatch(r"([a-f0-9]{64})  (apollo7\.tar\.zst\.part[0-9]{2})", row)
+        if not match:
+            raise ValueError("Unexpected split archive manifest")
+        name = match[2]
+        if name != f"apollo7.tar.zst.part{len(names) + 1:02d}":
+            raise ValueError("Archive parts are out of sequence")
+        verify(media / name, match[1])
+        names.append(name)
+    if not names:
+        raise ValueError("No archive parts in SHA256SUMS")
+    with tempfile.TemporaryDirectory(prefix=".apollo7-", dir=parent) as temporary:
+        work = Path(temporary)
+        stage = work / "runtime"
+        stage.mkdir()
+        if terrain is None:
+            terrain = work / "Orbiter2016.zip"
+            fetch_terrain(terrain)
+        verify(terrain, TERRAIN_HASH)
+        with subprocess.Popen(["tar", "--zstd", "--no-same-owner", "-xf", "-", "-C", stage],
+                              stdin=subprocess.PIPE) as extract:
+            with extract.stdin as pipe:
+                for name in names:
+                    with (media / name).open("rb") as part:
+                        shutil.copyfileobj(part, pipe, length=1024 * 1024)
+            if extract.wait():
+                raise RuntimeError("Could not unpack the application")
+        with zipfile.ZipFile(terrain) as original:
+            members = (stage / "qualification/terrain-files.txt").read_text().splitlines()
+            for member in members:
+                if not re.fullmatch(r"Textures/(Earth|Moon|Mars)/Archive/[A-Za-z_]+\.tree", member):
+                    raise ValueError(f"Unexpected terrain member {member}")
+                original.extract(member, stage / "planet-archives")
+            for source, name in [("Doc/Orbiter.pdf", "Orbiter2016.pdf"), ("readme.txt", "Orbiter2016-readme.txt")]:
+                with original.open(source) as src, (stage / "licenses" / name).open("wb") as dst:
+                    shutil.copyfileobj(src, dst)
+        subprocess.run(["sha256sum", "--check", "--quiet", "qualification/files.sha256"], cwd=stage, check=True)
+        (stage / "user/Scenarios").mkdir(parents=True, exist_ok=True)
+        subprocess.run(["mv", "-Tn", stage, target], check=True)
+        if stage.exists():
+            raise FileExistsError(target)
+    print(f"Installed. Start the normal Orbiter launcher with {target / 'launch-orbiter'}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("parent", type=Path, help="existing writable installation directory")
+    parser.add_argument("--terrain-zip", type=Path, help="original Orbiter2016.zip, for offline installation")
+    args = parser.parse_args()
+    install(args.parent.resolve(strict=True), args.terrain_zip)

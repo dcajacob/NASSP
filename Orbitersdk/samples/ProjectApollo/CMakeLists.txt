@@ -592,6 +592,19 @@ if(NASSP_BUILD_NATIVE_LINUX)
         target_link_options(Nassp${module} PRIVATE "-Wl,--no-undefined")
     endforeach()
 
+    # The launcher installs NativeModules under engine/. Resolve the SDK and
+    # Lua from that installation even when the build used an external SDK.
+    get_property(native_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(target IN LISTS native_targets)
+        get_target_property(kind ${target} TYPE)
+        if(kind STREQUAL "MODULE_LIBRARY")
+            get_target_property(output_dir ${target} LIBRARY_OUTPUT_DIRECTORY)
+            file(RELATIVE_PATH engine_dir "${output_dir}" "${CMAKE_BINARY_DIR}")
+            set_target_properties(${target} PROPERTIES
+                BUILD_WITH_INSTALL_RPATH TRUE
+                INSTALL_RPATH "$ORIGIN/${engine_dir};$ORIGIN/${engine_dir}/native-lua")
+        endif()
+    endforeach()
     return()
 endif()
 
