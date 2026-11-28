@@ -89,7 +89,16 @@ local function accept(raw)
         end
         return complete
     end
-    if tonumber(field(raw,"MCC_MissionState"))==72 then
+    local state=tonumber(field(raw,"MCC_MissionState"))
+    local function dpTime(bank,offset)
+        return ((ship:get_agcerasable(bank,offset)%16384)*16384+ship:get_agcerasable(bank,offset+1)%16384)/100
+    end
+    local age=dpTime(0,20)-dpTime(3,0x78)
+    local trace=assert(io.open("navigation-timing.csv","a"))
+    if trace:seek("end")==0 then trace:write("mission_state,get_s,vector_age_s,channel_11\n") end
+    trace:write(string.format("%d,%.3f,%.2f,%d\n",state,get(),age,ship:get_agcchannel(9)))
+    trace:close()
+    if state==72 or (burn_state>=134 and #loads==2 and age>=1200) then
         -- This long-coast update loads two future-tagged vectors. P00 may
         -- already have a rectification job outstanding when warp comes off.
         local function epoch()

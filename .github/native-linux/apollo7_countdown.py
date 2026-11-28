@@ -83,7 +83,7 @@ def advisory(chain, previous, slug, get, state, uplink=True):
 
 def do_uplink(chain, pad, slug, procedure):
     from apollo7_middle import uplink_script, saved
-    return chain.leg(pad, slug, uplink_script(saved(pad), procedure), 14000, .125,
+    return chain.leg(pad, slug, uplink_script(saved(pad), procedure, advisory=True), 14000, .125,
                      "uplink.csv", "target_uplink_verified")
 
 

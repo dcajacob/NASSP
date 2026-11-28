@@ -30,7 +30,7 @@ def table(numbers):
     return "{" + ",".join(map(str, numbers)) + "}"
 
 
-def uplink_script(raw, number):
+def uplink_script(raw, number, *, advisory=False):
     specs = [
         ("csm_state_vector", "V71E21E1501E1E", 14, 3, 0x6C),
         ("second_state_vector", "V71E21E1501E77776E", 14, 3, 0x96),
@@ -54,12 +54,12 @@ def uplink_script(raw, number):
     # Start the transfer after that transition, leaving time for explicit
     # word-by-word readback of the entire multi-packet uplink.
     settle = "proc.wait_simdt(155)\n" if final_ncc1 else ""
-    if number in (3, 4):
+    if not advisory and number in range(3, 9):
         window = min(1800, float(field(raw,"MCC_AP7MNV_GETI")) - float(field(raw,"MISSNTIME")) - 1900)
         if window < 100:
             raise ValueError("Insufficient time to synchronize the navigation uplink")
         settle = f"local navigation_window={window}\n"
-        if number == 4:
+        if number != 3:
             # Previously flown short-age updates can be received immediately.
             # Allow room for the three-packet transfer at the end of a coast.
             settle += "local minimum_navigation_age=1200\n"
@@ -82,7 +82,7 @@ def p30(chain, previous_dir, pad_dir, number, *, manual_entry=False):
 
 def uplink_and_p30(chain, pad_dir, number):
     directory = chain.leg(pad_dir, f"sps{number}-uplink", uplink_script(saved(pad_dir), number),
-                          28000 if number in (3, 4) else 14000, .125, "uplink.csv", "target_uplink_verified")
+                          28000 if number in range(3, 9) else 14000, .125, "uplink.csv", "target_uplink_verified")
     return p30(chain, directory, pad_dir, number)
 
 
