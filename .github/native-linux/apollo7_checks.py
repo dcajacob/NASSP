@@ -17,19 +17,27 @@ def rows(path):
     return result
 
 
-def check_orbit(perigee, apogee):
-    assert math.isfinite(perigee) and abs(perigee - PAD_PERIGEE_M) < PAD_TOLERANCE_M, perigee
-    assert math.isfinite(apogee) and abs(apogee - PAD_APOGEE_M) < PAD_TOLERANCE_M, apogee
+def check_orbit(perigee, apogee, target=(PAD_PERIGEE_M, PAD_APOGEE_M)):
+    assert math.isfinite(perigee) and abs(perigee - target[0]) < PAD_TOLERANCE_M, perigee
+    assert math.isfinite(apogee) and abs(apogee - target[1]) < PAD_TOLERANCE_M, apogee
 
 
-def verify_sps3(run):
+def verify_sps3(run, pad=None, followon=None):
+    target = (PAD_PERIGEE_M, PAD_APOGEE_M)
+    if pad is not None:
+        from apollo7_four import scenario_field
+        target = tuple(float(scenario_field(pad,"MCC_AP7MNV_" + key))*1852 for key in ("HP","HA"))
     samples = rows(run / "sps3-scs.csv")
     assert samples[-1]["marker"] == "sps3_completed", samples[-1]
     assert not any(row["marker"] == "sps3_trajectory_needs_correction" for row in samples)
     final = samples[-1]
-    check_orbit(float(final["periapsis"]), float(final["apoapsis"]))
+    check_orbit(float(final["periapsis"]), float(final["apoapsis"]), target)
     used = float(samples[0]["sps_mass"]) - float(final["sps_mass"])
-    assert 300 < used < 360, used
+    if pad is None:
+        assert 300 < used < 360, used
+    else:
+        planned = 29.606 * float(scenario_field(pad, "MCC_AP7MNV_burntime"))
+        assert abs(used-planned)<max(18,.12*planned), (used,planned)
 
     telemetry = rows(run / "sps3-qualification.csv")
     events = {row["marker"]: row for row in telemetry}
@@ -49,14 +57,18 @@ def verify_sps3(run):
         row = events[name]
         assert float(row["ems_fps"]) <= 0 and float(row["sps_level"]) == 0, row
 
-    followon = run / "followon"
-    saved = (run / "saved.scn").read_text(encoding="latin-1")
-    expected_input = saved.replace(
-        "  Script ProjectApollo/apollo7-countdown-sps3-scs-burn-rate-mode\n",
-        "  Script ProjectApollo/apollo7-sps3-postburn-replay\n",
-    )
-    assert expected_input != saved
-    assert (followon / "input.scn").read_text(encoding="latin-1") == expected_input
+    if followon is None:
+        followon = run / "followon"
+        saved = (run / "saved.scn").read_text(encoding="latin-1")
+        expected_input = saved.replace(
+            "  Script ProjectApollo/apollo7-countdown-sps3-scs-burn-rate-mode\n",
+            "  Script ProjectApollo/apollo7-sps3-postburn-replay\n",
+        )
+        assert expected_input != saved
+        assert (followon / "input.scn").read_text(encoding="latin-1") == expected_input
+    else:
+        from apollo7_chain import input_bytes
+        assert (followon / "input.scn").read_bytes() == input_bytes(run)
     log = (followon / "console.log").read_text(errors="replace")
     assert "Native OpenGL renderer:" in log and "LuaCall" not in log
     assert "Saved finalized production scenario:" in log
@@ -74,11 +86,19 @@ def verify_sps3(run):
     assert abs(float(initial["sps_mass"]) - float(final["sps_mass"])) < .005
     for row in continuation:
         assert abs(float(row["sps_mass"]) - float(initial["sps_mass"])) < .005, row
-        check_orbit(float(row["periapsis_m"]), float(row["apoapsis_m"]))
+        check_orbit(float(row["periapsis_m"]), float(row["apoapsis_m"]), target)
         if row["event"] in ("p00_shutdown_complete", "post_sps3_coast", "post_sps3_continuation_complete"):
             assert row["program"] == "0", row
     for key, original in (("periapsis_m", "periapsis"), ("apoapsis_m", "apoapsis")):
-        assert abs(float(complete[key]) - float(final[original])) < 100, (key, complete[key], final[original])
+        # Catch discontinuities at reload. The full mission enables oblate
+        # Earth gravity, so osculating apsides evolve during the ensuing coast.
+        assert abs(float(initial[key]) - float(final[original])) < 100, (key, initial[key], final[original])
+        if pad is None:
+            assert abs(float(complete[key]) - float(final[original])) < 100, (key, complete[key], final[original])
+    if pad is not None:
+        from apollo7_chain import saved_orbit
+        for key, value in zip(("periapsis_m", "apoapsis_m"), saved_orbit(followon), strict=True):
+            assert abs(value - float(complete[key])) < 100, (key, value, complete[key])
     return {
         "perigee_km": float(final["periapsis"]) / 1000,
         "apogee_km": float(final["apoapsis"]) / 1000,

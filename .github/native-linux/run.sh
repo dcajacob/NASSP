@@ -64,6 +64,11 @@ case "${3:-}" in
             "$output/launcher" "$inputs/launcher-manifest.json"
         ;;
     flight)
+        if [[ "${4:-}" == apollo7-countdown-recovery ]]; then
+            xvfb-run -a -s '-screen 0 1600x1000x24 +extension GLX' python3 -B \
+                "$source_dir/.github/native-linux/apollo7_countdown.py" "$inputs" "$output/countdown-flight" --full
+            exit
+        fi
         if [[ "${4:-}" == apollo7-linked-return ]]; then
             xvfb-run -a -s '-screen 0 1600x1000x24 +extension GLX' python3 -B \
                 "$source_dir/.github/native-linux/apollo7_chain.py" "$inputs" "$output/linked-return"

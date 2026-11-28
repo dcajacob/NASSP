@@ -175,6 +175,54 @@ local function align()
     set("OpticsZeroSwitch",0)
     set("OpticsModeSwitch",0)
     set("ControllerCouplingSwitch",1)
+    if prepare_launch_optics then
+        -- The original launch starts with the telescope cover fitted. Slew
+        -- the telescope through +150 degrees, then return both optics to zero.
+        set("ControllerSpeedSwitch",2)
+        set("OpticsHandcontrollerSwitch",1)
+        local deadline=oapi.get_simtime()+35
+        while math.deg(ship:get_sextantangles())<165 do
+            assert(oapi.get_simtime()<deadline,"Optics cover slew failed")
+            proc.wait_frames(1)
+        end
+        proc.wait_simdt(2)
+        set("OpticsHandcontrollerSwitch",0)
+        set("OpticsZeroSwitch",1)
+        proc.wait_simdt(25)
+        set("OpticsZeroSwitch",0)
+        oapi.simulatebufferedkey(OAPI_KEY.S,OAPI_KEY.LCONTROL)
+        proc.wait_frames(5)
+        local f=assert(io.open("saved.scn","rb"))
+        local raw=f:read("*a")
+        f:close()
+        assert(raw:match("OPTICSCOVERED 0"),"Telescope cover did not release")
+        event("optics_cover_released")
+        set("SCContSwitch",0)
+        set("AttRateSwitch",0)
+        set("LimitCycleSwitch",0)
+        set("AttDeadbandSwitch",0)
+        local axes={{"Pitch","x","NUMPAD2","NUMPAD8"},{"Yaw","y","NUMPAD1","NUMPAD3"},{"Roll","z","NUMPAD6","NUMPAD4"}}
+        for _,axis in ipairs(axes) do
+            set("ManualAtt"..axis[1].."Switch",2)
+            set("BMAG"..axis[1].."Switch",2)
+        end
+        ship:set_rcsmode(1)
+        deadline=oapi.get_simtime()+100
+        while vec.length(ship:get_angvel())>math.rad(.035) do
+            assert(oapi.get_simtime()<deadline,"Cannot stabilize optics sighting")
+            local w=ship:get_angvel()
+            local axis=axes[1]
+            for _,a in ipairs(axes) do if math.abs(w[a[2]])>math.abs(w[axis[2]]) then axis=a end end
+            oapi.simulateimmediatekey(OAPI_KEY[w[axis[2]]>0 and axis[4] or axis[3]])
+            proc.wait_frames(1)
+        end
+        for _,axis in ipairs(axes) do
+            set("ManualAtt"..axis[1].."Switch",1)
+            set("BMAG"..axis[1].."Switch",1)
+        end
+        ship:set_rcsmode(0)
+        event("sighting_rates_trimmed")
+    end
     keys("KRV41N20E")
     prompt(21,22,20)
     keys("+00000E+00000E+00000E")

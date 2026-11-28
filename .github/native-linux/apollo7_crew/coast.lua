@@ -89,6 +89,33 @@ local function accept(raw)
         end
         return complete
     end
+    local state=tonumber(field(raw,"MCC_MissionState"))
+    local function dpTime(bank,offset)
+        return ((ship:get_agcerasable(bank,offset)%16384)*16384+ship:get_agcerasable(bank,offset+1)%16384)/100
+    end
+    local age=dpTime(0,20)-dpTime(3,0x78)
+    local trace=assert(io.open("navigation-timing.csv","a"))
+    if trace:seek("end")==0 then trace:write("mission_state,get_s,vector_age_s,channel_11\n") end
+    trace:write(string.format("%d,%.3f,%.2f,%d\n",state,get(),age,ship:get_agcchannel(9)))
+    trace:close()
+    if state==72 or (burn_state>=134 and #loads==2 and age>=1200) then
+        -- This long-coast update loads two future-tagged vectors. P00 may
+        -- already have a rectification job outstanding when warp comes off.
+        local function epoch()
+            return ship:get_agcerasable(3,0x78)*16384+ship:get_agcerasable(3,0x79)
+        end
+        local previous=epoch()
+        local deadline=get()+1800
+        while epoch()==previous do
+            assert(get()<deadline,"P00 did not finish its coast navigation cycle")
+            proc.wait_simdt(.5)
+        end
+        proc.wait_simdt(25)
+        while math.floor(ship:get_agcchannel(9)/2)%2==1 do
+            assert(get()<deadline+120,"CMC remained busy before coast uplink")
+            proc.wait_simdt(.25)
+        end
+    end
     switch("PCMBitRateSwitch",1)
     switch("UPTLMSwitch1",1)
     ship:set_panelswitch("UPTLMSwitch2",2,true)
@@ -104,7 +131,11 @@ local function accept(raw)
         proc.wait_simdt(.5)
         if verified() and ship:get_agcerasable(2,9)==0 and ship:get_agcuplinkstatus()==0 then break end
     until get()>=limit
-    assert(get()<limit,"Coast navigation uplink did not verify in CMC")
+    if get()>=limit then
+        record("navigation_timeout",snapshot())
+        error(string.format("Coast navigation uplink missed readback (P%d V%d N%d, %d queued)",
+            ship:get_agcerasable(2,9),ship:get_agcerasable(2,1),ship:get_agcerasable(2,2),ship:get_agcuplinkstatus()))
+    end
     switch("CMUplinkSwitch",0)
     switch("PCMBitRateSwitch",0)
     record("navigation_uplink",snapshot())

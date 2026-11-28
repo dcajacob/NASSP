@@ -5,6 +5,9 @@ import re
 
 CREW = Path(__file__).with_name("apollo7_crew")
 SCHEDULE = {
+    3: [(125190,36), (139000,37), (145000,"oxygen"), (160890,39), (181290,51),
+        (194000,"heater_on"), (195200,"hydrogen"), (195500,"heater_off"), (205000,"oxygen"),
+        (244300,54), (251000,"oxygen"), (259290,60)],
     4: [(279900,"charge_b"), (291300,"stop_charge"), (295200,"oxygen"), (322250,64), (339360,65), (357670,72),
         (381600,"oxygen"), (423080,75)],
     5: [(445000,83), (468000,"oxygen"), (503160,87), (509400,"oxygen"),
@@ -18,7 +21,7 @@ SCHEDULE = {
     8: [(864990,160), (865800,"charge_b"), (877200,"stop_charge"), (884400,"heater_on"), (885600,"hydrogen"), (885900,"heater_off"),
         (900000,"check_charge_a"), (911400,"stop_charge"), (914400,"heater_on"), (915600,"hydrogen"), (915900,"heater_off"), (918690,163)],
 }
-PURPOSE = {4: "SPS-4, MINIMUM IMPULSE", 5: "SPS-5 / PUGS",
+PURPOSE = {3: "SPS-3", 4: "SPS-4, MINIMUM IMPULSE", 5: "SPS-5 / PUGS",
            6: "SPS-6, MINIMUM IMPULSE", 7: "SPS-7", 8: "164-1A RETROFIRE"}
 
 
@@ -52,18 +55,21 @@ def alignment_script(runtime, coast_seconds):
             + (CREW / "align.lua").read_text())
 
 
-def prepare_p40(chain, previous_dir, pad_dir, number):
+def prepare_p40(chain, previous_dir, pad_dir, number, *, realign=True):
     def pad(field):
         return float(scenario_field(pad_dir, "MCC_AP7MNV_" + field))
     present = float(scenario_field(previous_dir, "MISSNTIME"))
     ignition = pad("GETI")
-    alignment = alignment_script(chain.runtime, max(0, ignition - present - 2120))
-    previous_dir = chain.leg(previous_dir, f"sps{number}-alignment", alignment, 300000, .015625,
-                             "alignment.csv", "platform_reference_ready")
-    present = float(scenario_field(previous_dir, "MISSNTIME"))
+    if realign:
+        alignment = alignment_script(chain.runtime, max(0, ignition - present - 2120))
+        if number == 3 and "  OPTICSCOVERED 1\n" in (previous_dir/"saved.scn").read_text():
+            alignment = "local prepare_launch_optics=true\n" + alignment
+        previous_dir = chain.leg(previous_dir, f"sps{number}-alignment", alignment, 300000, .015625,
+                                 "alignment.csv", "platform_reference_ready")
+        present = float(scenario_field(previous_dir, "MISSNTIME"))
     if ignition - present < 1000:
         raise ValueError(f"Insufficient time for SPS-{number} R60 slew")
-    config = "11102" if number in (7, 8) else "10102"
+    config = "11102" if number in (1, 2, 3, 7, 8, "ncc2") else "10102"
     scenario = (previous_dir / "saved.scn").read_text()
     def quad_mass(quad):
         block = re.search(rf"^SMRCSPROPELLANT_{quad}_BEGIN\n  PROPELLANTMASS (\S+)", scenario, re.M)
