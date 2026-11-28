@@ -17,6 +17,34 @@ def sha(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def project_blobs(repo, revision):
+    listing = subprocess.check_output(["git", "-C", repo, "ls-tree", "-r", revision])
+    return {line.split(b"\t", 1)[0].split()[-1].decode() for line in listing.splitlines()}
+
+
+def select_resources(stage, args):
+    # The multi-mission test profile also has third-party ASTP and Skylab
+    # assets. Keep mesh/texture aliases only when their contents are upstream.
+    resources = stage / "resources"
+    pinned = (REPO / ".github/native-linux/orbiter-revision").read_text().strip()
+    blobs = project_blobs(args.orbiter, pinned) | project_blobs(REPO, "HEAD")
+    generated_mesh = resources / "Meshes/ProjectApollo/Saturn5ML.msh"
+    shutil.copy2(args.modules.parent / "Saturn5ML.msh", generated_mesh)
+    for folder in ("Meshes", "Textures", "Textures2", "Script/ProjectApollo"):
+        for file in (resources / folder).rglob("*"):
+            if not file.is_file() or file == generated_mesh:
+                continue
+            if folder == "Script/ProjectApollo" and file.name.startswith("apollo7-countdown-"):
+                continue  # Apollo 7 crew procedures used by the linked replay.
+            data = file.read_bytes()
+            blob = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+            if blob not in blobs:
+                file.unlink()
+    for name in ("Config/Vessels/Stage.cfg", "Config/Vessels/VesselBuilder1/Soyuz7K-TM.cfg"):
+        (resources / name).unlink(missing_ok=True)
+    shutil.copy2(REPO / "Config/ProjectApollo/DSKYOut.cfg", resources / "Config/ProjectApollo/DSKYOut.cfg")
+
+
 def main(args):
     stage = args.work / "stage"
     media = args.work / "media"
@@ -25,6 +53,7 @@ def main(args):
     skip = {"user", "cockpit-test-font.json", "resources.json", "remaining-vessels-resources.json",
             "architext.regular.ttf", "OGLClient-original-staged", "Solar Serenity.ogg", "stage.so"}
     shutil.copytree(args.qualified, stage, ignore=lambda directory, names: skip.intersection(names))
+    select_resources(stage, args)
     media.mkdir()
     proof = stage / "qualification"
     (proof / "files.sha256").unlink()
