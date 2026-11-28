@@ -14,6 +14,10 @@ on:
         description: Run the complete mission replay matrix
         type: boolean
         default: false
+      apollo7_full_flight:
+        description: Fly Apollo 7 from the original countdown to recovery on one save chain
+        type: boolean
+        default: false
       apollo7_linked_return:
         description: Fly the linked Apollo 7 return from the corrected SPS-3 save
         type: boolean
@@ -85,6 +89,7 @@ jobs:
       - name: Select mission suites
         id: suites
         env:
+          COUNTDOWN: ${{ inputs.apollo7_full_flight }}
           LINKED: ${{ inputs.apollo7_linked_return }}
           EVENT: ${{ github.event_name }}
           FULL: ${{ inputs.full || contains(github.event.pull_request.labels.*.name, 'full-native-linux') }}
@@ -97,6 +102,7 @@ jobs:
               rows = Path(".github/native-linux/replays.tsv").read_text().splitlines()
               suites = list(dict.fromkeys(row.split()[0] for row in rows if row.strip()))
           linked = os.environ.get("LINKED") == "true"
+          countdown = os.environ.get("COUNTDOWN") == "true"
           if os.environ["EVENT"] == "pull_request":
               # Keep the short smoke check for unrelated PRs. Run the linked flight
               # automatically when the crew procedures or Apollo 7 targeting change.
@@ -106,8 +112,11 @@ jobs:
                                         "--name-only", "HEAD^1", "HEAD", "--", *paths],
                                        capture_output=True, text=True, check=True)
               linked = linked or bool(changed.stdout.strip())
+              countdown = countdown or bool(changed.stdout.strip())
           if linked or os.environ["FULL"] == "true":
-              suites.extend(["apollo7-linked-return", "apollo7-countdown-phasing"])
+              suites.append("apollo7-linked-return")
+          if countdown or os.environ["FULL"] == "true":
+              suites.append("apollo7-countdown-recovery")
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               print("suites=" + json.dumps(suites), file=out)
           PYTHON
@@ -122,7 +131,7 @@ jobs:
     runs-on: ubuntu-24.04
     # The pinned Orbiter runtime and SDK were built on Ubuntu 26.04.
     container: ubuntu:26.04
-    timeout-minutes: ${{ matrix.suite == 'apollo7-linked-return' && 300 || 75 }}
+    timeout-minutes: ${{ matrix.suite == 'apollo7-countdown-recovery' && 350 || matrix.suite == 'apollo7-linked-return' && 300 || 75 }}
     env:
       ORBITER_REVISION: ${{ needs.orbiter.outputs.revision }}
       REPLAY_SUITE: ${{ matrix.suite }}
@@ -251,3 +260,4 @@ jobs:
           path: |
             nassp-results/
             !nassp-results/build/**
+            !nassp-results/**/lvlog1b.txt

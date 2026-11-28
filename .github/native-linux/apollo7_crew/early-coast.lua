@@ -15,6 +15,19 @@ end
 local function field(raw,key)
     return raw:match("\n  "..key.." ([^\r\n]+)")
 end
+if ship:get_agcerasable(2,9)~=0 then
+    for _,key in ipairs({"KeyRel","Reset","Verb","Three","Seven","Enter","Zero","Zero","Enter"}) do
+        ship:set_panelswitch("DskySwitch"..key,1,true)
+        proc.wait_simdt(.375)
+        ship:set_panelswitch("DskySwitch"..key,0)
+        proc.wait_simdt(.375)
+    end
+    local deadline=get()+60
+    while ship:get_agcerasable(2,9)~=0 do
+        assert(get()<deadline,"CMC failed to return to P00 after the rendezvous burn")
+        proc.wait_simdt(.5)
+    end
+end
 ship:set_panelswitch("SCContSwitch",1)
 ship:set_panelswitch("CMCModeSwitch",0)
 while get() < advisory_get do

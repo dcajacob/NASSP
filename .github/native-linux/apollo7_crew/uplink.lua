@@ -15,13 +15,13 @@ local function installed(load)
 end
 proc.wait_simdt(2)
 if waitForNavigation then
-    -- Let P00 finish its navigation work before the last two orbital burns.
+    -- Let P00 finish its navigation work before the flight-plan uplink.
     -- An in-flight P00 integration can overwrite newly accepted state vectors.
     -- If Pinball is busy when the first V71 arrives, P27 can remain at V21 N01.
     proc.wait_simdt(20)
     local deadline=oapi.get_simtime()+120
     while math.floor(ship:get_agcchannel(9)/2)%2==1 do
-        assert(oapi.get_simtime()<deadline,"CMC remained busy before retrofire uplink")
+        assert(oapi.get_simtime()<deadline,"CMC remained busy before MCC uplink")
         proc.wait_simdt(.25)
     end
 end

@@ -49,16 +49,24 @@ def uplink_script(raw, number):
     for packet, (name, prefix, count, bank, address) in zip(packets, specs):
         values = table(words(packet, prefix, count))
         loads.append(f'{{name="{name}", bank={bank}, address={address}, words={values}}}')
-    return f"local waitForNavigation={str(number in (7, 8)).lower()}\nlocal loads=" + table(loads) + "\n" + (CREW / "uplink.lua").read_text()
+    final_ncc1 = number == 1 and field(raw, "MCC_AP7MNV_purpose") == "NCC-1"
+    # Give P00 the first navigation cycle after the final NCC-1 PAD. Otherwise
+    # it can replace TETCSM during P27's second packet. The fourteen upload
+    # words must still agree after all three packets have finished.
+    settle = "proc.wait_simdt(155)\n" if final_ncc1 else ""
+    wait = number in (2, 3, 7, 8, "ncc2") or final_ncc1
+    return (settle + f"local waitForNavigation={str(wait).lower()}\nlocal loads="
+            + table(loads) + "\n" + (CREW / "uplink.lua").read_text())
 
 
-def p30(chain, previous_dir, pad_dir, number):
+def p30(chain, previous_dir, pad_dir, number, *, manual_entry=False):
     raw = saved(pad_dir)
     tig = float(field(raw, "MCC_AP7MNV_GETI"))
     dv = list(map(float, field(raw, "MCC_AP7MNV_dV").split()))
     if len(dv) != 3:
         raise ValueError("Expected a three-component LVLH target")
-    lua = f"local tig,deltaV={tig},{table(dv)}\n" + (CREW / "p30.lua").read_text()
+    lua = (f"local tig,deltaV={tig},{table(dv)}\nlocal manual_entry={str(manual_entry).lower()}\n"
+           + (CREW / "p30.lua").read_text())
     return chain.leg(previous_dir, f"sps{number}-p30", lua, 5000, .125,
                      "p30.csv", "p30_pad_verified")
 
@@ -84,8 +92,10 @@ def substitute(source, pattern, value):
 
 
 def burn_script(runtime, preburn_raw, pad_raw, number):
-    template, _ = BURNS[number]
-    script = runtime / f"resources/Script/ProjectApollo/apollo7-countdown-sps{number}-{template}.lua"
+    rendezvous = number in (1, 2, "ncc2")
+    procedure = 6 if rendezvous else number
+    template, _ = BURNS[procedure]
+    script = runtime / f"resources/Script/ProjectApollo/apollo7-countdown-sps{procedure}-{template}.lua"
     source = script.read_text()
     # The CMC DAP controls individual jet pulses. Keep its closed-loop slew
     # and attitude hold at the burn step, including the wait for the gimbal tests.
@@ -113,11 +123,17 @@ def burn_script(runtime, preburn_raw, pad_raw, number):
     else:
         start = source.index('set("DirectUllMnACircuitBraker",1)')
         end = source.index("local initialMass=", start)
-    ullage = "local ullageEnd=timeToIgnition-" + ("15" if number == 7 else "10") + "\n"
-    ullage += "local twoJet=" + ("false" if number == 7 else "true") + "\n"
+    ullage = "local ullageEnd=timeToIgnition-" + ("15" if number == 7 or rendezvous else "10") + "\n"
+    ullage += "local twoJet=" + ("false" if number == 7 or rendezvous else "true") + "\n"
     ullage += "local minimumImpulse=" + ("true" if number == 6 else "false") + "\n"
     source = source[:start] + ullage + (CREW / "ullage.lua").read_text() + source[end:]
     duration = pad("burntime")
+    if rendezvous:
+        # Same CMC P40 as SPS-6, with four-jet ullage and live duration.
+        # The independent vector and apsis checks below qualify the cutoff.
+        source = substitute(source, r'^assert\(used>4 and used<65,.*$',
+                            'assert(used>0,"Rendezvous SPS did not consume propellant")')
+        source = substitute(source, r'^for i=1,60 do$', f'for i=1,{60 + math.ceil(duration)} do')
     if number == 7:
         source = substitute(source, r"^local plannedDuration=.*", f"local plannedDuration={duration}")
         source = source.replace('set("SCContSwitch",0)', 'set("AttRateSwitch",0)\nset("SCContSwitch",0)')

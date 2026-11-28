@@ -158,7 +158,7 @@ def inertial_reference(directory):
             for i in range(3) for j in range(3)]
 
 
-def burn_measurements(output, number):
+def burn_measurements(output, number, seed=SEED):
     from apollo7_checks import rows
     from apollo7_middle import field
 
@@ -188,7 +188,7 @@ def burn_measurements(output, number):
     result = dict(burn=prefix, ignition_get_s=cmc_tig, target_lvlh_ft_s=cmc_dv, sps_used_kg=debit,
                   pad_perigee_km=pad_pe, pad_apogee_km=pad_ap, perigee_km=pe, apogee_km=ap)
     burn_dir = output / (prefix + "-burn")
-    reference = inertial_reference(SEED)
+    reference = inertial_reference(seed)
     aligned = inertial_reference(output / (prefix + "-alignment"))
     trace = sum(a*b for a,b in zip(reference, aligned, strict=True))
     if not math.isfinite(trace) or abs(trace - 3) > 2 * (1 - math.cos(math.radians(1))):
@@ -224,7 +224,7 @@ def burn_measurements(output, number):
     return result
 
 
-def recovery_target(output, recovery):
+def recovery_target(output, recovery, seed):
     from apollo7_entry import field
 
     pad = output / "sps8-coast"
@@ -233,7 +233,7 @@ def recovery_target(output, recovery):
     if not (-math.pi/2 <= target_lat <= math.pi/2 and -math.pi <= target_lon <= math.pi):
         raise ValueError("Invalid RTCC recovery target")
 
-    basis = inertial_reference(SEED)
+    basis = inertial_reference(seed)
     alignment_errors = {}
     for stage in ("sps8-burn", "entry-p61", "entry-separation", "entry-attitude", "entry-splashdown"):
         platform = inertial_reference(output / stage)
@@ -268,13 +268,13 @@ def recovery_target(output, recovery):
                 alignment_error_deg_by_stage=alignment_errors)
 
 
-def verify(output):
+def verify(output, seed=SEED):
     from apollo7_checks import rows
     from apollo7_entry import verify_burn, verify_entry
 
-    if digest(SEED / "saved.scn") != SEED_SHA256:
+    if seed == SEED and digest(seed / "saved.scn") != SEED_SHA256:
         raise ValueError("The corrected SPS-3 reference save has changed")
-    previous = SEED
+    previous = seed
     records = json.loads((output / "lineage.json").read_text())
     for record in records:
         directory = output / record["stage"]
@@ -304,9 +304,9 @@ def verify(output):
     recovery = rows(previous / "recovery.csv")[-1]
     if not atlantic_water(output / "coast.vec", float(recovery["longitude"]), float(recovery["latitude"])):
         raise ValueError("The final contact is on land on Orbiter's Earth coastline map")
-    target = recovery_target(output, recovery)
-    report = dict(start_get=clock(SEED), end_get=clock(previous), seed_sha256=SEED_SHA256,
-                  handoffs=len(records), burns=[burn_measurements(output, n) for n in range(4, 9)],
+    target = recovery_target(output, recovery, seed)
+    report = dict(start_get=clock(seed), end_get=clock(previous), seed_sha256=digest(seed / "saved.scn"),
+                  handoffs=len(records), burns=[burn_measurements(output, n, seed) for n in range(4, 9)],
                   splashdown_get_s=float(splashdown["met"]), contact_airspeed_m_s=float(splashdown["airspeed"]),
                   recovery=recovery, recovery_target=target)
     (output / "results.json").write_text(json.dumps(report, indent=2) + "\n")
@@ -340,23 +340,23 @@ def atlantic_water(coastline, longitude, latitude):
     return crossings % 2 == 0
 
 
-def main(inputs, output):
+def main(inputs, output, seed=SEED):
     from apollo7_four import fly as sps4
     from apollo7_middle import fly as sps5_through_7
     from apollo7_entry import fly as sps8_and_entry
 
-    if digest(SEED / "saved.scn") != SEED_SHA256:
+    if seed == SEED and digest(seed / "saved.scn") != SEED_SHA256:
         raise ValueError("Wrong SPS-3 save")
     chain = Chain(inputs, output)
     shutil.copyfile(chain.runtime / "resources/Config/Earth/Data/coast.vec", chain.output / "coast.vec")
     build = dict(orbiter_source=(chain.inputs / "orbiter-source.txt").read_text().strip(),
                  nassp_source=os.environ.get("GITHUB_SHA"),
-                 engine_sha256=chain.engine_sha, seed_sha256=SEED_SHA256)
+                 engine_sha256=chain.engine_sha, seed_sha256=digest(seed / "saved.scn"))
     (chain.output / "build.json").write_text(json.dumps(build, indent=2) + "\n")
-    previous = SEED
+    previous = seed
     for fly in (sps4, sps5_through_7, sps8_and_entry):
         previous = fly(chain, previous)
-    verify(chain.output)
+    verify(chain.output, seed)
 
 
 if __name__ == "__main__":
