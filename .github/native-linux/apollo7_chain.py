@@ -77,18 +77,27 @@ class Chain:
         (directory / "input.scn").write_bytes(input_bytes(previous_dir))
         (directory / "crew.lua").write_text(lua_text)
         (directory / "replay.csv").write_text(EMPTY_KEYS if replay is None else replay)
+        self.run_session(directory, ticks, step)
+        record = check_leg(previous_dir, directory, csv_name, marker)
+        self.records.append(record)
+        (self.output / "lineage.json").write_text(json.dumps(self.records, indent=2) + "\n")
+        print(f"{slug}: {marker} at GET {record['end_get']:.2f}", flush=True)
+        return directory
+
+    def run_session(self, directory, ticks, step, keymap=()):
         engine = self.runtime / "engine"
         args = [engine / "run-orbiter", "--assets", self.runtime / "resources", "--data",
                 self.runtime / "celestial-data", "--modules", engine / "NativeModules",
                 "--planets", self.runtime / "planet-archives", "--config", self.config,
                 "--xrsound-assets", self.runtime / "resources", "--scenario", "input.scn",
                 "--save", "saved.scn", "--replay", "replay.csv", "--ticks", str(ticks),
-                "--fixed-step", str(step), "--render-every", "257", "--run"]
+                *keymap, "--fixed-step", str(step), "--render-every", "257", "--run"]
         env = os.environ.copy()
         env["NASSP_SYNCHRONOUS_MCC"] = "1"
         for key in ("WAYLAND_DISPLAY", "LD_LIBRARY_PATH"):
             env.pop(key, None)
-        print(f"Flying {slug} from {previous_dir.name}", flush=True)
+        slug = directory.name
+        print(f"Flying {slug}", flush=True)
         # Orbiter keeps simulating after a crew script raises an error. Stop
         # that leg immediately so it cannot coast past its recovery window.
         log_path = directory / "console.log"
@@ -105,11 +114,6 @@ class Chain:
                                 raise RuntimeError(f"{slug}: {line.strip()}")
                 if process.returncode:
                     raise subprocess.CalledProcessError(process.returncode, args)
-        record = check_leg(previous_dir, directory, csv_name, marker)
-        self.records.append(record)
-        (self.output / "lineage.json").write_text(json.dumps(self.records, indent=2) + "\n")
-        print(f"{slug}: {marker} at GET {record['end_get']:.2f}", flush=True)
-        return directory
 
 
 def saved_orbit(directory):
