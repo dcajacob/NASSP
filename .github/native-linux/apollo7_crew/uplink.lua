@@ -14,14 +14,17 @@ local function installed(load)
     return true
 end
 proc.wait_simdt(2)
+local function dpTime(bank,offset)
+    return ((ship:get_agcerasable(bank,offset)%16384)*16384+ship:get_agcerasable(bank,offset+1)%16384)/100
+end
+if minimum_navigation_age and dpTime(0,20)-dpTime(3,0x78)<minimum_navigation_age then
+    navigation_window=nil
+end
 if navigation_window then
     -- TETCSM follows the six position and six velocity words in bank 3.
-    local function epoch()
-        return ship:get_agcerasable(3,0x78)*16384+ship:get_agcerasable(3,0x79)
-    end
-    local old=epoch()
+    local old=dpTime(3,0x78)
     local start=oapi.get_simtime()
-    while epoch()==old do
+    while dpTime(3,0x78)==old do
         assert(oapi.get_simtime()-start<navigation_window,"No P00 navigation epoch before target uplink")
         proc.wait_simdt(.5)
     end
